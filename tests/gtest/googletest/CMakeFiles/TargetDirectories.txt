@@ -1,0 +1,8 @@
+/Volumes/CommonUser/mgtv/mgit/xnginx/tests/googletest/googletest/CMakeFiles/install/local.dir
+/Volumes/CommonUser/mgtv/mgit/xnginx/tests/googletest/googletest/CMakeFiles/list_install_components.dir
+/Volumes/CommonUser/mgtv/mgit/xnginx/tests/googletest/googletest/CMakeFiles/rebuild_cache.dir
+/Volumes/CommonUser/mgtv/mgit/xnginx/tests/googletest/googletest/CMakeFiles/edit_cache.dir
+/Volumes/CommonUser/mgtv/mgit/xnginx/tests/googletest/googletest/CMakeFiles/install/strip.dir
+/Volumes/CommonUser/mgtv/mgit/xnginx/tests/googletest/googletest/CMakeFiles/install.dir
+/Volumes/CommonUser/mgtv/mgit/xnginx/tests/googletest/googletest/CMakeFiles/gtest_main.dir
+/Volumes/CommonUser/mgtv/mgit/xnginx/tests/googletest/googletest/CMakeFiles/gtest.dir
