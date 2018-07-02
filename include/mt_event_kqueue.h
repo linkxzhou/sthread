@@ -67,7 +67,7 @@ public:
 
     void ApiFree() 
     {
-        close(m_kqfd_);
+        ::close(m_kqfd_);
         safe_free(m_events_);
         safe_free(m_file_events_);
         safe_free(m_fired_);
@@ -91,7 +91,7 @@ public:
             EV_SET(&ke[0], fd, EVFILT_READ, EV_DELETE, 0, 0, NULL);
             if (kevent(m_kqfd_, ke, 1, NULL, 0, NULL) == -1) 
             {
-                LOG_WARN("delete EVFILT_READ error");
+                // LOG_WARN("delete EVFILT_READ error");
             }
         }
 
@@ -109,28 +109,36 @@ public:
             EV_SET(&ke[0], fd, EVFILT_WRITE, EV_DELETE, 0, 0, NULL);
             if (kevent(m_kqfd_, ke, 1, NULL, 0, NULL) == -1) 
             {
-                LOG_WARN("delete EVFILT_READ error");
+                // LOG_WARN("delete EVFILT_READ error");
             }
         }
 
         return 0;
     }
 
-    void ApiDelEvent(int fd, int mask) 
+    int ApiDelEvent(int fd, int mask) 
     {
         struct kevent ke[1];
 
         if (mask & MT_READABLE) 
         {
             EV_SET(&ke[0], fd, EVFILT_READ, EV_DELETE, 0, 0, NULL);
-            kevent(m_kqfd_, ke, 1, NULL, 0, NULL);
+            if (kevent(m_kqfd_, ke, 1, NULL, 0, NULL) == -1)
+            {
+                return -1;
+            }
         }
 
         if (mask & MT_WRITABLE) 
         {
             EV_SET(&ke[0], fd, EVFILT_WRITE, EV_DELETE, 0, 0, NULL);
-            kevent(m_kqfd_, ke, 1, NULL, 0, NULL);
+            if (kevent(m_kqfd_, ke, 1, NULL, 0, NULL) == -1)
+            {
+                return -1;
+            }
         }
+
+        return 0;
     }
 
     int ApiPoll(struct timeval *tvp) 

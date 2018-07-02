@@ -5,7 +5,7 @@ MTHREAD_NAMESPACE_USING
 
 TEST(ConnectionTest, UdpShort)
 {
-	UdpShortConn *conn = new UdpShortConn();
+	UdpClientConnection *conn = new UdpClientConnection();
 
 	Eventer* ev = new Eventer();
 

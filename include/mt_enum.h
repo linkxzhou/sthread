@@ -9,6 +9,9 @@
 
 MTHREAD_NAMESPACE_BEGIN
 
+// buffer的类型
+// eBUFF_RECV 收包
+// eBUFF_SEND 发包
 enum eBuffType
 {
     eBUFF_UNDEF  =  0x0,
@@ -22,55 +25,47 @@ enum eEventType
     eEVENT_THREAD    = 0x1,
     eEVENT_KEEPALIVE = 0x2,
     eEVENT_SESSION   = 0x3,
-};
-
-enum eMultiProto
-{
-    ePROTO_UNKNOWN      = 0x1,
-    ePROTO_UDP          = 0x1,
-    ePROTO_TCP          = 0x2,
-    ePROTO_UDP_SESSION  = 0x3,
-    ePROTO_TCP_KEEP     = 0x4,
+    eEVENT_ACCEPT    = 0x4,
 };
 
 enum eThreadType
 {
-    eNORMAL          =   0x1,
-    ePRIMORDIAL      =   0x1,
-    eDAEMON          =   0x2,
-    eSUB_THREAD      =   0x3,
+    eNORMAL          = 0x1,
+    ePRIMORDIAL      = 0x2,
+    eDAEMON          = 0x3,
+    eSUB_THREAD      = 0x4,
 };
 
 enum eThreadFlag
 {
-    eNOT_INLIST  =  0x0,
-    eFREE_LIST   =  0x1,
-    eIO_LIST     =  0x2,
-    eSLEEP_LIST  =  0x4,
-    eRUN_LIST    =  0x8,
-    ePEND_LIST   =  0x10,
-    eSUB_LIST    =  0x20,
+    eNOT_INLIST  = 0x0,
+    eFREE_LIST   = 0x1,
+    eIO_LIST     = 0x2,
+    eSLEEP_LIST  = 0x4,
+    eRUN_LIST    = 0x8,
+    ePEND_LIST   = 0x10,
+    eSUB_LIST    = 0x20,
 };
 
 enum eThreadState
 {
-    eINITIAL         =  0x0,
-    eRUNABLE         =  0x1,
-    eRUNNING         =  0x2,
-    eSLEEPING        =  0x3,
-    ePENDING         =  0x4,
+    eINITIAL    = 0x0,
+    eRUNABLE    = 0x1,
+    eRUNNING    = 0x2,
+    eSLEEPING   = 0x3,
+    ePENDING    = 0x4,
 };
 
-enum eMultiState
+enum eActionState
 {
-    eMULTI_FLAG_UNDEF   = 0x0,
-    eMULTI_FLAG_INIT    = 0x1,
-    eMULTI_FLAG_OPEN    = 0x2,
-    eMULTI_FLAG_SEND    = 0x4,
-    eMULTI_FLAG_FIN     = 0x8,
+    eACTION_FLAG_UNDEF   = 0x0,
+    eACTION_FLAG_INIT    = 0x1,
+    eACTION_FLAG_OPEN    = 0x2,
+    eACTION_FLAG_SEND    = 0x4,
+    eACTION_FLAG_FIN     = 0x8,
 };
 
-enum eMultiError
+enum eActionError
 {
     eERR_NONE            =  0,
     eERR_SOCKET_FAIL     = -1, // 创建socket失败
@@ -89,19 +84,22 @@ enum eMultiError
 
 enum eSessionFlag
 {
-    eSESSION_IDLE    = 0x0, // session的idle类型
-    eSESSION_INUSE   = 0x1, // session的正在使用
-    eSESSION_SET     = 0x2,
-    eSESSION_UNSET   = 0x3,
+    eSESSION_IDLE    = 0x0, // session是idle类型
+    eSESSION_INUSE   = 0x1, // session正在使用
+    eSESSION_SET     = 0x2, // session已经设置
+    eSESSION_UNSET   = 0x3, // session未设置
 };
 
 enum eConnType
 {
-    eCONN_UNDEF     = 0x0, // 链接错误
-    eUDP_SHORT_CONN = 0x1, // udp短链接
-    eTCP_KEEP_CONN  = 0x2, // tcp长连接
-    eUDP_SESSION_CONN = 0x3, // udp的session链接
-    eTCP_SHORT_CONN = 0x4, // tcp短连接
+    eUNDEF_CONN     = 0x0, // 链接错误
+    eUDP_CLIENT_CONN       = 0x1, // udp client链接
+    eTCP_KEEP_CLIENT_CONN  = 0x2, // tcp client长连接
+    eTCP_SHORT_CLIENT_CONN = 0x3, // tcp client短连接
+    eUDP_SERVER_CONN       = 0x4,
+    eTCP_SERVER_ACCEPT_CONN = 0x5,
+    eTCP_KEEP_SERVER_CONN  = 0x6,
+    eTCP_SERVER_CONN = 0x7,
 };
 
 enum eTcpKeepFlag

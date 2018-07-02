@@ -5,23 +5,12 @@ MTHREAD_NAMESPACE_USING
 
 SyscallFuncTab      g_syscall_tab;
 int                 g_hook_flag;
-unsigned long       g_mt_threadid;
 
 static HookFd       g_hookfd_tab[MT_HOOK_MAX_FD];
 
-unsigned long mt_get_threadid(void)
-{
-    return g_mt_threadid;
-}
-
-void mt_set_threadid(unsigned long threadid)
-{
-    g_mt_threadid = threadid;
-}
-
 HookFd* mt_find_fd(int fd)
 {
-    LOG_CHECK_FUNCTION;
+    // LOG_CHECK_FUNCTION;
 
     if ((fd < 0) || (fd >= MT_HOOK_MAX_FD))
     {
@@ -128,11 +117,18 @@ int mt_connect(int fd, const struct sockaddr *address, socklen_t address_len)
     {
         return REAL_FUNC(connect)(fd, address, address_len);
     }
-
-    return Frame::connect(fd, address, (int)address_len, hook_fd->write_timeout_);
+    else
+    {
+        mt_new_fd(fd);
+        int flags;
+        flags = mt_fcntl(fd, F_GETFL, 0);
+        flags |= O_NONBLOCK;
+        mt_fcntl(fd, F_SETFL, flags);
+        return Frame::connect(fd, address, (int)address_len, hook_fd->write_timeout_);
+    }
 }
 
-ssize_t mt_read(int fd, void *buf, size_t nbyte)
+ssize_t mt_read(int fd, void *buffer, size_t nbyte)
 {
     LOG_CHECK_FUNCTION;
 
@@ -141,18 +137,25 @@ ssize_t mt_read(int fd, void *buf, size_t nbyte)
 
     if (!HOOK_ACTIVE() || !hook_fd)
     {
-        return REAL_FUNC(read)(fd, buf, nbyte);
+        return REAL_FUNC(read)(fd, buffer, nbyte);
     }
 
     if (hook_fd->sock_flag_ & MT_FD_FLG_UNBLOCK)
     {
-        return REAL_FUNC(read)(fd, buf, nbyte);
+        return REAL_FUNC(read)(fd, buffer, nbyte);
     }
-
-    return Frame::read(fd, buf, nbyte, hook_fd->read_timeout_);
+    else
+    {
+        mt_new_fd(fd);
+        int flags;
+        flags = mt_fcntl(fd, F_GETFL, 0);
+        flags |= O_NONBLOCK;
+        mt_fcntl(fd, F_SETFL, flags);
+        return Frame::read(fd, buffer, nbyte, hook_fd->read_timeout_);
+    }
 }
 
-ssize_t mt_write(int fd, const void *buf, size_t nbyte)
+ssize_t mt_write(int fd, const void *buffer, size_t nbyte)
 {
     LOG_CHECK_FUNCTION;
 
@@ -161,18 +164,25 @@ ssize_t mt_write(int fd, const void *buf, size_t nbyte)
 
     if (!HOOK_ACTIVE() || !hook_fd)
     {
-        return REAL_FUNC(write)(fd, buf, nbyte);
+        return REAL_FUNC(write)(fd, buffer, nbyte);
     }
 
     if (hook_fd->sock_flag_ & MT_FD_FLG_UNBLOCK)
     {
-        return REAL_FUNC(write)(fd, buf, nbyte);
+        return REAL_FUNC(write)(fd, buffer, nbyte);
     }
-
-    return Frame::write(fd, buf, nbyte, hook_fd->write_timeout_);
+    else
+    {
+        mt_new_fd(fd);
+        int flags;
+        flags = mt_fcntl(fd, F_GETFL, 0);
+        flags |= O_NONBLOCK;
+        mt_fcntl(fd, F_SETFL, flags);
+        return Frame::write(fd, buffer, nbyte, hook_fd->write_timeout_);
+    }
 }
 
-ssize_t mt_sendto(int fd, const void *message, size_t length, int flags,
+ssize_t mt_sendto(int fd, const void *buffer, size_t length, int flags,
                const struct sockaddr *dest_addr, socklen_t dest_len)
 {
     LOG_CHECK_FUNCTION;
@@ -182,15 +192,22 @@ ssize_t mt_sendto(int fd, const void *message, size_t length, int flags,
 
     if (!HOOK_ACTIVE() || !hook_fd)
     {
-        return REAL_FUNC(sendto)(fd, message, length, flags, dest_addr, dest_len);
+        return REAL_FUNC(sendto)(fd, buffer, length, flags, dest_addr, dest_len);
     }
 
     if (hook_fd->sock_flag_ & MT_FD_FLG_UNBLOCK)
     {
-        return REAL_FUNC(sendto)(fd, message, length, flags, dest_addr, dest_len);
+        return REAL_FUNC(sendto)(fd, buffer, length, flags, dest_addr, dest_len);
     }
-
-    return Frame::sendto(fd, message, (int)length, flags, dest_addr, dest_len, hook_fd->write_timeout_);
+    else
+    {
+        mt_new_fd(fd);
+        int flags;
+        flags = mt_fcntl(fd, F_GETFL, 0);
+        flags |= O_NONBLOCK;
+        mt_fcntl(fd, F_SETFL, flags);
+        return Frame::sendto(fd, buffer, (int)length, flags, dest_addr, dest_len, hook_fd->write_timeout_);
+    }
 }
 
 ssize_t mt_recvfrom(int fd, void *buffer, size_t length, int flags,
@@ -210,8 +227,15 @@ ssize_t mt_recvfrom(int fd, void *buffer, size_t length, int flags,
     {
         return REAL_FUNC(recvfrom)(fd, buffer, length, flags, address, address_len);
     }
-
-    return Frame::recvfrom(fd, buffer, length, flags, address, address_len, hook_fd->read_timeout_);
+    else
+    {
+        mt_new_fd(fd);
+        int flags;
+        flags = mt_fcntl(fd, F_GETFL, 0);
+        flags |= O_NONBLOCK;
+        mt_fcntl(fd, F_SETFL, flags);
+        return Frame::recvfrom(fd, buffer, length, flags, address, address_len, hook_fd->read_timeout_);
+    }
 }
 
 ssize_t mt_recv(int fd, void *buffer, size_t length, int flags)
@@ -229,11 +253,18 @@ ssize_t mt_recv(int fd, void *buffer, size_t length, int flags)
     {
         return REAL_FUNC(recv)(fd, buffer, length, flags);
     }
-
-    return Frame::recv(fd, buffer, length, flags, hook_fd->read_timeout_);
+    else
+    {
+        mt_new_fd(fd);
+        int flags;
+        flags = mt_fcntl(fd, F_GETFL, 0);
+        flags |= O_NONBLOCK;
+        mt_fcntl(fd, F_SETFL, flags);
+        return Frame::recv(fd, buffer, length, flags, hook_fd->read_timeout_);
+    }
 }
 
-ssize_t mt_send(int fd, const void *buf, size_t nbyte, int flags)
+ssize_t mt_send(int fd, const void *buffer, size_t nbyte, int flags)
 {
     LOG_CHECK_FUNCTION;
 
@@ -242,15 +273,22 @@ ssize_t mt_send(int fd, const void *buf, size_t nbyte, int flags)
 
     if (!HOOK_ACTIVE() || !hook_fd)
     {
-        return REAL_FUNC(send)(fd, buf, nbyte, flags);
+        return REAL_FUNC(send)(fd, buffer, nbyte, flags);
     }
 
     if (hook_fd->sock_flag_ & MT_FD_FLG_UNBLOCK)
     {
-        return REAL_FUNC(send)(fd, buf, nbyte, flags);
+        return REAL_FUNC(send)(fd, buffer, nbyte, flags);
     }
-
-    return Frame::send(fd, buf, nbyte, flags, hook_fd->write_timeout_);
+    else
+    {
+        mt_new_fd(fd);
+        int flags;
+        flags = mt_fcntl(fd, F_GETFL, 0);
+        flags |= O_NONBLOCK;
+        mt_fcntl(fd, F_SETFL, flags);
+        return Frame::send(fd, buffer, nbyte, flags, hook_fd->write_timeout_);
+    }
 }
 
 int mt_setsockopt(int fd, int level, int option_name, const void *option_value, 
@@ -332,7 +370,7 @@ int mt_ioctl(int fd, uint64_t cmd, ...)
 
     if (cmd == FIONBIO)
     {
-        int flags =  (arg != NULL) ? *((int*)arg) : 0;
+        int flags = (arg != NULL) ? *((int*)arg) : 0;
         if (flags != 0)
         {
             hook_fd->sock_flag_ |= MT_FD_FLG_UNBLOCK;
@@ -340,4 +378,26 @@ int mt_ioctl(int fd, uint64_t cmd, ...)
     }
 
     return REAL_FUNC(ioctl)(fd, cmd, arg);
+}
+
+int mt_accept(int fd, const struct sockaddr *address, socklen_t *address_len)
+{
+    // LOG_CHECK_FUNCTION;
+
+    HOOK_SYSCALL(accept);
+    HookFd* hook_fd = mt_find_fd(fd);
+    if (!HOOK_ACTIVE() || !hook_fd)
+    {
+        return REAL_FUNC(accept)(fd, address, address_len);
+    }
+
+    if (hook_fd->sock_flag_ & MT_FD_FLG_UNBLOCK)
+    {
+        return REAL_FUNC(accept)(fd, address, address_len);
+    }
+
+    int accept_fd = REAL_FUNC(accept)(fd, address, address_len);
+    mt_new_fd(accept_fd);
+    
+    return accept_fd;
 }

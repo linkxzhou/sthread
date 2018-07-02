@@ -1,0 +1,816 @@
+[TRACE][140736183776128][0][mt_event_proxyer.cpp][129 ][Init      ]m_fdrefs_ : 0x10f0df008, m_maxfd_ : 50000
+[TRACE][140736183776128][0][mt_thread.cpp][263 ][InitialPool]max_num : 50000, size : 200
+[TRACE][140736183776128][3][../../include/mt_frame.h][364 ][SetActiveThread]SetActiveThread : 0x7f81fe4030b0
+[DEBUG][140736183776128][3][./main.cpp][35  ][main      ]init ret : 0
+[TRACE][140736183776128][3][./include/mt_frame.h][165 ][SetHookFlag]set hook ...
+[DEBUG][140736183776128][3][./main.cpp][42  ][main      ]--- start time : 1530173594513
+[TRACE][140736183776128][2][../../include/mt_frame.h][364 ][SetActiveThread]SetActiveThread : 0x7f81fe402c60
+[TRACE][140736183776128][2][mt_thread.cpp][191 ][RestoreContext]this : 0x7f81fe402c60, switch_thread : 0x7f81fe4030b0
+[TRACE][140736183776128][2][mt_thread.cpp][197 ][RestoreContext]================= run thread =================[0x7f81fe402c60]
+[TRACE][140736183776128][mt_ucontext.cpp][154 ][contextswitch]from : 0x7f81fe403178, to : 0x7f81fe402d28, runing : 0x0, init : 0x0
+[TRACE][140736183776128][mt_ucontext.cpp][158 ][contextswitch]sContextInitial : 0x7f81fe403178
+[TRACE][140736183776128][mt_ucontext.cpp][163 ][contextswitch]sContextRuning : 0x7f81fe402d28
+[TRACE][140736183776128][2][mt_thread.cpp][72  ][StartActiveThread]StartActiveThread : 0x7f81fe402c60, t : 0x7f81fe402d10, id : 2
+[TRACE][140736183776128][2][mt_thread.cpp][206 ][Run       ]Run ......
+[TRACE][140736183776128][2][./include/mt_frame.h][956 ][DaemonRun ]daemon : 0x7f81fe402c60
+[TRACE][140736183776128][2][./include/mt_frame.h][200 ][ThreadSchedule]run front thread, m_run_list_ size: 4
+[TRACE][140736183776128][2][./include/mt_frame.h][203 ][ThreadSchedule]SetActiveThread thread : 0x7f81fe4034f0
+[TRACE][140736183776128][4][../../include/mt_frame.h][364 ][SetActiveThread]SetActiveThread : 0x7f81fe4034f0
+[TRACE][140736183776128][4][mt_thread.cpp][191 ][RestoreContext]this : 0x7f81fe4034f0, switch_thread : 0x7f81fe402c60
+[TRACE][140736183776128][4][mt_thread.cpp][197 ][RestoreContext]================= run thread =================[0x7f81fe4034f0]
+[TRACE][140736183776128][mt_ucontext.cpp][154 ][contextswitch]from : 0x7f81fe402d28, to : 0x7f81fe4035b8, runing : 0x7f81fe402d28, init : 0x7f81fe403178
+[TRACE][140736183776128][mt_ucontext.cpp][163 ][contextswitch]sContextRuning : 0x7f81fe4035b8
+[TRACE][140736183776128][4][mt_thread.cpp][72  ][StartActiveThread]StartActiveThread : 0x7f81fe4034f0, t : 0x7f81fe4035a0, id : 4
+[TRACE][140736183776128][4][mt_thread.cpp][206 ][Run       ]Run ......
+[TRACE][140736183776128][4][mt_c.cpp  ][12  ][s_get_conn]ev node :0x7f81fe50b810
+[TRACE][140736183776128][4][mt_c.cpp  ][21  ][s_get_conn]IMtConnection conn : 0x7f81fe50b990
+[TRACE][140736183776128][4][mt_sys_hook.cpp][74  ][mt_socket ] check function ...
+[TRACE][140736183776128][4][mt_sys_hook.cpp][76  ][mt_socket ]system func : socket
+[TRACE][140736183776128][4][mt_sys_hook.cpp][44  ][mt_new_fd ] check function ...
+[TRACE][140736183776128][4][mt_sys_hook.cpp][286 ][mt_fcntl  ] check function ...
+[TRACE][140736183776128][4][mt_sys_hook.cpp][293 ][mt_fcntl  ]system func : fcntl
+[TRACE][140736183776128][4][mt_sys_hook.cpp][286 ][mt_fcntl  ] check function ...
+[TRACE][140736183776128][4][mt_sys_hook.cpp][309 ][mt_fcntl  ]socket MT_FD_FLG_UNBLOCK
+[TRACE][140736183776128][4][mt_sys_hook.cpp][319 ][mt_ioctl  ] check function ...
+[TRACE][140736183776128][4][mt_sys_hook.cpp][326 ][mt_ioctl  ]system func : ioctl
+[TRACE][140736183776128][4][mt_connection.cpp][28  ][CreateSocket]m_ev_ : 0x7f81fe50b810
+[TRACE][140736183776128][4][mt_c.cpp  ][32  ][s_get_conn]osfd : 4
+[TRACE][140736183776128][4][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][4][mt_event_proxyer.cpp][231 ][AddEventer]item : 0x10f0df068
+[TRACE][140736183776128][4][mt_event_proxyer.cpp][65  ][AddRef    ]AddRef old_ev : 0x0
+[TRACE][140736183776128][4][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][4][mt_event_proxyer.cpp][269 ][AddFd     ]item : 0x10f0df068, fd : 4, events : 3
+[TRACE][140736183776128][4][mt_event_proxyer.cpp][285 ][AddFd     ]fd : 4, new_events : 3
+[TRACE][140736183776128][4][./include/mt_event_kqueue.h][83  ][ApiAddEvent]fd : 4, mask : MT_READABLE
+[TRACE][140736183776128][4][./include/mt_event_kqueue.h][101 ][ApiAddEvent]fd : 4, mask : MT_WRITABLE
+[TRACE][140736183776128][4][./include/mt_event_proxyer.h][157 ][SetEventer]ref : 0x10f0df068, ev : 0x7f81fe50b810
+[TRACE][140736183776128][4][mt_event_proxyer.cpp][77  ][AddRef    ]fdref add success, fd_ref : 0x10f0df068, ev : 0x7f81fe50b810
+[TRACE][140736183776128][4][mt_c.cpp  ][129 ][udp_sendrecv]current socket :4, conn : 0x7f81fe50b990
+[TRACE][140736183776128][4][mt_sys_hook.cpp][178 ][mt_sendto ] check function ...
+[TRACE][140736183776128][4][mt_sys_hook.cpp][180 ][mt_sendto ]system func : sendto
+[TRACE][140736183776128][4][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][4][./include/mt_event_proxyer.h][100 ][SetOwnerThread]ev : 0x7f81fe50b810, thread : 0x7f81fe4034f0
+[TRACE][140736183776128][4][mt_event_proxyer.cpp][436 ][Schedule  ] check function ...
+[TRACE][140736183776128][4][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][4][mt_event_proxyer.cpp][231 ][AddEventer]item : 0x10f0df068
+[TRACE][140736183776128][4][mt_event_proxyer.cpp][65  ][AddRef    ]AddRef old_ev : 0x7f81fe50b810
+[TRACE][140736183776128][4][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][4][mt_event_proxyer.cpp][269 ][AddFd     ]item : 0x10f0df068, fd : 4, events : 3
+[TRACE][140736183776128][4][./include/mt_event_proxyer.h][157 ][SetEventer]ref : 0x10f0df068, ev : 0x7f81fe50b810
+[TRACE][140736183776128][4][mt_event_proxyer.cpp][77  ][AddRef    ]fdref add success, fd_ref : 0x10f0df068, ev : 0x7f81fe50b810
+[TRACE][140736183776128][4][mt_event_proxyer.cpp][180 ][AddList   ]ev add success ev: 0x7f81fe50b810, fd: 4
+[TRACE][140736183776128][4][./include/mt_frame.h][268 ][InsertIoWait][insert]thread : 0x7f81fe4034f0, m_io_list_ size : 0
+[DEBUG][140736183776128][4][./include/mt_heap.h][138 ][HeapPush  ]index : 1
+[TRACE][140736183776128][4][./include/mt_frame.h][200 ][ThreadSchedule]run front thread, m_run_list_ size: 3
+[TRACE][140736183776128][4][./include/mt_frame.h][203 ][ThreadSchedule]SetActiveThread thread : 0x7f81fe403930
+[TRACE][140736183776128][5][../../include/mt_frame.h][364 ][SetActiveThread]SetActiveThread : 0x7f81fe403930
+[TRACE][140736183776128][5][mt_thread.cpp][191 ][RestoreContext]this : 0x7f81fe403930, switch_thread : 0x7f81fe4034f0
+[TRACE][140736183776128][5][mt_thread.cpp][197 ][RestoreContext]================= run thread =================[0x7f81fe403930]
+[TRACE][140736183776128][mt_ucontext.cpp][154 ][contextswitch]from : 0x7f81fe4035b8, to : 0x7f81fe4039f8, runing : 0x7f81fe4035b8, init : 0x7f81fe403178
+[TRACE][140736183776128][mt_ucontext.cpp][163 ][contextswitch]sContextRuning : 0x7f81fe4039f8
+[TRACE][140736183776128][5][mt_thread.cpp][72  ][StartActiveThread]StartActiveThread : 0x7f81fe403930, t : 0x7f81fe4039e0, id : 5
+[TRACE][140736183776128][5][mt_thread.cpp][206 ][Run       ]Run ......
+[TRACE][140736183776128][5][mt_c.cpp  ][12  ][s_get_conn]ev node :0x7f81fe50b9d0
+[TRACE][140736183776128][5][mt_c.cpp  ][21  ][s_get_conn]IMtConnection conn : 0x7f81fe50ba10
+[TRACE][140736183776128][5][mt_sys_hook.cpp][74  ][mt_socket ] check function ...
+[TRACE][140736183776128][5][mt_sys_hook.cpp][44  ][mt_new_fd ] check function ...
+[TRACE][140736183776128][5][mt_sys_hook.cpp][286 ][mt_fcntl  ] check function ...
+[TRACE][140736183776128][5][mt_sys_hook.cpp][286 ][mt_fcntl  ] check function ...
+[TRACE][140736183776128][5][mt_sys_hook.cpp][309 ][mt_fcntl  ]socket MT_FD_FLG_UNBLOCK
+[TRACE][140736183776128][5][mt_sys_hook.cpp][319 ][mt_ioctl  ] check function ...
+[TRACE][140736183776128][5][mt_connection.cpp][28  ][CreateSocket]m_ev_ : 0x7f81fe50b9d0
+[TRACE][140736183776128][5][mt_c.cpp  ][32  ][s_get_conn]osfd : 5
+[TRACE][140736183776128][5][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][5][mt_event_proxyer.cpp][231 ][AddEventer]item : 0x10f0df080
+[TRACE][140736183776128][5][mt_event_proxyer.cpp][65  ][AddRef    ]AddRef old_ev : 0x0
+[TRACE][140736183776128][5][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][5][mt_event_proxyer.cpp][269 ][AddFd     ]item : 0x10f0df080, fd : 5, events : 3
+[TRACE][140736183776128][5][mt_event_proxyer.cpp][285 ][AddFd     ]fd : 5, new_events : 3
+[TRACE][140736183776128][5][./include/mt_event_kqueue.h][83  ][ApiAddEvent]fd : 5, mask : MT_READABLE
+[TRACE][140736183776128][5][./include/mt_event_kqueue.h][101 ][ApiAddEvent]fd : 5, mask : MT_WRITABLE
+[TRACE][140736183776128][5][./include/mt_event_proxyer.h][157 ][SetEventer]ref : 0x10f0df080, ev : 0x7f81fe50b9d0
+[TRACE][140736183776128][5][mt_event_proxyer.cpp][77  ][AddRef    ]fdref add success, fd_ref : 0x10f0df080, ev : 0x7f81fe50b9d0
+[TRACE][140736183776128][5][mt_c.cpp  ][129 ][udp_sendrecv]current socket :5, conn : 0x7f81fe50ba10
+[TRACE][140736183776128][5][mt_sys_hook.cpp][178 ][mt_sendto ] check function ...
+[TRACE][140736183776128][5][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][5][./include/mt_event_proxyer.h][100 ][SetOwnerThread]ev : 0x7f81fe50b9d0, thread : 0x7f81fe403930
+[TRACE][140736183776128][5][mt_event_proxyer.cpp][436 ][Schedule  ] check function ...
+[TRACE][140736183776128][5][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][5][mt_event_proxyer.cpp][231 ][AddEventer]item : 0x10f0df080
+[TRACE][140736183776128][5][mt_event_proxyer.cpp][65  ][AddRef    ]AddRef old_ev : 0x7f81fe50b9d0
+[TRACE][140736183776128][5][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][5][mt_event_proxyer.cpp][269 ][AddFd     ]item : 0x10f0df080, fd : 5, events : 3
+[TRACE][140736183776128][5][./include/mt_event_proxyer.h][157 ][SetEventer]ref : 0x10f0df080, ev : 0x7f81fe50b9d0
+[TRACE][140736183776128][5][mt_event_proxyer.cpp][77  ][AddRef    ]fdref add success, fd_ref : 0x10f0df080, ev : 0x7f81fe50b9d0
+[TRACE][140736183776128][5][mt_event_proxyer.cpp][180 ][AddList   ]ev add success ev: 0x7f81fe50b9d0, fd: 5
+[TRACE][140736183776128][5][./include/mt_frame.h][268 ][InsertIoWait][insert]thread : 0x7f81fe403930, m_io_list_ size : 1
+[DEBUG][140736183776128][5][./include/mt_heap.h][138 ][HeapPush  ]index : 2
+[TRACE][140736183776128][5][./include/mt_frame.h][200 ][ThreadSchedule]run front thread, m_run_list_ size: 2
+[TRACE][140736183776128][5][./include/mt_frame.h][203 ][ThreadSchedule]SetActiveThread thread : 0x7f81fe403d70
+[TRACE][140736183776128][6][../../include/mt_frame.h][364 ][SetActiveThread]SetActiveThread : 0x7f81fe403d70
+[TRACE][140736183776128][6][mt_thread.cpp][191 ][RestoreContext]this : 0x7f81fe403d70, switch_thread : 0x7f81fe403930
+[TRACE][140736183776128][6][mt_thread.cpp][197 ][RestoreContext]================= run thread =================[0x7f81fe403d70]
+[TRACE][140736183776128][mt_ucontext.cpp][154 ][contextswitch]from : 0x7f81fe4039f8, to : 0x7f81fe403e38, runing : 0x7f81fe4039f8, init : 0x7f81fe403178
+[TRACE][140736183776128][mt_ucontext.cpp][163 ][contextswitch]sContextRuning : 0x7f81fe403e38
+[TRACE][140736183776128][6][mt_thread.cpp][72  ][StartActiveThread]StartActiveThread : 0x7f81fe403d70, t : 0x7f81fe403e20, id : 6
+[TRACE][140736183776128][6][mt_thread.cpp][206 ][Run       ]Run ......
+[TRACE][140736183776128][6][mt_c.cpp  ][12  ][s_get_conn]ev node :0x7f81fe50ba50
+[TRACE][140736183776128][6][mt_c.cpp  ][21  ][s_get_conn]IMtConnection conn : 0x7f81fe50ba90
+[TRACE][140736183776128][6][mt_sys_hook.cpp][74  ][mt_socket ] check function ...
+[TRACE][140736183776128][6][mt_sys_hook.cpp][44  ][mt_new_fd ] check function ...
+[TRACE][140736183776128][6][mt_sys_hook.cpp][286 ][mt_fcntl  ] check function ...
+[TRACE][140736183776128][6][mt_sys_hook.cpp][286 ][mt_fcntl  ] check function ...
+[TRACE][140736183776128][6][mt_sys_hook.cpp][309 ][mt_fcntl  ]socket MT_FD_FLG_UNBLOCK
+[TRACE][140736183776128][6][mt_sys_hook.cpp][319 ][mt_ioctl  ] check function ...
+[TRACE][140736183776128][6][mt_connection.cpp][28  ][CreateSocket]m_ev_ : 0x7f81fe50ba50
+[TRACE][140736183776128][6][mt_c.cpp  ][32  ][s_get_conn]osfd : 6
+[TRACE][140736183776128][6][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][6][mt_event_proxyer.cpp][231 ][AddEventer]item : 0x10f0df098
+[TRACE][140736183776128][6][mt_event_proxyer.cpp][65  ][AddRef    ]AddRef old_ev : 0x0
+[TRACE][140736183776128][6][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][6][mt_event_proxyer.cpp][269 ][AddFd     ]item : 0x10f0df098, fd : 6, events : 3
+[TRACE][140736183776128][6][mt_event_proxyer.cpp][285 ][AddFd     ]fd : 6, new_events : 3
+[TRACE][140736183776128][6][./include/mt_event_kqueue.h][83  ][ApiAddEvent]fd : 6, mask : MT_READABLE
+[TRACE][140736183776128][6][./include/mt_event_kqueue.h][101 ][ApiAddEvent]fd : 6, mask : MT_WRITABLE
+[TRACE][140736183776128][6][./include/mt_event_proxyer.h][157 ][SetEventer]ref : 0x10f0df098, ev : 0x7f81fe50ba50
+[TRACE][140736183776128][6][mt_event_proxyer.cpp][77  ][AddRef    ]fdref add success, fd_ref : 0x10f0df098, ev : 0x7f81fe50ba50
+[TRACE][140736183776128][6][mt_c.cpp  ][129 ][udp_sendrecv]current socket :6, conn : 0x7f81fe50ba90
+[TRACE][140736183776128][6][mt_sys_hook.cpp][178 ][mt_sendto ] check function ...
+[TRACE][140736183776128][6][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][6][./include/mt_event_proxyer.h][100 ][SetOwnerThread]ev : 0x7f81fe50ba50, thread : 0x7f81fe403d70
+[TRACE][140736183776128][6][mt_event_proxyer.cpp][436 ][Schedule  ] check function ...
+[TRACE][140736183776128][6][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][6][mt_event_proxyer.cpp][231 ][AddEventer]item : 0x10f0df098
+[TRACE][140736183776128][6][mt_event_proxyer.cpp][65  ][AddRef    ]AddRef old_ev : 0x7f81fe50ba50
+[TRACE][140736183776128][6][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][6][mt_event_proxyer.cpp][269 ][AddFd     ]item : 0x10f0df098, fd : 6, events : 3
+[TRACE][140736183776128][6][./include/mt_event_proxyer.h][157 ][SetEventer]ref : 0x10f0df098, ev : 0x7f81fe50ba50
+[TRACE][140736183776128][6][mt_event_proxyer.cpp][77  ][AddRef    ]fdref add success, fd_ref : 0x10f0df098, ev : 0x7f81fe50ba50
+[TRACE][140736183776128][6][mt_event_proxyer.cpp][180 ][AddList   ]ev add success ev: 0x7f81fe50ba50, fd: 6
+[TRACE][140736183776128][6][./include/mt_frame.h][268 ][InsertIoWait][insert]thread : 0x7f81fe403d70, m_io_list_ size : 2
+[DEBUG][140736183776128][6][./include/mt_heap.h][138 ][HeapPush  ]index : 3
+[TRACE][140736183776128][6][./include/mt_frame.h][200 ][ThreadSchedule]run front thread, m_run_list_ size: 1
+[TRACE][140736183776128][6][./include/mt_frame.h][203 ][ThreadSchedule]SetActiveThread thread : 0x7f81fe4041b0
+[TRACE][140736183776128][7][../../include/mt_frame.h][364 ][SetActiveThread]SetActiveThread : 0x7f81fe4041b0
+[TRACE][140736183776128][7][mt_thread.cpp][191 ][RestoreContext]this : 0x7f81fe4041b0, switch_thread : 0x7f81fe403d70
+[TRACE][140736183776128][7][mt_thread.cpp][197 ][RestoreContext]================= run thread =================[0x7f81fe4041b0]
+[TRACE][140736183776128][mt_ucontext.cpp][154 ][contextswitch]from : 0x7f81fe403e38, to : 0x7f81fe404278, runing : 0x7f81fe403e38, init : 0x7f81fe403178
+[TRACE][140736183776128][mt_ucontext.cpp][163 ][contextswitch]sContextRuning : 0x7f81fe404278
+[TRACE][140736183776128][7][mt_thread.cpp][72  ][StartActiveThread]StartActiveThread : 0x7f81fe4041b0, t : 0x7f81fe404260, id : 7
+[TRACE][140736183776128][7][mt_thread.cpp][206 ][Run       ]Run ......
+[TRACE][140736183776128][7][mt_c.cpp  ][12  ][s_get_conn]ev node :0x7f81fe50bad0
+[TRACE][140736183776128][7][mt_c.cpp  ][21  ][s_get_conn]IMtConnection conn : 0x7f81fe50bb10
+[TRACE][140736183776128][7][mt_sys_hook.cpp][74  ][mt_socket ] check function ...
+[TRACE][140736183776128][7][mt_sys_hook.cpp][44  ][mt_new_fd ] check function ...
+[TRACE][140736183776128][7][mt_sys_hook.cpp][286 ][mt_fcntl  ] check function ...
+[TRACE][140736183776128][7][mt_sys_hook.cpp][286 ][mt_fcntl  ] check function ...
+[TRACE][140736183776128][7][mt_sys_hook.cpp][309 ][mt_fcntl  ]socket MT_FD_FLG_UNBLOCK
+[TRACE][140736183776128][7][mt_sys_hook.cpp][319 ][mt_ioctl  ] check function ...
+[TRACE][140736183776128][7][mt_connection.cpp][28  ][CreateSocket]m_ev_ : 0x7f81fe50bad0
+[TRACE][140736183776128][7][mt_c.cpp  ][32  ][s_get_conn]osfd : 7
+[TRACE][140736183776128][7][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][7][mt_event_proxyer.cpp][231 ][AddEventer]item : 0x10f0df0b0
+[TRACE][140736183776128][7][mt_event_proxyer.cpp][65  ][AddRef    ]AddRef old_ev : 0x0
+[TRACE][140736183776128][7][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][7][mt_event_proxyer.cpp][269 ][AddFd     ]item : 0x10f0df0b0, fd : 7, events : 3
+[TRACE][140736183776128][7][mt_event_proxyer.cpp][285 ][AddFd     ]fd : 7, new_events : 3
+[TRACE][140736183776128][7][./include/mt_event_kqueue.h][83  ][ApiAddEvent]fd : 7, mask : MT_READABLE
+[TRACE][140736183776128][7][./include/mt_event_kqueue.h][101 ][ApiAddEvent]fd : 7, mask : MT_WRITABLE
+[TRACE][140736183776128][7][./include/mt_event_proxyer.h][157 ][SetEventer]ref : 0x10f0df0b0, ev : 0x7f81fe50bad0
+[TRACE][140736183776128][7][mt_event_proxyer.cpp][77  ][AddRef    ]fdref add success, fd_ref : 0x10f0df0b0, ev : 0x7f81fe50bad0
+[TRACE][140736183776128][7][mt_c.cpp  ][129 ][udp_sendrecv]current socket :7, conn : 0x7f81fe50bb10
+[TRACE][140736183776128][7][mt_sys_hook.cpp][178 ][mt_sendto ] check function ...
+[TRACE][140736183776128][7][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][7][./include/mt_event_proxyer.h][100 ][SetOwnerThread]ev : 0x7f81fe50bad0, thread : 0x7f81fe4041b0
+[TRACE][140736183776128][7][mt_event_proxyer.cpp][436 ][Schedule  ] check function ...
+[TRACE][140736183776128][7][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][7][mt_event_proxyer.cpp][231 ][AddEventer]item : 0x10f0df0b0
+[TRACE][140736183776128][7][mt_event_proxyer.cpp][65  ][AddRef    ]AddRef old_ev : 0x7f81fe50bad0
+[TRACE][140736183776128][7][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][7][mt_event_proxyer.cpp][269 ][AddFd     ]item : 0x10f0df0b0, fd : 7, events : 3
+[TRACE][140736183776128][7][./include/mt_event_proxyer.h][157 ][SetEventer]ref : 0x10f0df0b0, ev : 0x7f81fe50bad0
+[TRACE][140736183776128][7][mt_event_proxyer.cpp][77  ][AddRef    ]fdref add success, fd_ref : 0x10f0df0b0, ev : 0x7f81fe50bad0
+[TRACE][140736183776128][7][mt_event_proxyer.cpp][180 ][AddList   ]ev add success ev: 0x7f81fe50bad0, fd: 7
+[TRACE][140736183776128][7][./include/mt_frame.h][268 ][InsertIoWait][insert]thread : 0x7f81fe4041b0, m_io_list_ size : 3
+[DEBUG][140736183776128][7][./include/mt_heap.h][138 ][HeapPush  ]index : 4
+[TRACE][140736183776128][7][./include/mt_frame.h][200 ][ThreadSchedule]run front thread, m_run_list_ size: 0
+[TRACE][140736183776128][7][./include/mt_frame.h][203 ][ThreadSchedule]SetActiveThread thread : 0x7f81fe4045f0
+[TRACE][140736183776128][8][../../include/mt_frame.h][364 ][SetActiveThread]SetActiveThread : 0x7f81fe4045f0
+[TRACE][140736183776128][8][mt_thread.cpp][191 ][RestoreContext]this : 0x7f81fe4045f0, switch_thread : 0x7f81fe4041b0
+[TRACE][140736183776128][8][mt_thread.cpp][197 ][RestoreContext]================= run thread =================[0x7f81fe4045f0]
+[TRACE][140736183776128][mt_ucontext.cpp][154 ][contextswitch]from : 0x7f81fe404278, to : 0x7f81fe4046b8, runing : 0x7f81fe404278, init : 0x7f81fe403178
+[TRACE][140736183776128][mt_ucontext.cpp][163 ][contextswitch]sContextRuning : 0x7f81fe4046b8
+[TRACE][140736183776128][8][mt_thread.cpp][72  ][StartActiveThread]StartActiveThread : 0x7f81fe4045f0, t : 0x7f81fe4046a0, id : 8
+[TRACE][140736183776128][8][mt_thread.cpp][206 ][Run       ]Run ......
+[TRACE][140736183776128][8][mt_c.cpp  ][12  ][s_get_conn]ev node :0x7f81fe50bb50
+[TRACE][140736183776128][8][mt_c.cpp  ][21  ][s_get_conn]IMtConnection conn : 0x7f81fe50bb90
+[TRACE][140736183776128][8][mt_sys_hook.cpp][74  ][mt_socket ] check function ...
+[TRACE][140736183776128][8][mt_sys_hook.cpp][44  ][mt_new_fd ] check function ...
+[TRACE][140736183776128][8][mt_sys_hook.cpp][286 ][mt_fcntl  ] check function ...
+[TRACE][140736183776128][8][mt_sys_hook.cpp][286 ][mt_fcntl  ] check function ...
+[TRACE][140736183776128][8][mt_sys_hook.cpp][309 ][mt_fcntl  ]socket MT_FD_FLG_UNBLOCK
+[TRACE][140736183776128][8][mt_sys_hook.cpp][319 ][mt_ioctl  ] check function ...
+[TRACE][140736183776128][8][mt_connection.cpp][28  ][CreateSocket]m_ev_ : 0x7f81fe50bb50
+[TRACE][140736183776128][8][mt_c.cpp  ][32  ][s_get_conn]osfd : 8
+[TRACE][140736183776128][8][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][8][mt_event_proxyer.cpp][231 ][AddEventer]item : 0x10f0df0c8
+[TRACE][140736183776128][8][mt_event_proxyer.cpp][65  ][AddRef    ]AddRef old_ev : 0x0
+[TRACE][140736183776128][8][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][8][mt_event_proxyer.cpp][269 ][AddFd     ]item : 0x10f0df0c8, fd : 8, events : 3
+[TRACE][140736183776128][8][mt_event_proxyer.cpp][285 ][AddFd     ]fd : 8, new_events : 3
+[TRACE][140736183776128][8][./include/mt_event_kqueue.h][83  ][ApiAddEvent]fd : 8, mask : MT_READABLE
+[TRACE][140736183776128][8][./include/mt_event_kqueue.h][101 ][ApiAddEvent]fd : 8, mask : MT_WRITABLE
+[TRACE][140736183776128][8][./include/mt_event_proxyer.h][157 ][SetEventer]ref : 0x10f0df0c8, ev : 0x7f81fe50bb50
+[TRACE][140736183776128][8][mt_event_proxyer.cpp][77  ][AddRef    ]fdref add success, fd_ref : 0x10f0df0c8, ev : 0x7f81fe50bb50
+[TRACE][140736183776128][8][mt_c.cpp  ][129 ][udp_sendrecv]current socket :8, conn : 0x7f81fe50bb90
+[TRACE][140736183776128][8][mt_sys_hook.cpp][178 ][mt_sendto ] check function ...
+[TRACE][140736183776128][8][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][8][./include/mt_event_proxyer.h][100 ][SetOwnerThread]ev : 0x7f81fe50bb50, thread : 0x7f81fe4045f0
+[TRACE][140736183776128][8][mt_event_proxyer.cpp][436 ][Schedule  ] check function ...
+[TRACE][140736183776128][8][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][8][mt_event_proxyer.cpp][231 ][AddEventer]item : 0x10f0df0c8
+[TRACE][140736183776128][8][mt_event_proxyer.cpp][65  ][AddRef    ]AddRef old_ev : 0x7f81fe50bb50
+[TRACE][140736183776128][8][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][8][mt_event_proxyer.cpp][269 ][AddFd     ]item : 0x10f0df0c8, fd : 8, events : 3
+[TRACE][140736183776128][8][./include/mt_event_proxyer.h][157 ][SetEventer]ref : 0x10f0df0c8, ev : 0x7f81fe50bb50
+[TRACE][140736183776128][8][mt_event_proxyer.cpp][77  ][AddRef    ]fdref add success, fd_ref : 0x10f0df0c8, ev : 0x7f81fe50bb50
+[TRACE][140736183776128][8][mt_event_proxyer.cpp][180 ][AddList   ]ev add success ev: 0x7f81fe50bb50, fd: 8
+[TRACE][140736183776128][8][./include/mt_frame.h][268 ][InsertIoWait][insert]thread : 0x7f81fe4045f0, m_io_list_ size : 4
+[DEBUG][140736183776128][8][./include/mt_heap.h][138 ][HeapPush  ]index : 5
+[TRACE][140736183776128][8][./include/mt_frame.h][194 ][ThreadSchedule]run DaemonThread, thread : 0x7f81fe402c60, m_io_list_ size : 5, m_pend_list_ size : 0
+[TRACE][140736183776128][8][./include/mt_frame.h][203 ][ThreadSchedule]SetActiveThread thread : 0x7f81fe402c60
+[TRACE][140736183776128][2][../../include/mt_frame.h][364 ][SetActiveThread]SetActiveThread : 0x7f81fe402c60
+[TRACE][140736183776128][2][mt_thread.cpp][191 ][RestoreContext]this : 0x7f81fe402c60, switch_thread : 0x7f81fe4045f0
+[TRACE][140736183776128][2][mt_thread.cpp][197 ][RestoreContext]================= run thread =================[0x7f81fe402c60]
+[TRACE][140736183776128][mt_ucontext.cpp][154 ][contextswitch]from : 0x7f81fe4046b8, to : 0x7f81fe402d28, runing : 0x7f81fe4046b8, init : 0x7f81fe403178
+[TRACE][140736183776128][mt_ucontext.cpp][163 ][contextswitch]sContextRuning : 0x7f81fe402d28
+[TRACE][140736183776128][2][mt_event_proxyer.cpp][406 ][Dispatch  ]wait_time: 100 ms
+[TRACE][140736183776128][2][./include/mt_event_kqueue.h][154 ][ApiPoll   ]tvp->tv_sec : 0, tvp->tv_usec : 100000
+[TRACE][140736183776128][2][./include/mt_event_kqueue.h][163 ][ApiPoll   ]retval : 5, tvp : 0x10f225e28, m_events_ : 0x10ee32000, m_size_ : 50000
+[TRACE][140736183776128][2][./include/mt_event_kqueue.h][179 ][ApiPoll   ]m_fired_[j].fd : 4
+[TRACE][140736183776128][2][./include/mt_event_kqueue.h][179 ][ApiPoll   ]m_fired_[j].fd : 5
+[TRACE][140736183776128][2][./include/mt_event_kqueue.h][179 ][ApiPoll   ]m_fired_[j].fd : 6
+[TRACE][140736183776128][2][./include/mt_event_kqueue.h][179 ][ApiPoll   ]m_fired_[j].fd : 7
+[TRACE][140736183776128][2][./include/mt_event_kqueue.h][179 ][ApiPoll   ]m_fired_[j].fd : 8
+[TRACE][140736183776128][2][mt_event_proxyer.cpp][423 ][Dispatch  ]wait poll nfd: 5
+[TRACE][140736183776128][2][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][2][mt_event_proxyer.cpp][355 ][DisposeEventerList]osfd : 4, item : 0x10f0df068
+[TRACE][140736183776128][2][mt_event_proxyer.cpp][27  ][OutputNotify]OutputNotify ..., thread : 0x7f81fe4034f0
+[TRACE][140736183776128][2][./include/mt_frame.h][214 ][RemoveIoWait][remove]thread : 0x7f81fe4034f0, m_io_list_ size : 5
+[TRACE][140736183776128][2][mt_event_proxyer.cpp][393 ][DisposeEventerList]MT_WRITABLE osfd:4, ret:0 ev_fdnum:5
+[TRACE][140736183776128][2][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][2][mt_event_proxyer.cpp][355 ][DisposeEventerList]osfd : 5, item : 0x10f0df080
+[TRACE][140736183776128][2][mt_event_proxyer.cpp][27  ][OutputNotify]OutputNotify ..., thread : 0x7f81fe403930
+[TRACE][140736183776128][2][./include/mt_frame.h][214 ][RemoveIoWait][remove]thread : 0x7f81fe403930, m_io_list_ size : 4
+[TRACE][140736183776128][2][mt_event_proxyer.cpp][393 ][DisposeEventerList]MT_WRITABLE osfd:5, ret:0 ev_fdnum:5
+[TRACE][140736183776128][2][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][2][mt_event_proxyer.cpp][355 ][DisposeEventerList]osfd : 6, item : 0x10f0df098
+[TRACE][140736183776128][2][mt_event_proxyer.cpp][27  ][OutputNotify]OutputNotify ..., thread : 0x7f81fe403d70
+[TRACE][140736183776128][2][./include/mt_frame.h][214 ][RemoveIoWait][remove]thread : 0x7f81fe403d70, m_io_list_ size : 3
+[TRACE][140736183776128][2][mt_event_proxyer.cpp][393 ][DisposeEventerList]MT_WRITABLE osfd:6, ret:0 ev_fdnum:5
+[TRACE][140736183776128][2][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][2][mt_event_proxyer.cpp][355 ][DisposeEventerList]osfd : 7, item : 0x10f0df0b0
+[TRACE][140736183776128][2][mt_event_proxyer.cpp][27  ][OutputNotify]OutputNotify ..., thread : 0x7f81fe4041b0
+[TRACE][140736183776128][2][./include/mt_frame.h][214 ][RemoveIoWait][remove]thread : 0x7f81fe4041b0, m_io_list_ size : 2
+[TRACE][140736183776128][2][mt_event_proxyer.cpp][393 ][DisposeEventerList]MT_WRITABLE osfd:7, ret:0 ev_fdnum:5
+[TRACE][140736183776128][2][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][2][mt_event_proxyer.cpp][355 ][DisposeEventerList]osfd : 8, item : 0x10f0df0c8
+[TRACE][140736183776128][2][mt_event_proxyer.cpp][27  ][OutputNotify]OutputNotify ..., thread : 0x7f81fe4045f0
+[TRACE][140736183776128][2][./include/mt_frame.h][214 ][RemoveIoWait][remove]thread : 0x7f81fe4045f0, m_io_list_ size : 1
+[TRACE][140736183776128][2][mt_event_proxyer.cpp][393 ][DisposeEventerList]MT_WRITABLE osfd:8, ret:0 ev_fdnum:5
+[TRACE][140736183776128][2][mt_thread.cpp][201 ][RestoreContext]Thread Dispatch ...[0x7f81fe4034f0]
+[TRACE][140736183776128][2][mt_event_proxyer.cpp][406 ][Dispatch  ]wait_time: 100 ms
+[TRACE][140736183776128][2][./include/mt_event_kqueue.h][154 ][ApiPoll   ]tvp->tv_sec : 0, tvp->tv_usec : 100000
+[TRACE][140736183776128][2][./include/mt_event_kqueue.h][163 ][ApiPoll   ]retval : 5, tvp : 0x10f225ea8, m_events_ : 0x10ee32000, m_size_ : 50000
+[TRACE][140736183776128][2][./include/mt_event_kqueue.h][179 ][ApiPoll   ]m_fired_[j].fd : 4
+[TRACE][140736183776128][2][./include/mt_event_kqueue.h][179 ][ApiPoll   ]m_fired_[j].fd : 5
+[TRACE][140736183776128][2][./include/mt_event_kqueue.h][179 ][ApiPoll   ]m_fired_[j].fd : 6
+[TRACE][140736183776128][2][./include/mt_event_kqueue.h][179 ][ApiPoll   ]m_fired_[j].fd : 7
+[TRACE][140736183776128][2][./include/mt_event_kqueue.h][179 ][ApiPoll   ]m_fired_[j].fd : 8
+[TRACE][140736183776128][2][mt_event_proxyer.cpp][423 ][Dispatch  ]wait poll nfd: 5
+[TRACE][140736183776128][2][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][2][mt_event_proxyer.cpp][355 ][DisposeEventerList]osfd : 4, item : 0x10f0df068
+[TRACE][140736183776128][2][mt_event_proxyer.cpp][27  ][OutputNotify]OutputNotify ..., thread : 0x7f81fe4034f0
+[TRACE][140736183776128][2][mt_event_proxyer.cpp][393 ][DisposeEventerList]MT_WRITABLE osfd:4, ret:0 ev_fdnum:5
+[TRACE][140736183776128][2][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][2][mt_event_proxyer.cpp][355 ][DisposeEventerList]osfd : 5, item : 0x10f0df080
+[TRACE][140736183776128][2][mt_event_proxyer.cpp][27  ][OutputNotify]OutputNotify ..., thread : 0x7f81fe403930
+[TRACE][140736183776128][2][mt_event_proxyer.cpp][393 ][DisposeEventerList]MT_WRITABLE osfd:5, ret:0 ev_fdnum:5
+[TRACE][140736183776128][2][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][2][mt_event_proxyer.cpp][355 ][DisposeEventerList]osfd : 6, item : 0x10f0df098
+[TRACE][140736183776128][2][mt_event_proxyer.cpp][27  ][OutputNotify]OutputNotify ..., thread : 0x7f81fe403d70
+[TRACE][140736183776128][2][mt_event_proxyer.cpp][393 ][DisposeEventerList]MT_WRITABLE osfd:6, ret:0 ev_fdnum:5
+[TRACE][140736183776128][2][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][2][mt_event_proxyer.cpp][355 ][DisposeEventerList]osfd : 7, item : 0x10f0df0b0
+[TRACE][140736183776128][2][mt_event_proxyer.cpp][27  ][OutputNotify]OutputNotify ..., thread : 0x7f81fe4041b0
+[TRACE][140736183776128][2][mt_event_proxyer.cpp][393 ][DisposeEventerList]MT_WRITABLE osfd:7, ret:0 ev_fdnum:5
+[TRACE][140736183776128][2][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][2][mt_event_proxyer.cpp][355 ][DisposeEventerList]osfd : 8, item : 0x10f0df0c8
+[TRACE][140736183776128][2][mt_event_proxyer.cpp][27  ][OutputNotify]OutputNotify ..., thread : 0x7f81fe4045f0
+[TRACE][140736183776128][2][mt_event_proxyer.cpp][393 ][DisposeEventerList]MT_WRITABLE osfd:8, ret:0 ev_fdnum:5
+[TRACE][140736183776128][2][./include/mt_frame.h][962 ][DaemonRun ]system ms :1530173594514
+[TRACE][140736183776128][2][./include/mt_frame.h][334 ][CheckExpired]m_timer_ : 0x7f81fe50b6c0
+[TRACE][140736183776128][2][./include/mt_heap_timer.h][101 ][CheckExpired]now_ms = 1530173594514
+[TRACE][140736183776128][2][./include/mt_heap_timer.h][110 ][CheckExpired]size = 0
+[TRACE][140736183776128][2][./include/mt_frame.h][200 ][ThreadSchedule]run front thread, m_run_list_ size: 4
+[TRACE][140736183776128][2][./include/mt_frame.h][203 ][ThreadSchedule]SetActiveThread thread : 0x7f81fe4034f0
+[TRACE][140736183776128][4][../../include/mt_frame.h][364 ][SetActiveThread]SetActiveThread : 0x7f81fe4034f0
+[TRACE][140736183776128][4][mt_thread.cpp][191 ][RestoreContext]this : 0x7f81fe4034f0, switch_thread : 0x7f81fe402c60
+[TRACE][140736183776128][4][mt_thread.cpp][197 ][RestoreContext]================= run thread =================[0x7f81fe4034f0]
+[TRACE][140736183776128][mt_ucontext.cpp][154 ][contextswitch]from : 0x7f81fe402d28, to : 0x7f81fe4035b8, runing : 0x7f81fe402d28, init : 0x7f81fe403178
+[TRACE][140736183776128][mt_ucontext.cpp][163 ][contextswitch]sContextRuning : 0x7f81fe4035b8
+[TRACE][140736183776128][4][mt_event_proxyer.cpp][406 ][Dispatch  ]wait_time: 100 ms
+[TRACE][140736183776128][4][./include/mt_event_kqueue.h][154 ][ApiPoll   ]tvp->tv_sec : 0, tvp->tv_usec : 100000
+[TRACE][140736183776128][4][./include/mt_event_kqueue.h][163 ][ApiPoll   ]retval : 5, tvp : 0x10f269638, m_events_ : 0x10ee32000, m_size_ : 50000
+[TRACE][140736183776128][4][./include/mt_event_kqueue.h][179 ][ApiPoll   ]m_fired_[j].fd : 4
+[TRACE][140736183776128][4][./include/mt_event_kqueue.h][179 ][ApiPoll   ]m_fired_[j].fd : 5
+[TRACE][140736183776128][4][./include/mt_event_kqueue.h][179 ][ApiPoll   ]m_fired_[j].fd : 6
+[TRACE][140736183776128][4][./include/mt_event_kqueue.h][179 ][ApiPoll   ]m_fired_[j].fd : 7
+[TRACE][140736183776128][4][./include/mt_event_kqueue.h][179 ][ApiPoll   ]m_fired_[j].fd : 8
+[TRACE][140736183776128][4][mt_event_proxyer.cpp][423 ][Dispatch  ]wait poll nfd: 5
+[TRACE][140736183776128][4][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][4][mt_event_proxyer.cpp][355 ][DisposeEventerList]osfd : 4, item : 0x10f0df068
+[TRACE][140736183776128][4][mt_event_proxyer.cpp][27  ][OutputNotify]OutputNotify ..., thread : 0x7f81fe4034f0
+[TRACE][140736183776128][4][mt_event_proxyer.cpp][393 ][DisposeEventerList]MT_WRITABLE osfd:4, ret:0 ev_fdnum:5
+[TRACE][140736183776128][4][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][4][mt_event_proxyer.cpp][355 ][DisposeEventerList]osfd : 5, item : 0x10f0df080
+[TRACE][140736183776128][4][mt_event_proxyer.cpp][27  ][OutputNotify]OutputNotify ..., thread : 0x7f81fe403930
+[TRACE][140736183776128][4][mt_event_proxyer.cpp][393 ][DisposeEventerList]MT_WRITABLE osfd:5, ret:0 ev_fdnum:5
+[TRACE][140736183776128][4][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][4][mt_event_proxyer.cpp][355 ][DisposeEventerList]osfd : 6, item : 0x10f0df098
+[TRACE][140736183776128][4][mt_event_proxyer.cpp][27  ][OutputNotify]OutputNotify ..., thread : 0x7f81fe403d70
+[TRACE][140736183776128][4][mt_event_proxyer.cpp][393 ][DisposeEventerList]MT_WRITABLE osfd:6, ret:0 ev_fdnum:5
+[TRACE][140736183776128][4][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][4][mt_event_proxyer.cpp][355 ][DisposeEventerList]osfd : 7, item : 0x10f0df0b0
+[TRACE][140736183776128][4][mt_event_proxyer.cpp][27  ][OutputNotify]OutputNotify ..., thread : 0x7f81fe4041b0
+[TRACE][140736183776128][4][mt_event_proxyer.cpp][393 ][DisposeEventerList]MT_WRITABLE osfd:7, ret:0 ev_fdnum:5
+[TRACE][140736183776128][4][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][4][mt_event_proxyer.cpp][355 ][DisposeEventerList]osfd : 8, item : 0x10f0df0c8
+[TRACE][140736183776128][4][mt_event_proxyer.cpp][27  ][OutputNotify]OutputNotify ..., thread : 0x7f81fe4045f0
+[TRACE][140736183776128][4][mt_event_proxyer.cpp][393 ][DisposeEventerList]MT_WRITABLE osfd:8, ret:0 ev_fdnum:5
+[TRACE][140736183776128][4][mt_thread.cpp][201 ][RestoreContext]Thread Dispatch ...[0x7f81fe403930]
+[TRACE][140736183776128][4][mt_event_proxyer.cpp][463 ][Schedule  ]thread : 0x7f81fe4034f0
+[TRACE][140736183776128][4][mt_event_proxyer.cpp][471 ][Schedule  ]GetRecvEvents : 2, GetEvents : 3, fd : 4
+[TRACE][140736183776128][4][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][4][mt_event_proxyer.cpp][94  ][DelRef    ]DelRef old_ev : 0x7f81fe50b810
+[TRACE][140736183776128][4][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][4][./include/mt_event_proxyer.h][157 ][SetEventer]ref : 0x10f0df068, ev : 0x0
+[TRACE][140736183776128][4][mt_event_proxyer.cpp][106 ][DelRef    ]fdref del success, fd_ref : 0x10f0df068, ev : 0x0
+[TRACE][140736183776128][4][mt_event_proxyer.cpp][486 ][Schedule  ]recv_num : 1
+[TRACE][140736183776128][4][mt_sys_hook.cpp][199 ][mt_recvfrom] check function ...
+[TRACE][140736183776128][4][mt_sys_hook.cpp][201 ][mt_recvfrom]system func : recvfrom
+[TRACE][140736183776128][4][./include/mt_frame.h][492 ][recvfrom  ]recvfrom return n: -1, buf: , fd: 4, len: 2048, flags: 0
+[TRACE][140736183776128][4][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][4][./include/mt_event_proxyer.h][100 ][SetOwnerThread]ev : 0x7f81fe42c7b0, thread : 0x7f81fe4034f0
+[TRACE][140736183776128][4][mt_event_proxyer.cpp][436 ][Schedule  ] check function ...
+[TRACE][140736183776128][4][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][4][mt_event_proxyer.cpp][231 ][AddEventer]item : 0x10f0df068
+[TRACE][140736183776128][4][mt_event_proxyer.cpp][65  ][AddRef    ]AddRef old_ev : 0x0
+[TRACE][140736183776128][4][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][4][mt_event_proxyer.cpp][269 ][AddFd     ]item : 0x10f0df068, fd : 4, events : 1
+[TRACE][140736183776128][4][mt_event_proxyer.cpp][285 ][AddFd     ]fd : 4, new_events : 1
+[TRACE][140736183776128][4][./include/mt_event_kqueue.h][83  ][ApiAddEvent]fd : 4, mask : MT_READABLE
+[TRACE][140736183776128][4][./include/mt_event_proxyer.h][157 ][SetEventer]ref : 0x10f0df068, ev : 0x7f81fe42c7b0
+[TRACE][140736183776128][4][mt_event_proxyer.cpp][77  ][AddRef    ]fdref add success, fd_ref : 0x10f0df068, ev : 0x7f81fe42c7b0
+[TRACE][140736183776128][4][mt_event_proxyer.cpp][180 ][AddList   ]ev add success ev: 0x7f81fe42c7b0, fd: 4
+[TRACE][140736183776128][4][./include/mt_frame.h][268 ][InsertIoWait][insert]thread : 0x7f81fe4034f0, m_io_list_ size : 0
+[DEBUG][140736183776128][4][./include/mt_heap.h][138 ][HeapPush  ]index : 1
+[TRACE][140736183776128][4][./include/mt_frame.h][200 ][ThreadSchedule]run front thread, m_run_list_ size: 3
+[TRACE][140736183776128][4][./include/mt_frame.h][203 ][ThreadSchedule]SetActiveThread thread : 0x7f81fe403930
+[TRACE][140736183776128][5][../../include/mt_frame.h][364 ][SetActiveThread]SetActiveThread : 0x7f81fe403930
+[TRACE][140736183776128][5][mt_thread.cpp][191 ][RestoreContext]this : 0x7f81fe403930, switch_thread : 0x7f81fe4034f0
+[TRACE][140736183776128][5][mt_thread.cpp][197 ][RestoreContext]================= run thread =================[0x7f81fe403930]
+[TRACE][140736183776128][mt_ucontext.cpp][154 ][contextswitch]from : 0x7f81fe4035b8, to : 0x7f81fe4039f8, runing : 0x7f81fe4035b8, init : 0x7f81fe403178
+[TRACE][140736183776128][mt_ucontext.cpp][163 ][contextswitch]sContextRuning : 0x7f81fe4039f8
+[TRACE][140736183776128][5][mt_event_proxyer.cpp][406 ][Dispatch  ]wait_time: 100 ms
+[TRACE][140736183776128][5][./include/mt_event_kqueue.h][154 ][ApiPoll   ]tvp->tv_sec : 0, tvp->tv_usec : 100000
+[TRACE][140736183776128][5][./include/mt_event_kqueue.h][163 ][ApiPoll   ]retval : 4, tvp : 0x10f28b638, m_events_ : 0x10ee32000, m_size_ : 50000
+[TRACE][140736183776128][5][./include/mt_event_kqueue.h][179 ][ApiPoll   ]m_fired_[j].fd : 5
+[TRACE][140736183776128][5][./include/mt_event_kqueue.h][179 ][ApiPoll   ]m_fired_[j].fd : 6
+[TRACE][140736183776128][5][./include/mt_event_kqueue.h][179 ][ApiPoll   ]m_fired_[j].fd : 7
+[TRACE][140736183776128][5][./include/mt_event_kqueue.h][179 ][ApiPoll   ]m_fired_[j].fd : 8
+[TRACE][140736183776128][5][mt_event_proxyer.cpp][423 ][Dispatch  ]wait poll nfd: 4
+[TRACE][140736183776128][5][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][5][mt_event_proxyer.cpp][355 ][DisposeEventerList]osfd : 5, item : 0x10f0df080
+[TRACE][140736183776128][5][mt_event_proxyer.cpp][27  ][OutputNotify]OutputNotify ..., thread : 0x7f81fe403930
+[TRACE][140736183776128][5][mt_event_proxyer.cpp][393 ][DisposeEventerList]MT_WRITABLE osfd:5, ret:0 ev_fdnum:4
+[TRACE][140736183776128][5][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][5][mt_event_proxyer.cpp][355 ][DisposeEventerList]osfd : 6, item : 0x10f0df098
+[TRACE][140736183776128][5][mt_event_proxyer.cpp][27  ][OutputNotify]OutputNotify ..., thread : 0x7f81fe403d70
+[TRACE][140736183776128][5][mt_event_proxyer.cpp][393 ][DisposeEventerList]MT_WRITABLE osfd:6, ret:0 ev_fdnum:4
+[TRACE][140736183776128][5][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][5][mt_event_proxyer.cpp][355 ][DisposeEventerList]osfd : 7, item : 0x10f0df0b0
+[TRACE][140736183776128][5][mt_event_proxyer.cpp][27  ][OutputNotify]OutputNotify ..., thread : 0x7f81fe4041b0
+[TRACE][140736183776128][5][mt_event_proxyer.cpp][393 ][DisposeEventerList]MT_WRITABLE osfd:7, ret:0 ev_fdnum:4
+[TRACE][140736183776128][5][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][5][mt_event_proxyer.cpp][355 ][DisposeEventerList]osfd : 8, item : 0x10f0df0c8
+[TRACE][140736183776128][5][mt_event_proxyer.cpp][27  ][OutputNotify]OutputNotify ..., thread : 0x7f81fe4045f0
+[TRACE][140736183776128][5][mt_event_proxyer.cpp][393 ][DisposeEventerList]MT_WRITABLE osfd:8, ret:0 ev_fdnum:4
+[TRACE][140736183776128][5][mt_thread.cpp][201 ][RestoreContext]Thread Dispatch ...[0x7f81fe403d70]
+[TRACE][140736183776128][5][mt_event_proxyer.cpp][463 ][Schedule  ]thread : 0x7f81fe403930
+[TRACE][140736183776128][5][mt_event_proxyer.cpp][471 ][Schedule  ]GetRecvEvents : 2, GetEvents : 3, fd : 5
+[TRACE][140736183776128][5][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][5][mt_event_proxyer.cpp][94  ][DelRef    ]DelRef old_ev : 0x7f81fe50b9d0
+[TRACE][140736183776128][5][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][5][./include/mt_event_proxyer.h][157 ][SetEventer]ref : 0x10f0df080, ev : 0x0
+[TRACE][140736183776128][5][mt_event_proxyer.cpp][106 ][DelRef    ]fdref del success, fd_ref : 0x10f0df080, ev : 0x0
+[TRACE][140736183776128][5][mt_event_proxyer.cpp][486 ][Schedule  ]recv_num : 1
+[TRACE][140736183776128][5][mt_sys_hook.cpp][199 ][mt_recvfrom] check function ...
+[TRACE][140736183776128][5][./include/mt_frame.h][492 ][recvfrom  ]recvfrom return n: -1, buf: , fd: 5, len: 2048, flags: 0
+[TRACE][140736183776128][5][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][5][./include/mt_event_proxyer.h][100 ][SetOwnerThread]ev : 0x7f81fe42c7f0, thread : 0x7f81fe403930
+[TRACE][140736183776128][5][mt_event_proxyer.cpp][436 ][Schedule  ] check function ...
+[TRACE][140736183776128][5][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][5][mt_event_proxyer.cpp][231 ][AddEventer]item : 0x10f0df080
+[TRACE][140736183776128][5][mt_event_proxyer.cpp][65  ][AddRef    ]AddRef old_ev : 0x0
+[TRACE][140736183776128][5][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][5][mt_event_proxyer.cpp][269 ][AddFd     ]item : 0x10f0df080, fd : 5, events : 1
+[TRACE][140736183776128][5][mt_event_proxyer.cpp][285 ][AddFd     ]fd : 5, new_events : 1
+[TRACE][140736183776128][5][./include/mt_event_kqueue.h][83  ][ApiAddEvent]fd : 5, mask : MT_READABLE
+[TRACE][140736183776128][5][./include/mt_event_proxyer.h][157 ][SetEventer]ref : 0x10f0df080, ev : 0x7f81fe42c7f0
+[TRACE][140736183776128][5][mt_event_proxyer.cpp][77  ][AddRef    ]fdref add success, fd_ref : 0x10f0df080, ev : 0x7f81fe42c7f0
+[TRACE][140736183776128][5][mt_event_proxyer.cpp][180 ][AddList   ]ev add success ev: 0x7f81fe42c7f0, fd: 5
+[TRACE][140736183776128][5][./include/mt_frame.h][268 ][InsertIoWait][insert]thread : 0x7f81fe403930, m_io_list_ size : 1
+[DEBUG][140736183776128][5][./include/mt_heap.h][138 ][HeapPush  ]index : 2
+[TRACE][140736183776128][5][./include/mt_frame.h][200 ][ThreadSchedule]run front thread, m_run_list_ size: 2
+[TRACE][140736183776128][5][./include/mt_frame.h][203 ][ThreadSchedule]SetActiveThread thread : 0x7f81fe403d70
+[TRACE][140736183776128][6][../../include/mt_frame.h][364 ][SetActiveThread]SetActiveThread : 0x7f81fe403d70
+[TRACE][140736183776128][6][mt_thread.cpp][191 ][RestoreContext]this : 0x7f81fe403d70, switch_thread : 0x7f81fe403930
+[TRACE][140736183776128][6][mt_thread.cpp][197 ][RestoreContext]================= run thread =================[0x7f81fe403d70]
+[TRACE][140736183776128][mt_ucontext.cpp][154 ][contextswitch]from : 0x7f81fe4039f8, to : 0x7f81fe403e38, runing : 0x7f81fe4039f8, init : 0x7f81fe403178
+[TRACE][140736183776128][mt_ucontext.cpp][163 ][contextswitch]sContextRuning : 0x7f81fe403e38
+[TRACE][140736183776128][6][mt_event_proxyer.cpp][406 ][Dispatch  ]wait_time: 100 ms
+[TRACE][140736183776128][6][./include/mt_event_kqueue.h][154 ][ApiPoll   ]tvp->tv_sec : 0, tvp->tv_usec : 100000
+[TRACE][140736183776128][6][./include/mt_event_kqueue.h][163 ][ApiPoll   ]retval : 3, tvp : 0x10f2ad638, m_events_ : 0x10ee32000, m_size_ : 50000
+[TRACE][140736183776128][6][./include/mt_event_kqueue.h][179 ][ApiPoll   ]m_fired_[j].fd : 6
+[TRACE][140736183776128][6][./include/mt_event_kqueue.h][179 ][ApiPoll   ]m_fired_[j].fd : 7
+[TRACE][140736183776128][6][./include/mt_event_kqueue.h][179 ][ApiPoll   ]m_fired_[j].fd : 8
+[TRACE][140736183776128][6][mt_event_proxyer.cpp][423 ][Dispatch  ]wait poll nfd: 3
+[TRACE][140736183776128][6][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][6][mt_event_proxyer.cpp][355 ][DisposeEventerList]osfd : 6, item : 0x10f0df098
+[TRACE][140736183776128][6][mt_event_proxyer.cpp][27  ][OutputNotify]OutputNotify ..., thread : 0x7f81fe403d70
+[TRACE][140736183776128][6][mt_event_proxyer.cpp][393 ][DisposeEventerList]MT_WRITABLE osfd:6, ret:0 ev_fdnum:3
+[TRACE][140736183776128][6][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][6][mt_event_proxyer.cpp][355 ][DisposeEventerList]osfd : 7, item : 0x10f0df0b0
+[TRACE][140736183776128][6][mt_event_proxyer.cpp][27  ][OutputNotify]OutputNotify ..., thread : 0x7f81fe4041b0
+[TRACE][140736183776128][6][mt_event_proxyer.cpp][393 ][DisposeEventerList]MT_WRITABLE osfd:7, ret:0 ev_fdnum:3
+[TRACE][140736183776128][6][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][6][mt_event_proxyer.cpp][355 ][DisposeEventerList]osfd : 8, item : 0x10f0df0c8
+[TRACE][140736183776128][6][mt_event_proxyer.cpp][27  ][OutputNotify]OutputNotify ..., thread : 0x7f81fe4045f0
+[TRACE][140736183776128][6][mt_event_proxyer.cpp][393 ][DisposeEventerList]MT_WRITABLE osfd:8, ret:0 ev_fdnum:3
+[TRACE][140736183776128][6][mt_thread.cpp][201 ][RestoreContext]Thread Dispatch ...[0x7f81fe4041b0]
+[TRACE][140736183776128][6][mt_event_proxyer.cpp][463 ][Schedule  ]thread : 0x7f81fe403d70
+[TRACE][140736183776128][6][mt_event_proxyer.cpp][471 ][Schedule  ]GetRecvEvents : 2, GetEvents : 3, fd : 6
+[TRACE][140736183776128][6][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][6][mt_event_proxyer.cpp][94  ][DelRef    ]DelRef old_ev : 0x7f81fe50ba50
+[TRACE][140736183776128][6][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][6][./include/mt_event_proxyer.h][157 ][SetEventer]ref : 0x10f0df098, ev : 0x0
+[TRACE][140736183776128][6][mt_event_proxyer.cpp][106 ][DelRef    ]fdref del success, fd_ref : 0x10f0df098, ev : 0x0
+[TRACE][140736183776128][6][mt_event_proxyer.cpp][486 ][Schedule  ]recv_num : 1
+[TRACE][140736183776128][6][mt_sys_hook.cpp][199 ][mt_recvfrom] check function ...
+[TRACE][140736183776128][6][./include/mt_frame.h][492 ][recvfrom  ]recvfrom return n: -1, buf: , fd: 6, len: 2048, flags: 0
+[TRACE][140736183776128][6][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][6][./include/mt_event_proxyer.h][100 ][SetOwnerThread]ev : 0x7f81fe42c830, thread : 0x7f81fe403d70
+[TRACE][140736183776128][6][mt_event_proxyer.cpp][436 ][Schedule  ] check function ...
+[TRACE][140736183776128][6][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][6][mt_event_proxyer.cpp][231 ][AddEventer]item : 0x10f0df098
+[TRACE][140736183776128][6][mt_event_proxyer.cpp][65  ][AddRef    ]AddRef old_ev : 0x0
+[TRACE][140736183776128][6][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][6][mt_event_proxyer.cpp][269 ][AddFd     ]item : 0x10f0df098, fd : 6, events : 1
+[TRACE][140736183776128][6][mt_event_proxyer.cpp][285 ][AddFd     ]fd : 6, new_events : 1
+[TRACE][140736183776128][6][./include/mt_event_kqueue.h][83  ][ApiAddEvent]fd : 6, mask : MT_READABLE
+[TRACE][140736183776128][6][./include/mt_event_proxyer.h][157 ][SetEventer]ref : 0x10f0df098, ev : 0x7f81fe42c830
+[TRACE][140736183776128][6][mt_event_proxyer.cpp][77  ][AddRef    ]fdref add success, fd_ref : 0x10f0df098, ev : 0x7f81fe42c830
+[TRACE][140736183776128][6][mt_event_proxyer.cpp][180 ][AddList   ]ev add success ev: 0x7f81fe42c830, fd: 6
+[TRACE][140736183776128][6][./include/mt_frame.h][268 ][InsertIoWait][insert]thread : 0x7f81fe403d70, m_io_list_ size : 2
+[DEBUG][140736183776128][6][./include/mt_heap.h][138 ][HeapPush  ]index : 3
+[TRACE][140736183776128][6][./include/mt_frame.h][200 ][ThreadSchedule]run front thread, m_run_list_ size: 1
+[TRACE][140736183776128][6][./include/mt_frame.h][203 ][ThreadSchedule]SetActiveThread thread : 0x7f81fe4041b0
+[TRACE][140736183776128][7][../../include/mt_frame.h][364 ][SetActiveThread]SetActiveThread : 0x7f81fe4041b0
+[TRACE][140736183776128][7][mt_thread.cpp][191 ][RestoreContext]this : 0x7f81fe4041b0, switch_thread : 0x7f81fe403d70
+[TRACE][140736183776128][7][mt_thread.cpp][197 ][RestoreContext]================= run thread =================[0x7f81fe4041b0]
+[TRACE][140736183776128][mt_ucontext.cpp][154 ][contextswitch]from : 0x7f81fe403e38, to : 0x7f81fe404278, runing : 0x7f81fe403e38, init : 0x7f81fe403178
+[TRACE][140736183776128][mt_ucontext.cpp][163 ][contextswitch]sContextRuning : 0x7f81fe404278
+[TRACE][140736183776128][7][mt_event_proxyer.cpp][406 ][Dispatch  ]wait_time: 100 ms
+[TRACE][140736183776128][7][./include/mt_event_kqueue.h][154 ][ApiPoll   ]tvp->tv_sec : 0, tvp->tv_usec : 100000
+[TRACE][140736183776128][7][./include/mt_event_kqueue.h][163 ][ApiPoll   ]retval : 2, tvp : 0x10f2cf638, m_events_ : 0x10ee32000, m_size_ : 50000
+[TRACE][140736183776128][7][./include/mt_event_kqueue.h][179 ][ApiPoll   ]m_fired_[j].fd : 7
+[TRACE][140736183776128][7][./include/mt_event_kqueue.h][179 ][ApiPoll   ]m_fired_[j].fd : 8
+[TRACE][140736183776128][7][mt_event_proxyer.cpp][423 ][Dispatch  ]wait poll nfd: 2
+[TRACE][140736183776128][7][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][7][mt_event_proxyer.cpp][355 ][DisposeEventerList]osfd : 7, item : 0x10f0df0b0
+[TRACE][140736183776128][7][mt_event_proxyer.cpp][27  ][OutputNotify]OutputNotify ..., thread : 0x7f81fe4041b0
+[TRACE][140736183776128][7][mt_event_proxyer.cpp][393 ][DisposeEventerList]MT_WRITABLE osfd:7, ret:0 ev_fdnum:2
+[TRACE][140736183776128][7][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][7][mt_event_proxyer.cpp][355 ][DisposeEventerList]osfd : 8, item : 0x10f0df0c8
+[TRACE][140736183776128][7][mt_event_proxyer.cpp][27  ][OutputNotify]OutputNotify ..., thread : 0x7f81fe4045f0
+[TRACE][140736183776128][7][mt_event_proxyer.cpp][393 ][DisposeEventerList]MT_WRITABLE osfd:8, ret:0 ev_fdnum:2
+[TRACE][140736183776128][7][mt_thread.cpp][201 ][RestoreContext]Thread Dispatch ...[0x7f81fe4045f0]
+[TRACE][140736183776128][7][mt_event_proxyer.cpp][463 ][Schedule  ]thread : 0x7f81fe4041b0
+[TRACE][140736183776128][7][mt_event_proxyer.cpp][471 ][Schedule  ]GetRecvEvents : 2, GetEvents : 3, fd : 7
+[TRACE][140736183776128][7][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][7][mt_event_proxyer.cpp][94  ][DelRef    ]DelRef old_ev : 0x7f81fe50bad0
+[TRACE][140736183776128][7][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][7][./include/mt_event_proxyer.h][157 ][SetEventer]ref : 0x10f0df0b0, ev : 0x0
+[TRACE][140736183776128][7][mt_event_proxyer.cpp][106 ][DelRef    ]fdref del success, fd_ref : 0x10f0df0b0, ev : 0x0
+[TRACE][140736183776128][7][mt_event_proxyer.cpp][486 ][Schedule  ]recv_num : 1
+[TRACE][140736183776128][7][mt_sys_hook.cpp][199 ][mt_recvfrom] check function ...
+[TRACE][140736183776128][7][./include/mt_frame.h][492 ][recvfrom  ]recvfrom return n: -1, buf: , fd: 7, len: 2048, flags: 0
+[TRACE][140736183776128][7][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][7][./include/mt_event_proxyer.h][100 ][SetOwnerThread]ev : 0x7f81fe42c870, thread : 0x7f81fe4041b0
+[TRACE][140736183776128][7][mt_event_proxyer.cpp][436 ][Schedule  ] check function ...
+[TRACE][140736183776128][7][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][7][mt_event_proxyer.cpp][231 ][AddEventer]item : 0x10f0df0b0
+[TRACE][140736183776128][7][mt_event_proxyer.cpp][65  ][AddRef    ]AddRef old_ev : 0x0
+[TRACE][140736183776128][7][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][7][mt_event_proxyer.cpp][269 ][AddFd     ]item : 0x10f0df0b0, fd : 7, events : 1
+[TRACE][140736183776128][7][mt_event_proxyer.cpp][285 ][AddFd     ]fd : 7, new_events : 1
+[TRACE][140736183776128][7][./include/mt_event_kqueue.h][83  ][ApiAddEvent]fd : 7, mask : MT_READABLE
+[TRACE][140736183776128][7][./include/mt_event_proxyer.h][157 ][SetEventer]ref : 0x10f0df0b0, ev : 0x7f81fe42c870
+[TRACE][140736183776128][7][mt_event_proxyer.cpp][77  ][AddRef    ]fdref add success, fd_ref : 0x10f0df0b0, ev : 0x7f81fe42c870
+[TRACE][140736183776128][7][mt_event_proxyer.cpp][180 ][AddList   ]ev add success ev: 0x7f81fe42c870, fd: 7
+[TRACE][140736183776128][7][./include/mt_frame.h][268 ][InsertIoWait][insert]thread : 0x7f81fe4041b0, m_io_list_ size : 3
+[DEBUG][140736183776128][7][./include/mt_heap.h][138 ][HeapPush  ]index : 4
+[TRACE][140736183776128][7][./include/mt_frame.h][200 ][ThreadSchedule]run front thread, m_run_list_ size: 0
+[TRACE][140736183776128][7][./include/mt_frame.h][203 ][ThreadSchedule]SetActiveThread thread : 0x7f81fe4045f0
+[TRACE][140736183776128][8][../../include/mt_frame.h][364 ][SetActiveThread]SetActiveThread : 0x7f81fe4045f0
+[TRACE][140736183776128][8][mt_thread.cpp][191 ][RestoreContext]this : 0x7f81fe4045f0, switch_thread : 0x7f81fe4041b0
+[TRACE][140736183776128][8][mt_thread.cpp][197 ][RestoreContext]================= run thread =================[0x7f81fe4045f0]
+[TRACE][140736183776128][mt_ucontext.cpp][154 ][contextswitch]from : 0x7f81fe404278, to : 0x7f81fe4046b8, runing : 0x7f81fe404278, init : 0x7f81fe403178
+[TRACE][140736183776128][mt_ucontext.cpp][163 ][contextswitch]sContextRuning : 0x7f81fe4046b8
+[TRACE][140736183776128][8][mt_event_proxyer.cpp][406 ][Dispatch  ]wait_time: 100 ms
+[TRACE][140736183776128][8][./include/mt_event_kqueue.h][154 ][ApiPoll   ]tvp->tv_sec : 0, tvp->tv_usec : 100000
+[TRACE][140736183776128][8][./include/mt_event_kqueue.h][163 ][ApiPoll   ]retval : 1, tvp : 0x10f2f1638, m_events_ : 0x10ee32000, m_size_ : 50000
+[TRACE][140736183776128][8][./include/mt_event_kqueue.h][179 ][ApiPoll   ]m_fired_[j].fd : 8
+[TRACE][140736183776128][8][mt_event_proxyer.cpp][423 ][Dispatch  ]wait poll nfd: 1
+[TRACE][140736183776128][8][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][8][mt_event_proxyer.cpp][355 ][DisposeEventerList]osfd : 8, item : 0x10f0df0c8
+[TRACE][140736183776128][8][mt_event_proxyer.cpp][27  ][OutputNotify]OutputNotify ..., thread : 0x7f81fe4045f0
+[TRACE][140736183776128][8][mt_event_proxyer.cpp][393 ][DisposeEventerList]MT_WRITABLE osfd:8, ret:0 ev_fdnum:1
+[TRACE][140736183776128][8][mt_thread.cpp][201 ][RestoreContext]Thread Dispatch ...[0x7f81fe402c60]
+[TRACE][140736183776128][8][mt_event_proxyer.cpp][463 ][Schedule  ]thread : 0x7f81fe4045f0
+[TRACE][140736183776128][8][mt_event_proxyer.cpp][471 ][Schedule  ]GetRecvEvents : 2, GetEvents : 3, fd : 8
+[TRACE][140736183776128][8][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][8][mt_event_proxyer.cpp][94  ][DelRef    ]DelRef old_ev : 0x7f81fe50bb50
+[TRACE][140736183776128][8][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][8][./include/mt_event_proxyer.h][157 ][SetEventer]ref : 0x10f0df0c8, ev : 0x0
+[TRACE][140736183776128][8][mt_event_proxyer.cpp][106 ][DelRef    ]fdref del success, fd_ref : 0x10f0df0c8, ev : 0x0
+[TRACE][140736183776128][8][mt_event_proxyer.cpp][486 ][Schedule  ]recv_num : 1
+[TRACE][140736183776128][8][mt_sys_hook.cpp][199 ][mt_recvfrom] check function ...
+[TRACE][140736183776128][8][./include/mt_frame.h][492 ][recvfrom  ]recvfrom return n: -1, buf: , fd: 8, len: 2048, flags: 0
+[TRACE][140736183776128][8][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][8][./include/mt_event_proxyer.h][100 ][SetOwnerThread]ev : 0x7f81fe42c8b0, thread : 0x7f81fe4045f0
+[TRACE][140736183776128][8][mt_event_proxyer.cpp][436 ][Schedule  ] check function ...
+[TRACE][140736183776128][8][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][8][mt_event_proxyer.cpp][231 ][AddEventer]item : 0x10f0df0c8
+[TRACE][140736183776128][8][mt_event_proxyer.cpp][65  ][AddRef    ]AddRef old_ev : 0x0
+[TRACE][140736183776128][8][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][8][mt_event_proxyer.cpp][269 ][AddFd     ]item : 0x10f0df0c8, fd : 8, events : 1
+[TRACE][140736183776128][8][mt_event_proxyer.cpp][285 ][AddFd     ]fd : 8, new_events : 1
+[TRACE][140736183776128][8][./include/mt_event_kqueue.h][83  ][ApiAddEvent]fd : 8, mask : MT_READABLE
+[TRACE][140736183776128][8][./include/mt_event_proxyer.h][157 ][SetEventer]ref : 0x10f0df0c8, ev : 0x7f81fe42c8b0
+[TRACE][140736183776128][8][mt_event_proxyer.cpp][77  ][AddRef    ]fdref add success, fd_ref : 0x10f0df0c8, ev : 0x7f81fe42c8b0
+[TRACE][140736183776128][8][mt_event_proxyer.cpp][180 ][AddList   ]ev add success ev: 0x7f81fe42c8b0, fd: 8
+[TRACE][140736183776128][8][./include/mt_frame.h][268 ][InsertIoWait][insert]thread : 0x7f81fe4045f0, m_io_list_ size : 4
+[DEBUG][140736183776128][8][./include/mt_heap.h][138 ][HeapPush  ]index : 5
+[TRACE][140736183776128][8][./include/mt_frame.h][194 ][ThreadSchedule]run DaemonThread, thread : 0x7f81fe402c60, m_io_list_ size : 5, m_pend_list_ size : 0
+[TRACE][140736183776128][8][./include/mt_frame.h][203 ][ThreadSchedule]SetActiveThread thread : 0x7f81fe402c60
+[TRACE][140736183776128][2][../../include/mt_frame.h][364 ][SetActiveThread]SetActiveThread : 0x7f81fe402c60
+[TRACE][140736183776128][2][mt_thread.cpp][191 ][RestoreContext]this : 0x7f81fe402c60, switch_thread : 0x7f81fe4045f0
+[TRACE][140736183776128][2][mt_thread.cpp][197 ][RestoreContext]================= run thread =================[0x7f81fe402c60]
+[TRACE][140736183776128][mt_ucontext.cpp][154 ][contextswitch]from : 0x7f81fe4046b8, to : 0x7f81fe402d28, runing : 0x7f81fe4046b8, init : 0x7f81fe403178
+[TRACE][140736183776128][mt_ucontext.cpp][163 ][contextswitch]sContextRuning : 0x7f81fe402d28
+[TRACE][140736183776128][2][mt_event_proxyer.cpp][406 ][Dispatch  ]wait_time: 100 ms
+[TRACE][140736183776128][2][./include/mt_event_kqueue.h][154 ][ApiPoll   ]tvp->tv_sec : 0, tvp->tv_usec : 100000
+[TRACE][140736183776128][2][./include/mt_event_kqueue.h][163 ][ApiPoll   ]retval : 0, tvp : 0x10f225e28, m_events_ : 0x10ee32000, m_size_ : 50000
+[TRACE][140736183776128][2][mt_event_proxyer.cpp][423 ][Dispatch  ]wait poll nfd: 0
+[TRACE][140736183776128][2][mt_thread.cpp][201 ][RestoreContext]Thread Dispatch ...[0x7f81fe4034f0]
+[TRACE][140736183776128][2][mt_event_proxyer.cpp][406 ][Dispatch  ]wait_time: 100 ms
+[TRACE][140736183776128][2][./include/mt_event_kqueue.h][154 ][ApiPoll   ]tvp->tv_sec : 0, tvp->tv_usec : 100000
+[TRACE][140736183776128][2][./include/mt_event_kqueue.h][163 ][ApiPoll   ]retval : 3, tvp : 0x10f225ea8, m_events_ : 0x10ee32000, m_size_ : 50000
+[TRACE][140736183776128][2][./include/mt_event_kqueue.h][179 ][ApiPoll   ]m_fired_[j].fd : 8
+[TRACE][140736183776128][2][./include/mt_event_kqueue.h][179 ][ApiPoll   ]m_fired_[j].fd : 6
+[TRACE][140736183776128][2][./include/mt_event_kqueue.h][179 ][ApiPoll   ]m_fired_[j].fd : 7
+[TRACE][140736183776128][2][mt_event_proxyer.cpp][423 ][Dispatch  ]wait poll nfd: 3
+[TRACE][140736183776128][2][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][2][mt_event_proxyer.cpp][355 ][DisposeEventerList]osfd : 8, item : 0x10f0df0c8
+[TRACE][140736183776128][2][mt_event_proxyer.cpp][10  ][InputNotify]InputNotify ..., thread : 0x7f81fe4045f0
+[TRACE][140736183776128][2][./include/mt_frame.h][214 ][RemoveIoWait][remove]thread : 0x7f81fe4045f0, m_io_list_ size : 5
+[TRACE][140736183776128][2][mt_event_proxyer.cpp][383 ][DisposeEventerList]MT_READABLE osfd:8, ret:0 ev_fdnum:3
+[TRACE][140736183776128][2][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][2][mt_event_proxyer.cpp][355 ][DisposeEventerList]osfd : 6, item : 0x10f0df098
+[TRACE][140736183776128][2][mt_event_proxyer.cpp][10  ][InputNotify]InputNotify ..., thread : 0x7f81fe403d70
+[TRACE][140736183776128][2][./include/mt_frame.h][214 ][RemoveIoWait][remove]thread : 0x7f81fe403d70, m_io_list_ size : 4
+[TRACE][140736183776128][2][mt_event_proxyer.cpp][383 ][DisposeEventerList]MT_READABLE osfd:6, ret:0 ev_fdnum:3
+[TRACE][140736183776128][2][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][2][mt_event_proxyer.cpp][355 ][DisposeEventerList]osfd : 7, item : 0x10f0df0b0
+[TRACE][140736183776128][2][mt_event_proxyer.cpp][10  ][InputNotify]InputNotify ..., thread : 0x7f81fe4041b0
+[TRACE][140736183776128][2][./include/mt_frame.h][214 ][RemoveIoWait][remove]thread : 0x7f81fe4041b0, m_io_list_ size : 3
+[TRACE][140736183776128][2][mt_event_proxyer.cpp][383 ][DisposeEventerList]MT_READABLE osfd:7, ret:0 ev_fdnum:3
+[TRACE][140736183776128][2][./include/mt_frame.h][962 ][DaemonRun ]system ms :1530173594623
+[TRACE][140736183776128][2][./include/mt_frame.h][214 ][RemoveIoWait][remove]thread : 0x7f81fe4034f0, m_io_list_ size : 2
+[TRACE][140736183776128][2][./include/mt_frame.h][353 ][WakeupTimeout]thread = 0x7f81fe4034f0
+[TRACE][140736183776128][2][./include/mt_frame.h][214 ][RemoveIoWait][remove]thread : 0x7f81fe403930, m_io_list_ size : 1
+[TRACE][140736183776128][2][./include/mt_frame.h][353 ][WakeupTimeout]thread = 0x7f81fe403930
+[TRACE][140736183776128][2][./include/mt_frame.h][334 ][CheckExpired]m_timer_ : 0x7f81fe50b6c0
+[TRACE][140736183776128][2][./include/mt_heap_timer.h][101 ][CheckExpired]now_ms = 1530173594623
+[TRACE][140736183776128][2][./include/mt_heap_timer.h][110 ][CheckExpired]size = 0
+[TRACE][140736183776128][2][./include/mt_frame.h][200 ][ThreadSchedule]run front thread, m_run_list_ size: 4
+[TRACE][140736183776128][2][./include/mt_frame.h][203 ][ThreadSchedule]SetActiveThread thread : 0x7f81fe4045f0
+[TRACE][140736183776128][8][../../include/mt_frame.h][364 ][SetActiveThread]SetActiveThread : 0x7f81fe4045f0
+[TRACE][140736183776128][8][mt_thread.cpp][191 ][RestoreContext]this : 0x7f81fe4045f0, switch_thread : 0x7f81fe402c60
+[TRACE][140736183776128][8][mt_thread.cpp][197 ][RestoreContext]================= run thread =================[0x7f81fe4045f0]
+[TRACE][140736183776128][mt_ucontext.cpp][154 ][contextswitch]from : 0x7f81fe402d28, to : 0x7f81fe4046b8, runing : 0x7f81fe402d28, init : 0x7f81fe403178
+[TRACE][140736183776128][mt_ucontext.cpp][163 ][contextswitch]sContextRuning : 0x7f81fe4046b8
+[TRACE][140736183776128][8][mt_event_proxyer.cpp][406 ][Dispatch  ]wait_time: 100 ms
+[TRACE][140736183776128][8][./include/mt_event_kqueue.h][154 ][ApiPoll   ]tvp->tv_sec : 0, tvp->tv_usec : 100000
+[TRACE][140736183776128][8][./include/mt_event_kqueue.h][163 ][ApiPoll   ]retval : 3, tvp : 0x10f2f1638, m_events_ : 0x10ee32000, m_size_ : 50000
+[TRACE][140736183776128][8][./include/mt_event_kqueue.h][179 ][ApiPoll   ]m_fired_[j].fd : 8
+[TRACE][140736183776128][8][./include/mt_event_kqueue.h][179 ][ApiPoll   ]m_fired_[j].fd : 6
+[TRACE][140736183776128][8][./include/mt_event_kqueue.h][179 ][ApiPoll   ]m_fired_[j].fd : 7
+[TRACE][140736183776128][8][mt_event_proxyer.cpp][423 ][Dispatch  ]wait poll nfd: 3
+[TRACE][140736183776128][8][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][8][mt_event_proxyer.cpp][355 ][DisposeEventerList]osfd : 8, item : 0x10f0df0c8
+[TRACE][140736183776128][8][mt_event_proxyer.cpp][10  ][InputNotify]InputNotify ..., thread : 0x7f81fe4045f0
+[TRACE][140736183776128][8][mt_event_proxyer.cpp][383 ][DisposeEventerList]MT_READABLE osfd:8, ret:0 ev_fdnum:3
+[TRACE][140736183776128][8][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][8][mt_event_proxyer.cpp][355 ][DisposeEventerList]osfd : 6, item : 0x10f0df098
+[TRACE][140736183776128][8][mt_event_proxyer.cpp][10  ][InputNotify]InputNotify ..., thread : 0x7f81fe403d70
+[TRACE][140736183776128][8][mt_event_proxyer.cpp][383 ][DisposeEventerList]MT_READABLE osfd:6, ret:0 ev_fdnum:3
+[TRACE][140736183776128][8][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][8][mt_event_proxyer.cpp][355 ][DisposeEventerList]osfd : 7, item : 0x10f0df0b0
+[TRACE][140736183776128][8][mt_event_proxyer.cpp][10  ][InputNotify]InputNotify ..., thread : 0x7f81fe4041b0
+[TRACE][140736183776128][8][mt_event_proxyer.cpp][383 ][DisposeEventerList]MT_READABLE osfd:7, ret:0 ev_fdnum:3
+[TRACE][140736183776128][8][mt_thread.cpp][201 ][RestoreContext]Thread Dispatch ...[0x7f81fe402c60]
+[TRACE][140736183776128][8][mt_event_proxyer.cpp][463 ][Schedule  ]thread : 0x7f81fe4045f0
+[TRACE][140736183776128][8][mt_event_proxyer.cpp][471 ][Schedule  ]GetRecvEvents : 1, GetEvents : 1, fd : 8
+[TRACE][140736183776128][8][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][8][mt_event_proxyer.cpp][94  ][DelRef    ]DelRef old_ev : 0x7f81fe42c8b0
+[TRACE][140736183776128][8][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][8][./include/mt_event_proxyer.h][157 ][SetEventer]ref : 0x10f0df0c8, ev : 0x0
+[TRACE][140736183776128][8][mt_event_proxyer.cpp][106 ][DelRef    ]fdref del success, fd_ref : 0x10f0df0c8, ev : 0x0
+[TRACE][140736183776128][8][mt_event_proxyer.cpp][486 ][Schedule  ]recv_num : 1
+[TRACE][140736183776128][8][mt_sys_hook.cpp][199 ][mt_recvfrom] check function ...
+[TRACE][140736183776128][8][./include/mt_frame.h][492 ][recvfrom  ]recvfrom return n: 46, buf: , fd: 8, len: 2048, flags: 0
+[TRACE][140736183776128][8][mt_c.cpp  ][152 ][udp_sendrecv]from_addr 8.8.8.8:53, time_left : 30000
+[TRACE][140736183776128][8][mt_sys_hook.cpp][100 ][mt_close  ] check function ...
+[TRACE][140736183776128][8][mt_sys_hook.cpp][102 ][mt_close  ]system func : close
+[TRACE][140736183776128][8][mt_sys_hook.cpp][59  ][mt_free_fd] check function ...
+[DEBUG][140736183776128][8][./dns.cpp ][107 ][dns_lookup]ret : 0, recv_buf : , recv_len : 46
+[DEBUG][140736183776128][8][./main.cpp][27  ][func      ]www.2004.com, 1666524998, 70.39.85.99
+[DEBUG][140736183776128][8][./main.cpp][29  ][func      ]ttl : 179
+[TRACE][140736183776128][8][./include/mt_frame.h][200 ][ThreadSchedule]run front thread, m_run_list_ size: 3
+[TRACE][140736183776128][8][./include/mt_frame.h][203 ][ThreadSchedule]SetActiveThread thread : 0x7f81fe403d70
+[TRACE][140736183776128][6][../../include/mt_frame.h][364 ][SetActiveThread]SetActiveThread : 0x7f81fe403d70
+[TRACE][140736183776128][6][mt_thread.cpp][191 ][RestoreContext]this : 0x7f81fe403d70, switch_thread : 0x7f81fe4045f0
+[TRACE][140736183776128][6][mt_thread.cpp][197 ][RestoreContext]================= run thread =================[0x7f81fe403d70]
+[TRACE][140736183776128][mt_ucontext.cpp][154 ][contextswitch]from : 0x7f81fe4046b8, to : 0x7f81fe403e38, runing : 0x7f81fe4046b8, init : 0x7f81fe403178
+[TRACE][140736183776128][mt_ucontext.cpp][163 ][contextswitch]sContextRuning : 0x7f81fe403e38
+[TRACE][140736183776128][6][mt_event_proxyer.cpp][406 ][Dispatch  ]wait_time: 100 ms
+[TRACE][140736183776128][6][./include/mt_event_kqueue.h][154 ][ApiPoll   ]tvp->tv_sec : 0, tvp->tv_usec : 100000
+[TRACE][140736183776128][6][./include/mt_event_kqueue.h][163 ][ApiPoll   ]retval : 2, tvp : 0x10f2ad638, m_events_ : 0x10ee32000, m_size_ : 50000
+[TRACE][140736183776128][6][./include/mt_event_kqueue.h][179 ][ApiPoll   ]m_fired_[j].fd : 6
+[TRACE][140736183776128][6][./include/mt_event_kqueue.h][179 ][ApiPoll   ]m_fired_[j].fd : 7
+[TRACE][140736183776128][6][mt_event_proxyer.cpp][423 ][Dispatch  ]wait poll nfd: 2
+[TRACE][140736183776128][6][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][6][mt_event_proxyer.cpp][355 ][DisposeEventerList]osfd : 6, item : 0x10f0df098
+[TRACE][140736183776128][6][mt_event_proxyer.cpp][10  ][InputNotify]InputNotify ..., thread : 0x7f81fe403d70
+[TRACE][140736183776128][6][mt_event_proxyer.cpp][383 ][DisposeEventerList]MT_READABLE osfd:6, ret:0 ev_fdnum:2
+[TRACE][140736183776128][6][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][6][mt_event_proxyer.cpp][355 ][DisposeEventerList]osfd : 7, item : 0x10f0df0b0
+[TRACE][140736183776128][6][mt_event_proxyer.cpp][10  ][InputNotify]InputNotify ..., thread : 0x7f81fe4041b0
+[TRACE][140736183776128][6][mt_event_proxyer.cpp][383 ][DisposeEventerList]MT_READABLE osfd:7, ret:0 ev_fdnum:2
+[TRACE][140736183776128][6][mt_thread.cpp][201 ][RestoreContext]Thread Dispatch ...[0x7f81fe4041b0]
+[TRACE][140736183776128][6][mt_event_proxyer.cpp][463 ][Schedule  ]thread : 0x7f81fe403d70
+[TRACE][140736183776128][6][mt_event_proxyer.cpp][471 ][Schedule  ]GetRecvEvents : 1, GetEvents : 1, fd : 6
+[TRACE][140736183776128][6][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][6][mt_event_proxyer.cpp][94  ][DelRef    ]DelRef old_ev : 0x7f81fe42c830
+[TRACE][140736183776128][6][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][6][./include/mt_event_proxyer.h][157 ][SetEventer]ref : 0x10f0df098, ev : 0x0
+[TRACE][140736183776128][6][mt_event_proxyer.cpp][106 ][DelRef    ]fdref del success, fd_ref : 0x10f0df098, ev : 0x0
+[TRACE][140736183776128][6][mt_event_proxyer.cpp][486 ][Schedule  ]recv_num : 1
+[TRACE][140736183776128][6][mt_sys_hook.cpp][199 ][mt_recvfrom] check function ...
+[TRACE][140736183776128][6][./include/mt_frame.h][492 ][recvfrom  ]recvfrom return n: 253, buf: , fd: 6, len: 2048, flags: 0
+[TRACE][140736183776128][6][mt_c.cpp  ][152 ][udp_sendrecv]from_addr 8.8.8.8:53, time_left : 30000
+[TRACE][140736183776128][6][mt_sys_hook.cpp][100 ][mt_close  ] check function ...
+[TRACE][140736183776128][6][mt_sys_hook.cpp][59  ][mt_free_fd] check function ...
+[DEBUG][140736183776128][6][./dns.cpp ][107 ][dns_lookup]ret : 0, recv_buf : , recv_len : 253
+[DEBUG][140736183776128][6][./main.cpp][27  ][func      ]www.2002.com, 1388198445, 45.58.190.82
+[DEBUG][140736183776128][6][./main.cpp][27  ][func      ]www.2002.com, 508689350, 198.251.81.30
+[DEBUG][140736183776128][6][./main.cpp][27  ][func      ]www.2002.com, 1549073350, 198.251.84.92
+[DEBUG][140736183776128][6][./main.cpp][27  ][func      ]www.2002.com, 2003025771, 107.191.99.119
+[DEBUG][140736183776128][6][./main.cpp][27  ][func      ]www.2002.com, -870866581, 107.161.23.204
+[DEBUG][140736183776128][6][./main.cpp][27  ][func      ]www.2002.com, -209901754, 70.39.125.243
+[DEBUG][140736183776128][6][./main.cpp][27  ][func      ]www.2002.com, -1697923892, 204.188.203.154
+[DEBUG][140736183776128][6][./main.cpp][27  ][func      ]www.2002.com, 1193709009, 209.141.38.71
+[DEBUG][140736183776128][6][./main.cpp][27  ][func      ]www.2002.com, -927227456, 192.161.187.200
+[DEBUG][140736183776128][6][./main.cpp][27  ][func      ]www.2002.com, -802870099, 173.44.37.208
+[DEBUG][140736183776128][6][./main.cpp][27  ][func      ]www.2002.com, -930896708, 188.164.131.200
+[DEBUG][140736183776128][6][./main.cpp][27  ][func      ]www.2002.com, 1695948864, 64.32.22.101
+[DEBUG][140736183776128][6][./main.cpp][29  ][func      ]ttl : 299
+[TRACE][140736183776128][6][./include/mt_frame.h][200 ][ThreadSchedule]run front thread, m_run_list_ size: 2
+[TRACE][140736183776128][6][./include/mt_frame.h][203 ][ThreadSchedule]SetActiveThread thread : 0x7f81fe4041b0
+[TRACE][140736183776128][7][../../include/mt_frame.h][364 ][SetActiveThread]SetActiveThread : 0x7f81fe4041b0
+[TRACE][140736183776128][7][mt_thread.cpp][191 ][RestoreContext]this : 0x7f81fe4041b0, switch_thread : 0x7f81fe403d70
+[TRACE][140736183776128][7][mt_thread.cpp][197 ][RestoreContext]================= run thread =================[0x7f81fe4041b0]
+[TRACE][140736183776128][mt_ucontext.cpp][154 ][contextswitch]from : 0x7f81fe403e38, to : 0x7f81fe404278, runing : 0x7f81fe403e38, init : 0x7f81fe403178
+[TRACE][140736183776128][mt_ucontext.cpp][163 ][contextswitch]sContextRuning : 0x7f81fe404278
+[TRACE][140736183776128][7][mt_event_proxyer.cpp][406 ][Dispatch  ]wait_time: 100 ms
+[TRACE][140736183776128][7][./include/mt_event_kqueue.h][154 ][ApiPoll   ]tvp->tv_sec : 0, tvp->tv_usec : 100000
+[TRACE][140736183776128][7][./include/mt_event_kqueue.h][163 ][ApiPoll   ]retval : 1, tvp : 0x10f2cf638, m_events_ : 0x10ee32000, m_size_ : 50000
+[TRACE][140736183776128][7][./include/mt_event_kqueue.h][179 ][ApiPoll   ]m_fired_[j].fd : 7
+[TRACE][140736183776128][7][mt_event_proxyer.cpp][423 ][Dispatch  ]wait poll nfd: 1
+[TRACE][140736183776128][7][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][7][mt_event_proxyer.cpp][355 ][DisposeEventerList]osfd : 7, item : 0x10f0df0b0
+[TRACE][140736183776128][7][mt_event_proxyer.cpp][10  ][InputNotify]InputNotify ..., thread : 0x7f81fe4041b0
+[TRACE][140736183776128][7][mt_event_proxyer.cpp][383 ][DisposeEventerList]MT_READABLE osfd:7, ret:0 ev_fdnum:1
+[TRACE][140736183776128][7][mt_thread.cpp][201 ][RestoreContext]Thread Dispatch ...[0x7f81fe4045f0]
+[TRACE][140736183776128][7][mt_event_proxyer.cpp][463 ][Schedule  ]thread : 0x7f81fe4041b0
+[TRACE][140736183776128][7][mt_event_proxyer.cpp][471 ][Schedule  ]GetRecvEvents : 1, GetEvents : 1, fd : 7
+[TRACE][140736183776128][7][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][7][mt_event_proxyer.cpp][94  ][DelRef    ]DelRef old_ev : 0x7f81fe42c870
+[TRACE][140736183776128][7][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][7][./include/mt_event_proxyer.h][157 ][SetEventer]ref : 0x10f0df0b0, ev : 0x0
+[TRACE][140736183776128][7][mt_event_proxyer.cpp][106 ][DelRef    ]fdref del success, fd_ref : 0x10f0df0b0, ev : 0x0
+[TRACE][140736183776128][7][mt_event_proxyer.cpp][486 ][Schedule  ]recv_num : 1
+[TRACE][140736183776128][7][mt_sys_hook.cpp][199 ][mt_recvfrom] check function ...
+[TRACE][140736183776128][7][./include/mt_frame.h][492 ][recvfrom  ]recvfrom return n: 104, buf: , fd: 7, len: 2048, flags: 0
+[TRACE][140736183776128][7][mt_c.cpp  ][152 ][udp_sendrecv]from_addr 8.8.8.8:53, time_left : 30000
+[TRACE][140736183776128][7][mt_sys_hook.cpp][100 ][mt_close  ] check function ...
+[TRACE][140736183776128][7][mt_sys_hook.cpp][59  ][mt_free_fd] check function ...
+[DEBUG][140736183776128][7][./dns.cpp ][107 ][dns_lookup]ret : 0, recv_buf : , recv_len : 104
+[ERROR][140736183776128][7][./main.cpp][19  ][func      ]www.2003.com, make dns query failed
+[TRACE][140736183776128][7][./include/mt_frame.h][200 ][ThreadSchedule]run front thread, m_run_list_ size: 1
+[TRACE][140736183776128][7][./include/mt_frame.h][203 ][ThreadSchedule]SetActiveThread thread : 0x7f81fe4034f0
+[TRACE][140736183776128][4][../../include/mt_frame.h][364 ][SetActiveThread]SetActiveThread : 0x7f81fe4034f0
+[TRACE][140736183776128][4][mt_thread.cpp][191 ][RestoreContext]this : 0x7f81fe4034f0, switch_thread : 0x7f81fe4041b0
+[TRACE][140736183776128][4][mt_thread.cpp][197 ][RestoreContext]================= run thread =================[0x7f81fe4034f0]
+[TRACE][140736183776128][mt_ucontext.cpp][154 ][contextswitch]from : 0x7f81fe404278, to : 0x7f81fe4035b8, runing : 0x7f81fe404278, init : 0x7f81fe403178
+[TRACE][140736183776128][mt_ucontext.cpp][163 ][contextswitch]sContextRuning : 0x7f81fe4035b8
+[TRACE][140736183776128][4][mt_event_proxyer.cpp][406 ][Dispatch  ]wait_time: 100 ms
+[TRACE][140736183776128][4][./include/mt_event_kqueue.h][154 ][ApiPoll   ]tvp->tv_sec : 0, tvp->tv_usec : 100000
+[TRACE][140736183776128][4][./include/mt_event_kqueue.h][163 ][ApiPoll   ]retval : 1, tvp : 0x10f269638, m_events_ : 0x10ee32000, m_size_ : 50000
+[TRACE][140736183776128][4][./include/mt_event_kqueue.h][179 ][ApiPoll   ]m_fired_[j].fd : 5
+[TRACE][140736183776128][4][mt_event_proxyer.cpp][423 ][Dispatch  ]wait poll nfd: 1
+[TRACE][140736183776128][4][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][4][mt_event_proxyer.cpp][355 ][DisposeEventerList]osfd : 5, item : 0x10f0df080
+[TRACE][140736183776128][4][mt_event_proxyer.cpp][10  ][InputNotify]InputNotify ..., thread : 0x7f81fe403930
+[TRACE][140736183776128][4][mt_event_proxyer.cpp][383 ][DisposeEventerList]MT_READABLE osfd:5, ret:0 ev_fdnum:1
+[TRACE][140736183776128][4][mt_thread.cpp][201 ][RestoreContext]Thread Dispatch ...[0x7f81fe403930]
+[TRACE][140736183776128][4][mt_event_proxyer.cpp][463 ][Schedule  ]thread : 0x7f81fe4034f0
+[TRACE][140736183776128][4][mt_event_proxyer.cpp][471 ][Schedule  ]GetRecvEvents : 0, GetEvents : 1, fd : 4
+[TRACE][140736183776128][4][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][4][mt_event_proxyer.cpp][94  ][DelRef    ]DelRef old_ev : 0x7f81fe42c7b0
+[TRACE][140736183776128][4][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][4][./include/mt_event_proxyer.h][157 ][SetEventer]ref : 0x10f0df068, ev : 0x0
+[TRACE][140736183776128][4][mt_event_proxyer.cpp][106 ][DelRef    ]fdref del success, fd_ref : 0x10f0df068, ev : 0x0
+[WARN][140736183776128][4][mt_event_proxyer.cpp][481 ][Schedule  ]recv_num : 0
+[ERROR][140736183776128][4][./include/mt_frame.h][485 ][recvfrom  ]eventer schedule failed, errno: 101, strerr: STREAM ioctl timeout
+[TRACE][140736183776128][4][mt_c.cpp  ][152 ][udp_sendrecv]from_addr 0.0.0.0:0, time_left : 30000
+[ERROR][140736183776128][4][mt_c.cpp  ][155 ][udp_sendrecv]udp_sendrecv recv failed, rc: -2, errno: 101
+[TRACE][140736183776128][4][mt_sys_hook.cpp][100 ][mt_close  ] check function ...
+[TRACE][140736183776128][4][mt_sys_hook.cpp][59  ][mt_free_fd] check function ...
+[DEBUG][140736183776128][4][./dns.cpp ][107 ][dns_lookup]ret : -3, recv_buf : , recv_len : 2048
+[ERROR][140736183776128][4][./main.cpp][19  ][func      ]www.2000.com, make dns query failed
+[TRACE][140736183776128][4][./include/mt_frame.h][200 ][ThreadSchedule]run front thread, m_run_list_ size: 0
+[TRACE][140736183776128][4][./include/mt_frame.h][203 ][ThreadSchedule]SetActiveThread thread : 0x7f81fe403930
+[TRACE][140736183776128][5][../../include/mt_frame.h][364 ][SetActiveThread]SetActiveThread : 0x7f81fe403930
+[TRACE][140736183776128][5][mt_thread.cpp][191 ][RestoreContext]this : 0x7f81fe403930, switch_thread : 0x7f81fe4034f0
+[TRACE][140736183776128][5][mt_thread.cpp][197 ][RestoreContext]================= run thread =================[0x7f81fe403930]
+[TRACE][140736183776128][mt_ucontext.cpp][154 ][contextswitch]from : 0x7f81fe4035b8, to : 0x7f81fe4039f8, runing : 0x7f81fe4035b8, init : 0x7f81fe403178
+[TRACE][140736183776128][mt_ucontext.cpp][163 ][contextswitch]sContextRuning : 0x7f81fe4039f8
+[TRACE][140736183776128][5][mt_event_proxyer.cpp][406 ][Dispatch  ]wait_time: 100 ms
+[TRACE][140736183776128][5][./include/mt_event_kqueue.h][154 ][ApiPoll   ]tvp->tv_sec : 0, tvp->tv_usec : 100000
+[TRACE][140736183776128][5][./include/mt_event_kqueue.h][163 ][ApiPoll   ]retval : 1, tvp : 0x10f28b638, m_events_ : 0x10ee32000, m_size_ : 50000
+[TRACE][140736183776128][5][./include/mt_event_kqueue.h][179 ][ApiPoll   ]m_fired_[j].fd : 5
+[TRACE][140736183776128][5][mt_event_proxyer.cpp][423 ][Dispatch  ]wait poll nfd: 1
+[TRACE][140736183776128][5][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][5][mt_event_proxyer.cpp][355 ][DisposeEventerList]osfd : 5, item : 0x10f0df080
+[TRACE][140736183776128][5][mt_event_proxyer.cpp][10  ][InputNotify]InputNotify ..., thread : 0x7f81fe403930
+[TRACE][140736183776128][5][mt_event_proxyer.cpp][383 ][DisposeEventerList]MT_READABLE osfd:5, ret:0 ev_fdnum:1
+[TRACE][140736183776128][5][mt_thread.cpp][201 ][RestoreContext]Thread Dispatch ...[0x7f81fe403d70]
+[TRACE][140736183776128][5][mt_event_proxyer.cpp][463 ][Schedule  ]thread : 0x7f81fe403930
+[TRACE][140736183776128][5][mt_event_proxyer.cpp][471 ][Schedule  ]GetRecvEvents : 1, GetEvents : 1, fd : 5
+[TRACE][140736183776128][5][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][5][mt_event_proxyer.cpp][94  ][DelRef    ]DelRef old_ev : 0x7f81fe42c7f0
+[TRACE][140736183776128][5][./include/mt_event_proxyer.h][234 ][GetFdRef  ]m_fdrefs_ : 0x10f0df008
+[TRACE][140736183776128][5][./include/mt_event_proxyer.h][157 ][SetEventer]ref : 0x10f0df080, ev : 0x0
+[TRACE][140736183776128][5][mt_event_proxyer.cpp][106 ][DelRef    ]fdref del success, fd_ref : 0x10f0df080, ev : 0x0
+[TRACE][140736183776128][5][mt_event_proxyer.cpp][486 ][Schedule  ]recv_num : 1
+[TRACE][140736183776128][5][mt_sys_hook.cpp][199 ][mt_recvfrom] check function ...
+[TRACE][140736183776128][5][./include/mt_frame.h][492 ][recvfrom  ]recvfrom return n: 60, buf: , fd: 5, len: 2048, flags: 0
+[TRACE][140736183776128][5][mt_c.cpp  ][152 ][udp_sendrecv]from_addr 8.8.8.8:53, time_left : 30000
+[TRACE][140736183776128][5][mt_sys_hook.cpp][100 ][mt_close  ] check function ...
+[TRACE][140736183776128][5][mt_sys_hook.cpp][59  ][mt_free_fd] check function ...
+[DEBUG][140736183776128][5][./dns.cpp ][107 ][dns_lookup]ret : 0, recv_buf : , recv_len : 60
+[DEBUG][140736183776128][5][./main.cpp][27  ][func      ]www.2001.com, 751451954, 50.63.202.44
+[DEBUG][140736183776128][5][./main.cpp][29  ][func      ]ttl : 599
+[TRACE][140736183776128][mt_ucontext.cpp][170 ][contextexit]exit ..., runing : 0x7f81fe4039f8, init : 0x7f81fe403178
+[TRACE][140736183776128][mt_ucontext.cpp][154 ][contextswitch]from : 0x7f81fe4039f8, to : 0x7f81fe403178, runing : 0x7f81fe4039f8, init : 0x7f81fe403178
+[TRACE][140736183776128][mt_ucontext.cpp][163 ][contextswitch]sContextRuning : 0x7f81fe403178
+[TRACE][140736183776128][5][mt_event_proxyer.cpp][406 ][Dispatch  ]wait_time: 100 ms
+[TRACE][140736183776128][5][./include/mt_event_kqueue.h][154 ][ApiPoll   ]tvp->tv_sec : 0, tvp->tv_usec : 100000
+[TRACE][140736183776128][5][./include/mt_event_kqueue.h][163 ][ApiPoll   ]retval : 0, tvp : 0x7ffee10840d8, m_events_ : 0x10ee32000, m_size_ : 50000
+[TRACE][140736183776128][5][mt_event_proxyer.cpp][423 ][Dispatch  ]wait poll nfd: 0
+[TRACE][140736183776128][5][mt_thread.cpp][201 ][RestoreContext]Thread Dispatch ...[0x7f81fe402c60]
+[DEBUG][140736183776128][5][./main.cpp][51  ][main      ]--- end time : 1530173594785

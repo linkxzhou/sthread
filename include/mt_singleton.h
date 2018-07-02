@@ -8,6 +8,7 @@
 #include <new>
 #include <stdlib.h>
 #include <pthread.h>
+#include <assert.h>
 #include "mt_public.h"
 
 MTHREAD_NAMESPACE_BEGIN
@@ -21,8 +22,10 @@ template <typename T>
 class Singleton
 {
 protected:
-    Singleton() {}
-    ~Singleton() {}
+    Singleton() 
+    { }
+    ~Singleton() 
+    { }
     
 public:
     static T * GetInstance()
@@ -31,23 +34,24 @@ public:
         if (NULL == m_pInstance)
         {
             //double check 
-            pthread_mutex_lock(&m_mutex);
+            // pthread_mutex_lock(&m_mutex);
    
-            if (NULL == m_pInstance)
-            {
+            // if (NULL == m_pInstance)
+            // {
                 m_pInstance = new T();
-            }
+                m_deleter.set(m_pInstance);
+            // }
         }
 
         return m_pInstance;
 #else
         // Use C++ 11 style to implement singleton
-        static T t;
+        static __thread T t;
         return &t;
 #endif
     }
 
-    static void Destroy(void)
+    static void InstanceDestroy(void* obj = NULL)
     {
         if (m_pInstance != NULL)
         {
@@ -56,14 +60,37 @@ public:
     }
     
     DECLARE_UNCOPYABLE(Singleton);
+
+    class Deleter
+    {
+    public:
+        Deleter()
+        {
+            pthread_key_create(&m_pkey, &Singleton<T>::InstanceDestroy);
+        }
+        ~Deleter()
+        {
+            pthread_key_delete(m_pkey);
+        }
+        void set(T* newObj)
+        {
+            assert(pthread_getspecific(m_pkey) == NULL);
+            pthread_setspecific(m_pkey, newObj);
+        }
+
+    private:
+        pthread_key_t m_pkey;
+    };
     
 private:
-    static T *m_pInstance;
+    static __thread T *m_pInstance;
     static pthread_mutex_t m_mutex;
+    static Deleter m_deleter;
 };
 
-template<typename T> T * Singleton<T>::m_pInstance = NULL;
+template<typename T> __thread T * Singleton<T>::m_pInstance = NULL;
 template<typename T> pthread_mutex_t Singleton<T>::m_mutex = PTHREAD_MUTEX_INITIALIZER;
+template<typename T> typename Singleton<T>::Deleter Singleton<T>::m_deleter;
 
 #define DECLARE_SINGLETON(ClassName)                                      \
 public:                                                                   \

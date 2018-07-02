@@ -3,8 +3,8 @@
 
 MTHREAD_NAMESPACE_USING
 
-// 获取tcp连接的句柄信息（短连接）
-static IMtConnection* s_tcp_get_conn(struct sockaddr_in* dst, int& sock, bool is_keep)
+// 获取连接的句柄信息
+static IMtConnection* s_get_conn(struct sockaddr_in* dst, int& sock, eConnType type)
 {
     EventProxyer* proxyer = GetInstance<Frame>()->GetEventProxyer();
 	Eventer* ev = GetInstance<ISessionEventerCtrl>()->GetEventer(eEVENT_THREAD);
@@ -17,14 +17,7 @@ static IMtConnection* s_tcp_get_conn(struct sockaddr_in* dst, int& sock, bool is
     }
 
     IMtConnection* conn = NULL;
-    if (is_keep)
-    {
-        conn = GetInstance<ConnectionCtrl>()->GetConnection(eTCP_KEEP_CONN, dst);
-    }
-    else
-    {
-        conn = GetInstance<ConnectionCtrl>()->GetConnection(eTCP_SHORT_CONN, dst);
-    }
+    conn = GetInstance<ConnectionCtrl>()->GetConnection(type, dst);
     LOG_TRACE("IMtConnection conn : %p", conn);
     if (NULL == conn)
     {
@@ -32,8 +25,8 @@ static IMtConnection* s_tcp_get_conn(struct sockaddr_in* dst, int& sock, bool is
         GetInstance<ISessionEventerCtrl>()->FreeEventer(ev);
         return NULL;
     }
-    // 设置当前的ntfy_obj的信息
     conn->SetEventer(ev);
+    conn->SetMsgDstAddr(dst);
 
     int osfd = conn->CreateSocket();
     LOG_TRACE("osfd : %d", osfd);
@@ -44,12 +37,11 @@ static IMtConnection* s_tcp_get_conn(struct sockaddr_in* dst, int& sock, bool is
         LOG_ERROR("create socket failed, ret[%d]", osfd);
         return NULL;
     }
-    proxyer->AddNode(ev);
+    proxyer->AddEventer(ev);
     sock = osfd;
 
     return conn;
 }
-
 // 获取tcp的接收信息
 static int s_tcp_check_recv(int sock, char* recv_buf, int &len, int flags, 
     int timeout, TcpCheckMsgLenFunction func)
@@ -116,48 +108,70 @@ static int s_tcp_check_recv(int sock, char* recv_buf, int &len, int flags,
 int udp_sendrecv(struct sockaddr_in* dst, void* pkg, int len, void* recv_buf, 
     int& buf_size, int timeout)
 {
-    int ret = 0;
-    int rc  = 0;
-    int flags = 1;
+    if (!dst || !pkg || !recv_buf || buf_size <= 0)
+    {
+        LOG_ERROR("input params invalid, dst[%p], pkg[%p], recv_buf[%p], buf_size[%d]",
+            dst, pkg, recv_buf, buf_size);
+        return -9;
+    }
+
+    int ret = 0, rc = 0;
     struct sockaddr_in from_addr = {0};
     int addr_len = sizeof(from_addr);
+    // 获取frame的时间戳
+    utime64_t start_ms = GetInstance<Frame>()->GetLastClock();
+    utime64_t cost_time = 0;
+    // 连接超时时间
+    int time_left = timeout;
+    int sock = -1;
 
-    int sock = socket(PF_INET, SOCK_DGRAM, 0);
-    if ((sock < 0) || (ioctl(sock, FIONBIO, &flags) < 0))
+    IMtConnection* conn = s_get_conn(dst, sock, eUDP_CLIENT_CONN);
+    LOG_TRACE("current socket :%d, conn : %p", sock, conn);
+    if ((conn == NULL) || (sock < 0))
     {
-        LOG_ERROR("udp_sendrecv new sock failed, sock: %d, errno: %d", sock, errno);
+        LOG_ERROR("socket[%d] get conn failed, ret", sock);
         ret = -1;
-        goto EXIT_LABEL;
+        goto EXIT_LABEL1;
     }
+
     // 发送数据
-    rc = Frame::sendto(sock, pkg, len, 0, (struct sockaddr*)dst, (int)sizeof(*dst), timeout);
+    rc = Frame::sendto(sock, pkg, len, 0, (struct sockaddr*)dst, (int)sizeof(*dst), time_left);
     if (rc < 0)
     {
         LOG_ERROR("udp_sendrecv send failed, rc: %d, errno: %d", rc, errno);
         ret = -2;
-        goto EXIT_LABEL;
+        goto EXIT_LABEL1;
     }
+
+    cost_time = GetInstance<Frame>()->GetLastClock() - start_ms;
+    time_left = (timeout > (int)cost_time) ? (timeout - (int)cost_time) : 0;
     // 接收数据
     rc = Frame::recvfrom(sock, recv_buf, buf_size, 0, (struct sockaddr*)&from_addr, 
-        (socklen_t*)&addr_len, timeout);
+        (socklen_t*)&addr_len, time_left);
+    LOG_TRACE("from_addr %s:%d, time_left : %d", inet_ntoa(from_addr.sin_addr), 
+        ntohs(from_addr.sin_port), time_left);
     if (rc < 0)
     {
         LOG_ERROR("udp_sendrecv recv failed, rc: %d, errno: %d", rc, errno);
         ret = -3;
-        goto EXIT_LABEL;
+        goto EXIT_LABEL1;
     }
     buf_size = rc;
 
-EXIT_LABEL:
+EXIT_LABEL1:
     if (sock > 0)
     {
-        close(sock);
+        mt_close(sock);
         sock = -1;
+    }
+    // 释放连接
+    if (conn != NULL)
+    {
+        GetInstance<ConnectionCtrl>()->FreeConnection(conn, true);
     }
 
     return ret;
 }
-
 // tcp的发送和接收信息(长连接)
 int tcp_sendrecv(struct sockaddr_in* dst, void* pkg, int len, void* recv_buf, int& buf_size, int timeout, 
         TcpCheckMsgLenFunction func, bool is_keep)
@@ -178,14 +192,14 @@ int tcp_sendrecv(struct sockaddr_in* dst, void* pkg, int len, void* recv_buf, in
     int time_left = timeout;
     int sock = -1;
 
-    // 判断是否为长连接，暂时不处理长连接
-    IMtConnection* conn = s_tcp_get_conn(dst, sock, is_keep);
+    // 判断是否为长连接
+    IMtConnection* conn = s_get_conn(dst, sock, is_keep ? eTCP_KEEP_CLIENT_CONN : eTCP_SHORT_CLIENT_CONN);
     LOG_TRACE("current socket :%d, conn : %p", sock, conn);
     if ((conn == NULL) || (sock < 0))
     {
         LOG_ERROR("socket[%d] get conn failed, ret", sock);
         ret = -1;
-        goto EXIT_LABEL;
+        goto EXIT_LABEL2;
     }
 
     // 建立tcp链接
@@ -195,7 +209,7 @@ int tcp_sendrecv(struct sockaddr_in* dst, void* pkg, int len, void* recv_buf, in
     {
         LOG_ERROR("socket[%d] connect failed, ret[%d]", sock, rc);
         ret = -4;
-        goto EXIT_LABEL;
+        goto EXIT_LABEL2;
     }
 
     cost_time = GetInstance<Frame>()->GetLastClock() - start_ms;
@@ -206,7 +220,7 @@ int tcp_sendrecv(struct sockaddr_in* dst, void* pkg, int len, void* recv_buf, in
     {
         LOG_ERROR("socket[%d] send failed, ret[%d]", sock, rc);
         ret = -2;
-        goto EXIT_LABEL;
+        goto EXIT_LABEL2;
     }
 
     cost_time = GetInstance<Frame>()->GetLastClock() - start_ms;
@@ -217,18 +231,16 @@ int tcp_sendrecv(struct sockaddr_in* dst, void* pkg, int len, void* recv_buf, in
     {
         LOG_ERROR("socket[%d] recv failed, ret[%d]", sock, rc);
         ret = rc;
-        goto EXIT_LABEL;
+        goto EXIT_LABEL2;
     }
-
     // 短连接close
     if (!is_keep)
     {
         mt_close(sock);
     }
-
     ret = 0;
 
-EXIT_LABEL:
+EXIT_LABEL2:
     // 释放连接(条件 : 如果ret<0，则强制释放，否则判断是否为短连接)
     if (conn != NULL)
     {
@@ -239,7 +251,6 @@ EXIT_LABEL:
 
     return ret;
 }
-
 // 设置私有数据
 void mt_set_private(void *data)
 {

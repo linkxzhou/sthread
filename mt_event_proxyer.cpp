@@ -61,8 +61,6 @@ int Eventer::AddRef(void* args)
     int osfd = GetOsfd();
     int new_events = GetEvents();
 
-    LOG_TRACE("m_proxyer_ : %p, fd_ref : %p, osfd : %d", m_proxyer_, fd_ref, osfd);
-
     Eventer* old_ev = fd_ref->GetEventer();
     LOG_TRACE("AddRef old_ev : %p", old_ev);
     if ((old_ev != NULL) && (old_ev != this))
@@ -128,7 +126,7 @@ int EventProxyer::Init(int max_num)
         goto EXIT_LABEL;
     }
 
-    LOG_TRACE("m_fdrefs_ : %p", m_fdrefs_);
+    LOG_TRACE("m_fdrefs_ : %p, m_maxfd_ : %ld", m_fdrefs_, m_maxfd_);
 
     // 设置系统参数
     struct rlimit rlim;
@@ -139,6 +137,7 @@ int EventProxyer::Init(int max_num)
         {
             rlim.rlim_cur = rlim.rlim_max;
             setrlimit(RLIMIT_NOFILE, &rlim);
+
             // 重新设置句柄大小
             rlim.rlim_cur = m_maxfd_;
             rlim.rlim_max = m_maxfd_;
@@ -165,11 +164,12 @@ void EventProxyer::Close()
 bool EventProxyer::AddList(EventerList &list)
 {
     bool ret = true;
-    Eventer *ev = NULL, *ev_error = NULL;
+    // 保存最后一个出错的位置
+    Eventer *ev = NULL, *ev_error = NULL; 
 
     CPP_TAILQ_FOREACH(ev, &list, m_entry_)
     {
-        if (!AddNode(ev))
+        if (!AddEventer(ev))
         {
             LOG_ERROR("ev add failed, fd: %d", ev->GetOsfd());
             ev_error = ev;
@@ -190,7 +190,7 @@ EXIT_LABEL:
             {
                 break;
             }
-            DelNode(ev);
+            DelEventer(ev);
         }
     }
 
@@ -204,7 +204,7 @@ bool EventProxyer::DelList(EventerList &list)
 
     CPP_TAILQ_FOREACH(ev, &list, m_entry_)
     {
-        if (!DelNode(ev))  // failed also need continue, be sure ref count ok
+        if (!DelEventer(ev))
         {
             LOG_ERROR("ev del failed, fd: %d", ev->GetOsfd());
             ret = false;
@@ -214,46 +214,46 @@ bool EventProxyer::DelList(EventerList &list)
     return ret;
 }
 
-bool EventProxyer::AddNode(Eventer *node)
+bool EventProxyer::AddEventer(Eventer *ev)
 {
-    if (NULL == node)
+    if (NULL == ev)
     {
-        LOG_ERROR("node input invalid, %p", node);
+        LOG_ERROR("ev input invalid, %p", ev);
         return false;
     }
 
-    FdRef* item = GetFdRef(node->GetOsfd());
+    FdRef* item = GetFdRef(ev->GetOsfd());
     if (NULL == item)
     {
-        LOG_ERROR("fdref not find failed, fd: %d", node->GetOsfd());
+        LOG_ERROR("fdref not find failed, fd: %d", ev->GetOsfd());
         return false;
     }
     LOG_TRACE("item : %p", item);
-    int ret = node->AddRef(item);
+    int ret = ev->AddRef(item);
+
     if (ret < 0) 
     {
         LOG_ERROR("AddRef error, ret : %d", ret);
         return false;
     }
-
     return true;
 }
 
-bool EventProxyer::DelNode(Eventer* node)
+bool EventProxyer::DelEventer(Eventer* ev)
 {
-    if (NULL == node)
+    if (NULL == ev)
     {
-        LOG_ERROR("node input invalid, %p", node);
+        LOG_ERROR("ev input invalid, %p", ev);
         return false;
     }
 
-    FdRef* item = GetFdRef(node->GetOsfd());
+    FdRef* item = GetFdRef(ev->GetOsfd());
     if (NULL == item)
     {
-        LOG_ERROR("fdref not find, failed, fd: %d", node->GetOsfd());
+        LOG_ERROR("fdref not find, failed, fd: %d", ev->GetOsfd());
         return false;
     }
-    int ret = node->DelRef(item);
+    int ret = ev->DelRef(item);
     if (ret < 0) 
     {
         LOG_ERROR("DelRef error, ret : %d", ret);
@@ -331,7 +331,7 @@ bool EventProxyer::DelRef(int fd, int events, bool use_ref)
         return true;
     }
 
-    int rc = m_state_->ApiAddEvent(fd, new_events);
+    int rc = m_state_->ApiDelEvent(fd, new_events);
     if (rc < 0)
     {
         LOG_ERROR("del event failed, fd: %d", fd);
@@ -435,12 +435,12 @@ bool EventProxyer::Schedule(ThreadBase* thread, EventerList* ev_list,
 {
     LOG_CHECK_FUNCTION
     
+    // 当前的active thread调度
     if (NULL == thread)
     {
         LOG_ERROR("active thread NULL, eventer schedule failed");
         return false;
     }
-
     thread->ClearAllFd();
     if (ev_list)
     {

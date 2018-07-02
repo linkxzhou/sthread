@@ -21,7 +21,8 @@ class Frame
 
 public:
     Frame() : m_daemon_(NULL), m_primo_(NULL), m_cur_thread_(NULL),
-        m_thead_pool_(NULL), m_ev_proxyer_(NULL)
+        m_thead_pool_(NULL), m_ev_proxyer_(NULL), m_timer_(NULL),
+        m_last_clock_(0), m_wait_num_(0), m_timeout_(0), m_exitflag_(false)
     { 
         m_thead_pool_ = new ThreadPool();
         m_ev_proxyer_ = new EventProxyer();
@@ -33,7 +34,7 @@ public:
     	Destroy();
     }
 
-    void Destroy(void)
+    void Destroy()
     {
     	safe_delete(m_primo_);
 	    safe_delete(m_daemon_);
@@ -54,8 +55,8 @@ public:
 	        FreeThread(thread);
 	    }
 
-	    Thread* ut;
-	    CPP_TAILQ_FOREACH_SAFE(thread, &m_pend_list_, m_entry_, ut)
+	    Thread* tmp;
+	    CPP_TAILQ_FOREACH_SAFE(thread, &m_pend_list_, m_entry_, tmp)
 	    {
 	        CPP_TAILQ_REMOVE(&m_pend_list_, thread, m_entry_);
 	        FreeThread(thread);
@@ -95,13 +96,19 @@ public:
     {
         int ret = 0;
     	// 初始化EventerProxyer和线程池
-	    if ((m_ev_proxyer_->Init(max_thread_num) < 0) || 
-            !m_thead_pool_->InitialPool(max_thread_num))
+	    if (m_ev_proxyer_->Init(max_thread_num) < 0)
 	    {
-	        LOG_ERROR("init event or thread pool failed");
+	        LOG_ERROR("init event failed");
 	        ret = -1;
             goto Label_Destroy;
 	    }
+
+        if (!m_thead_pool_->InitialPool(max_thread_num))
+        {
+            LOG_ERROR("thread pool failed");
+	        ret = -10;
+            goto Label_Destroy;
+        }
 
 	    if (m_sleep_list_.HeapResize(max_thread_num * 2) < 0)
 	    {
@@ -144,10 +151,12 @@ public:
 	    m_last_clock_ = GetSystemMS();
 	    CPP_TAILQ_INIT(&m_io_list_);
 	    CPP_TAILQ_INIT(&m_pend_list_);
-        return ret;
 
 Label_Destroy:
-        Destroy();
+        if (ret != 0) 
+        {
+            Destroy();
+        }
 	    return ret;
     }
 
@@ -164,54 +173,44 @@ Label_Destroy:
 
     inline ThreadBase* GetActiveThread(void)
     {
-        return (ThreadBase*)m_cur_thread_;
+        return (ThreadBase *)m_cur_thread_;
     }
     
-    inline void ThreadSchedule(void)
+    inline int ThreadSchedule(void)
     {
     	Thread* thread = NULL;
         Thread* active_thead = m_cur_thread_;
 
 	    if (m_run_list_.empty())
 	    {
+            if (CPP_TAILQ_SIZE(&m_io_list_) <= 0 && 
+                CPP_TAILQ_SIZE(&m_pend_list_) <= 0 && m_exitflag_)
+            {
+                return -1;
+            }
 	        thread = (Thread *)DaemonThread();
-            LOG_TRACE("run DaemonThread, thread : %p", thread);
+            LOG_TRACE("run DaemonThread, thread : %p, m_io_list_ size : %d, m_pend_list_ size : %d", 
+                thread, CPP_TAILQ_SIZE(&m_io_list_), CPP_TAILQ_SIZE(&m_pend_list_));
 	    }
 	    else
 	    {
 	        thread = m_run_list_.front();
 	        RemoveRunable(thread);
-            LOG_TRACE("run front thread, m_run_list_ size ； %d", m_run_list_.size());
+            LOG_TRACE("run front thread, m_run_list_ size: %d", m_run_list_.size());
 	    }
 
 	    LOG_TRACE("SetActiveThread thread : %p", thread);
 	    SetActiveThread(thread);
 	    thread->SetState(eRUNNING);
-	    thread->RestoreContext((ThreadBase*)active_thead);
-    }
+	    thread->RestoreContext((ThreadBase *)active_thead);
 
-    virtual int GetTimeout()
-    {
-    	utime64_t now = GetLastClock();
-	    Thread* thread = dynamic_cast<Thread*>(m_sleep_list_.HeapTop());
-	    if (!thread)
-	    {
-	        return m_timeout_;
-	    }
-	    else if (thread->GetWakeupTime() < now)
-	    {
-	        return 0;
-	    }
-	    else
-	    {
-	        return (int)(thread->GetWakeupTime() - now);
-	    }
+        return 0;
     }
 
     inline void RemoveIoWait(ThreadBase* thread)
     {
     	thread->UnsetFlag(eIO_LIST);
-        LOG_TRACE("thread : %p, ", thread);
+        LOG_TRACE("[remove]thread : %p, m_io_list_ size : %d", thread, CPP_TAILQ_SIZE(&m_io_list_));
 	    CPP_TAILQ_REMOVE(&m_io_list_, (Thread*)thread, m_entry_);
 	    RemoveSleep(thread);
     }
@@ -239,27 +238,33 @@ Label_Destroy:
 
     inline void InsertSleep(ThreadBase* thread)
     {
-    	thread->SetFlag(ePEND_LIST);
-	    CPP_TAILQ_INSERT_TAIL(&m_pend_list_, (Thread*)thread, m_entry_);
-	    thread->SetState(ePENDING);
+    	thread->SetFlag(eSLEEP_LIST);
+	    m_sleep_list_.HeapPush(thread);
+	    thread->SetState(eSLEEPING);
     }
 
     inline void RemoveSleep(ThreadBase* thread)
     {
     	thread->UnsetFlag(eSLEEP_LIST);
 
-	    int rc = m_sleep_list_.HeapDelete(thread);
         // 如果HeapSize < 0 则不需要处理
-        LOG_TRACE("m_sleep_list_ size : %d", m_sleep_list_.HeapSize());
+        if (m_sleep_list_.HeapSize() <= 0)
+        {
+            return ;
+        }
+	    int rc = m_sleep_list_.HeapDelete(thread);
 	    if (rc < 0)
 	    {
-	        LOG_ERROR("remove heap failed , rc : %d", rc);
+	        LOG_ERROR("remove heap failed , rc : %d, size : %d", 
+                rc, m_sleep_list_.HeapSize());
 	    }
     }
 
     inline void InsertIoWait(ThreadBase* thread)
     {
     	thread->SetFlag(eIO_LIST);
+        LOG_TRACE("[insert]thread : %p, m_io_list_ size : %d", 
+            thread, CPP_TAILQ_SIZE(&m_io_list_));
 	    CPP_TAILQ_INSERT_TAIL(&m_io_list_, ((Thread*)thread), m_entry_);
 	    InsertSleep(thread);
     }
@@ -291,6 +296,11 @@ Label_Destroy:
         return m_wait_num_;
     }
 
+    inline void SetExitFlag(bool _exit)
+    {
+        m_exitflag_ = _exit;
+    }
+
     inline TimerCtrl* GetTimerCtrl()
     {
         return m_timer_;
@@ -301,9 +311,19 @@ Label_Destroy:
         return m_ev_proxyer_;
     }
 
+    inline ThreadPool* GetThreadPool()
+    {
+        return m_thead_pool_;
+    }
+
     inline ThreadBase* DaemonThread(void)
     {
         return m_daemon_;
+    }
+
+    inline ThreadBase* PrimoThread(void)
+    {
+        return m_primo_;
     }
 
     inline void CheckExpired()
@@ -331,7 +351,6 @@ Label_Destroy:
 	        }
 	        LOG_TRACE("thread = %p", thread);
 	        InsertRunable(thread);
-
 	        thread = dynamic_cast<Thread*>(m_sleep_list_.HeapTop());
 	    }
     }
@@ -339,6 +358,8 @@ Label_Destroy:
     inline void SetActiveThread(Thread* thread)
     {
         m_cur_thread_ = thread;
+        // 设置当前的g_mt_threadid
+        g_mt_threadid = m_cur_thread_->GetMtThreadid();
         LOG_TRACE("SetActiveThread : %p", m_cur_thread_);
     }
 
@@ -353,6 +374,24 @@ Label_Destroy:
         {
             m_ev_proxyer_->SetTimeout(timeout_ms);
         }
+    }
+
+    virtual int GetTimeout()
+    {
+        utime64_t now = GetLastClock();
+	    Thread* thread = dynamic_cast<Thread*>(m_sleep_list_.HeapTop());
+	    if (!thread)
+	    {
+	        return m_timeout_;
+	    }
+	    else if (thread->GetWakeupTime() < now)
+	    {
+	        return 0;
+	    }
+	    else
+	    {
+	        return (int)(thread->GetWakeupTime() - now);
+	    }
     }
 
 public:
@@ -382,7 +421,8 @@ public:
 
 	        if ((errno != EAGAIN) && (errno != EWOULDBLOCK))
 	        {
-	            LOG_ERROR("sendto failed, errno: %d", errno);
+	            LOG_ERROR("sendto failed, errno: %d, strerr : %s", 
+                    errno, strerror(errno));
 	            return -2;
 	        }
 
@@ -440,19 +480,21 @@ public:
 	        int wakeup_timeout = timeout + frame->GetLastClock();
 	        if (!(proxyer->Schedule(thread, NULL, ev, wakeup_timeout)))
 	        {
-	            LOG_DEBUG("eventer schedule failed, errno: %d", errno);
+	            LOG_ERROR("eventer schedule failed, errno: %d, strerr: %s", 
+                    errno, strerror(errno));
 	            GetInstance<ISessionEventerCtrl>()->FreeEventer(ev);
 	            return -2;
 	        }
 
 	        int n = mt_recvfrom(fd, buf, len, flags, from, fromlen);
+            LOG_TRACE("recvfrom return n: %d, buf: %s, fd: %d, len: %d, flags: %d", 
+	            n, buf, fd, len, flags);
 	        if (n < 0)
 	        {
 	            if (errno == EINTR)
 	            {
 	                continue;
 	            }
-
 	            if ((errno != EAGAIN) && (errno != EWOULDBLOCK))
 	            {
 	                LOG_ERROR("recvfrom failed, errno: %d", errno);
@@ -465,6 +507,7 @@ public:
 	        }
 	    }
     }
+
     static int connect(int fd, const struct sockaddr *addr, int addrlen, int timeout)
     {
     	Frame* frame = GetInstance<Frame>();
@@ -523,6 +566,7 @@ public:
 
 	    return n;
     }
+
     static ssize_t read(int fd, void *buf, size_t nbyte, int timeout)
     {
     	Frame* frame = GetInstance<Frame>();
@@ -685,7 +729,6 @@ public:
 	            {
 	                continue;
 	            }
-
 	            if ((errno != EAGAIN) && (errno != EWOULDBLOCK))
 	            {
 	                LOG_ERROR("recv failed, errno: %d, strerr: %s", errno, strerror(errno));
@@ -830,7 +873,7 @@ public:
     static ThreadBase* CreateThread(ThreadRunFunction entry, void *args, bool runable = true)
     {
     	Frame* frame = GetInstance<Frame>();
-    	Thread* thread = GetInstance<ThreadPool>()->AllocThread();
+    	Thread* thread = frame->GetThreadPool()->AllocThread();
 
 	    if (NULL == thread)
 	    {
@@ -845,7 +888,7 @@ public:
 
 	    return thread;
     }
-    static void DaemonRun(void* args)
+    static void DaemonRun(void *args)
     {
     	Frame* frame = GetInstance<Frame>();
     	Thread* daemon = (Thread *)(frame->DaemonThread());
@@ -858,15 +901,26 @@ public:
     	LOG_TRACE("daemon : %p", daemon);
 	    while (true)
 	    {
-	        proxyer->Dispatch();
+            daemon->SwitchContext();
+            proxyer->Dispatch();
 	        frame->SetLastClock(frame->GetSystemMS());
 	        LOG_TRACE("system ms :%ld", frame->GetSystemMS());
             // 将超时的转移状态
 	        frame->WakeupTimeout();
             // 检查过期的timer
 	        frame->CheckExpired();
-	        daemon->SwitchContext();
 	    }
+    }
+    // 表示可以中断运行，非Daemon方式
+    static void PrimoRun()
+    {
+        Frame* frame = GetInstance<Frame>();
+    	Thread* primo = (Thread *)(frame->PrimoThread());
+        Thread* daemon = (Thread *)(frame->DaemonThread());
+        frame->SetExitFlag(true);
+        frame->SetActiveThread(daemon);
+	    daemon->SetState(eRUNNING);
+	    daemon->RestoreContext((ThreadBase *)primo);
     }
 
 public:
@@ -880,6 +934,7 @@ public:
     int             m_wait_num_;
     TimerCtrl*      m_timer_;
     int             m_timeout_;
+    bool            m_exitflag_;
 };
 
 MTHREAD_NAMESPACE_END

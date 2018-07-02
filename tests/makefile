@@ -1,19 +1,20 @@
 INCLUDE = -I../include -I.
 SRC = ..
 GTEST_LIB = ./gtest/googletest/libgtest.a -lpthread
-FLAGS = -Wno-backslash-newline-escape -Wno-format -g
+FLAGS = -Wno-backslash-newline-escape -Wno-format -g -DTRACE
+COMM_SRC = $(SRC)/mt_utils.cpp
 
 hash_list:
-	g++ mt_hash_list_unittest.cpp $(INCLUDE) $(GTEST_LIB) $(FLAGS) -o mt_hash_list_unittest
+	g++ mt_hash_list_unittest.cpp $(COMM_SRC) $(INCLUDE) $(GTEST_LIB) $(FLAGS) -o mt_hash_list_unittest
 
 heap:
-	g++ mt_heap_unittest.cpp $(INCLUDE) $(GTEST_LIB) $(FLAGS) -o mt_heap_unittest
+	g++ mt_heap_unittest.cpp $(COMM_SRC) $(INCLUDE) $(GTEST_LIB) $(FLAGS) -o mt_heap_unittest
 
 heap_timer:
-	g++ mt_heap_timer_unittest.cpp $(INCLUDE) $(GTEST_LIB) $(FLAGS) -o mt_heap_timer_unittest
+	g++ mt_heap_timer_unittest.cpp $(COMM_SRC) $(INCLUDE) $(GTEST_LIB) $(FLAGS) -o mt_heap_timer_unittest
 
 buffer:
-	g++ mt_buffer_unittest.cpp $(SRC)/mt_buffer.cpp $(INCLUDE) $(GTEST_LIB) $(FLAGS) -o mt_buffer_unittest
+	g++ mt_buffer_unittest.cpp $(SRC)/mt_buffer.cpp $(COMM_SRC)  $(INCLUDE) $(GTEST_LIB) $(FLAGS) -o mt_buffer_unittest
 
 event:
 	g++ mt_event_unittest.cpp $(SRC)/mt_event_proxyer.cpp \
@@ -29,8 +30,8 @@ action:
 connection:
 	g++ mt_connection_unittest.cpp $(SRC)/mt_connection.cpp \
 	$(SRC)/mt_buffer.cpp $(SRC)/mt_event_proxyer.cpp \
-	$(SRC)/mt_sys_hook.cpp $(SRC)/mt_session.cpp \
-	$(INCLUDE) $(GTEST_LIB) $(FLAGS) -o mt_connection_unittest
+	$(SRC)/mt_sys_hook.cpp $(SRC)/mt_session.cpp $(SRC)/mt_thread.cpp \
+	$(INCLUDE) $(GTEST_LIB) ./libucontext.a $(FLAGS) -o mt_connection_unittest
 
 thread:
 	g++ mt_thread_unittest.cpp $(SRC)/mt_thread.cpp \
@@ -59,9 +60,10 @@ frame:
 ucontext:
 	gcc -c $(SRC)/mt_asm.S $(FLAGS) -o ./mt_asm.o
 	gcc -c $(SRC)/mt_ucontext.cpp $(INCLUDE) $(FLAGS) -o ./mt_ucontext.o
-	ar cr libucontext.a ./mt_asm.o ./mt_ucontext.o
-	g++ mt_ucontext_unittest.cpp \
-	$(INCLUDE) $(GTEST_LIB) ./libucontext.a $(FLAGS) -o mt_ucontext_unittest
+	gcc -c $(SRC)/mt_utils.cpp $(INCLUDE) $(FLAGS) -o ./mt_utils.o
+	ar cr libucontext.a ./mt_asm.o ./mt_ucontext.o ./mt_utils.o
+	g++ mt_ucontext_unittest.cpp $(INCLUDE) $(GTEST_LIB) ./libucontext.a \
+	$(FLAGS) -o mt_ucontext_unittest
 	rm -rf *.o
 
 server:
@@ -69,6 +71,9 @@ server:
 
 queue:
 	g++ queue_unittest.cpp $(FLAGS) -o queue_unittest
+
+singleton:
+	g++ mt_singleton_unittest.cpp $(GTEST_LIB) $(FLAGS) -o mt_singleton_unittest
 
 clean:
 	rm -rf *_unittest

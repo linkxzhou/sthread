@@ -73,14 +73,18 @@ template<class T>
 class CPP_TAILQ_HEAD
 {
 public:
-    CPP_TAILQ_HEAD() : tqh_first(NULL), tqh_last(NULL)
+    CPP_TAILQ_HEAD() : tqh_first(NULL), tqh_last(NULL), tqh_size(0)
     { }
-
+    
 public:
     T *tqh_first; /* first element */
     T **tqh_last; /* addr of last next element */
+    uint32_t tqh_size;
 };
 
+#define CPP_TAILQ_INCR(head)        ((head)->tqh_size++)
+#define CPP_TAILQ_DECR(head)        (((head)->tqh_size<=0)?0:((head)->tqh_size--))
+#define CPP_TAILQ_SIZE(head)        ((head)->tqh_size)
 #define CPP_TAILQ_FIRST(head)       ((head)->tqh_first)
 #define CPP_TAILQ_NEXT(elm, field)  ((elm)->field.tqe_next)
 #define CPP_TAILQ_EMPTY(head)       ((head)->tqh_first == NULL) // 判断队列是否为空
@@ -95,6 +99,7 @@ do {                                                \
         *(head1)->tqh_last = (head2)->tqh_first;    \
         (head2)->tqh_first->field.tqe_prev = (head1)->tqh_last; \
         (head1)->tqh_last = (head2)->tqh_last;      \
+        (head1)->tqh_size = (head1)->tqh_size + (head2)->tqh_size; \
         CPP_TAILQ_INIT((head2));                    \
     }                                               \
 } while (0)
@@ -109,14 +114,13 @@ do {                                                \
              (var) && ((tvar) = CPP_TAILQ_NEXT((var), field), 1);   \ 
              (var) = (tvar)) 
 
-// CPP_TAILQ_REMOVE(&m_io_list_, ((Thread*)thread), m_entry_);
-
 #define CPP_TAILQ_REMOVE(head, elm, field) do {             \
     if ((CPP_TAILQ_NEXT((elm), field)) != NULL)             \
         CPP_TAILQ_NEXT((elm), field)->field.tqe_prev =      \
             (elm)->field.tqe_prev;                          \
     else                                                    \
         (head)->tqh_last = (elm)->field.tqe_prev;           \
+    CPP_TAILQ_DECR(head);                                   \
     *(elm)->field.tqe_prev = CPP_TAILQ_NEXT((elm), field);  \
 } while (0)
 
@@ -125,6 +129,7 @@ do {                                                \
     (elm)->field.tqe_prev = (head)->tqh_last;               \
     *(head)->tqh_last = (elm);                              \
     (head)->tqh_last = &CPP_TAILQ_NEXT((elm), field);       \
+    CPP_TAILQ_INCR(head);                                   \
 } while (0)
 
 class Utils
@@ -357,7 +362,7 @@ ValueType* any_cast(Any* any)
         return &(static_cast<Any::Holder<ValueType>*>(any->m_content_)->m_held_);
     }
     
-    // TODO : 如果any为NULL或者其他，则用原始的static_cast方法
+    // 如果any为NULL或者其他，则用原始的static_cast方法
     return static_cast<ValueType*>(any);
 }
 
@@ -387,5 +392,9 @@ ValueType any_cast(const Any& any)
 }
 
 MTHREAD_NAMESPACE_END
+
+extern "C" unsigned long mt_get_threadid(void);
+
+extern "C" void mt_set_threadid(unsigned long threadid);
 
 #endif

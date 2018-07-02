@@ -36,8 +36,8 @@ TEST(FrameTest, frame_async)
     servaddr.sin_port = htons(4312);  ///服务器端口
     servaddr.sin_addr.s_addr = inet_addr("127.0.0.1");  ///服务器ip
 
-    TcpShortConn* conn = dynamic_cast<TcpShortConn*>(GetInstance<ConnectionCtrl>()->GetConnection(eTCP_SHORT_CONN, &servaddr));
-    LOG_TRACE("TcpKeepConn conn : %p", conn);
+    TcpShortClientConnection* conn = dynamic_cast<TcpShortClientConnection*>(GetInstance<ConnectionCtrl>()->GetConnection(eTCP_SHORT_CLIENT_CONN, &servaddr));
+    LOG_TRACE("TcpKeepClientConnection conn : %p", conn);
     if (NULL == conn)
     {
         LOG_ERROR("get connection failed, dst[%p]", &servaddr);
@@ -48,7 +48,7 @@ TEST(FrameTest, frame_async)
     LOG_TRACE("ev : %p", ev);
 
     int socket_fd = conn->CreateSocket();
-    proxyer->AddNode(ev);
+    proxyer->AddEventer(ev);
 
     // int nSendBuf = 20;// 设置为20字节
     // int ret = mt_setsockopt(socket_fd, SOL_SOCKET, SO_SNDBUF,(const char*)&nSendBuf, sizeof(int));

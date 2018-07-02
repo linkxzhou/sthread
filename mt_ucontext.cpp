@@ -5,8 +5,8 @@
 #include "mt_ucontext.h"
 
 // 全局的context
-static Context*	sContextInitial = NULL;
-static Context* sContextRuning = NULL;
+Context* sContextInitial = NULL;
+Context* sContextRuning = NULL;
 
 #if defined(__APPLE__)
 #if defined(__i386__)
@@ -150,23 +150,26 @@ int swapcontext(ucontext_t *oucp, const ucontext_t *ucp)
 
 int contextswitch(Context *from, Context *to)
 {
-    // LOG_TRACE("from : %p, to : %p", from, to);
+    LOG_TRACE("from : %p, to : %p, runing : %p, init : %p", 
+        from, to, sContextRuning, sContextInitial);
     if (sContextInitial == NULL)
     {
         sContextInitial = from;
+        LOG_TRACE("sContextInitial : %p", sContextInitial);
     }
     if (sContextRuning != to)
     {
         sContextRuning = to;
+        LOG_TRACE("sContextRuning : %p", sContextRuning);
     }
 	return swapcontext(&from->uc, &to->uc);
 }
 
 void contextexit()
 {
+    LOG_TRACE("exit ..., runing : %p, init : %p", sContextRuning, sContextInitial);
     if (sContextRuning != NULL && sContextInitial != NULL)
     {
         contextswitch(sContextRuning, sContextInitial);
     }
-    // LOG_TRACE("exit ...");
 }

@@ -46,8 +46,9 @@ typedef int (*RENAME_SYS_FUNC(setsockopt))(int socket, int level, int option_nam
 typedef int (*RENAME_SYS_FUNC(fcntl))(int fildes, int cmd, ...);
 typedef int (*RENAME_SYS_FUNC(ioctl))(int fildes, int request, ... );
 typedef unsigned int (*RENAME_SYS_FUNC(sleep))(unsigned int seconds);
+typedef int (*RENAME_SYS_FUNC(accept))(int socket, const struct sockaddr *address, socklen_t *address_len);
 
-// TODO : 暂时实现
+// TODO : 暂时不实现
 // typedef int (*RENAME_SYS_FUNC(poll))(struct pollfd fds[], nfds_t nfds, int timeout);
 
 typedef struct syscall_func_tab
@@ -65,8 +66,9 @@ typedef struct syscall_func_tab
     RENAME_SYS_FUNC(fcntl)      real_fcntl;
     RENAME_SYS_FUNC(ioctl)      real_ioctl;
     RENAME_SYS_FUNC(sleep)      real_sleep;
+    RENAME_SYS_FUNC(accept)     real_accept;
 
-    // TODO : 暂时实现
+    // TODO : 暂时不实现
     // RENAME_SYS_FUNC(poll)       real_poll;
 }SyscallFuncTab;
 
@@ -76,10 +78,6 @@ typedef struct hook_fd
     int     read_timeout_;
     int     write_timeout_;
 }HookFd;
-
-unsigned long mt_get_threadid(void);
-
-void mt_set_threadid(unsigned long threadid);
 
 HookFd* mt_find_fd(int fd);
 
@@ -112,6 +110,8 @@ int mt_setsockopt(int fd, int level, int option_name, const void *option_value, 
 int mt_fcntl(int fd, int cmd, ...);
 
 int mt_ioctl(int fd, uint64_t cmd, ...);
+
+int mt_accept(int fd, const struct sockaddr *address, socklen_t *address_len);
 
 extern SyscallFuncTab   g_syscall_tab;
 extern int              g_hook_flag;

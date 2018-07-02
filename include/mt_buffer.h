@@ -8,6 +8,8 @@
 #include "mt_utils.h"
 #include "mt_hash_list.h"
 
+#define MT_BUFFER_MAP_SIZE  1000
+
 MTHREAD_NAMESPACE_BEGIN
 
 class IMtMsgBuffer;
@@ -15,7 +17,6 @@ class IMtMsgBuffer;
 typedef CPP_TAILQ_ENTRY<IMtMsgBuffer>  IMsgBufferLink;
 typedef CPP_TAILQ_HEAD<IMtMsgBuffer>   IMsgBufferQueue;
 
-// message的buffer空间
 class IMtMsgBuffer
 {
 public:
@@ -79,11 +80,13 @@ public:
     
 private:
     int   m_max_len_;
+    void* m_msg_buff_;
+    
     int   m_msg_len_;
     eBuffType   m_buf_type_;
     int   m_recv_len_;
     int   m_send_len_;
-    void* m_msg_buff_;
+    
 
 public:
     IMsgBufferLink m_entry_;

@@ -9,6 +9,8 @@
 #include "mt_buffer.h"
 #include "mt_event_proxyer.h"
 #include "mt_connection.h"
+#include "mt_c.h"
+#include "mt_frame.h"
 
 MTHREAD_NAMESPACE_USING
 
@@ -20,8 +22,21 @@ public:
     { 
         return -1; 
     }
-    IMessage() { }
-    virtual ~IMessage() { }
+    IMessage() 
+    { }
+    virtual ~IMessage() 
+    { }
+    inline void SetDataPtr(void *data)
+    {
+        m_data_ = data;
+    }
+    inline void* GetDataPtr()
+    {
+        return m_data_;
+    }
+    
+private:
+    void *m_data_;
 };
 
 // IMtAction继承ISession
@@ -35,81 +50,61 @@ public:
     {
         m_buff_size_ = buff_size;
     }
-    int GetMsgBufferSize()
+    inline int GetMsgBufferSize()
     {
         return (m_buff_size_ > 0) ? m_buff_size_ : 65535;
     }
-    void SetSessionName(int name)
-    {
-        m_session_name_ = name;
-    }
-    int GetSessionName()
-    {
-        return m_session_name_;
-    }
-    void SetProtoType(eMultiProto proto)
-    {
-        m_proto_ = proto;
-    }
-    eMultiProto GetProtoType()
-    {
-        return m_proto_;
-    }
-    void SetConnType(eConnType type)
+    inline void SetConnType(eConnType type)
     {
         m_conn_type_ = type;
     }
-    eConnType GetConnType()
+    inline eConnType GetConnType()
     {
         return m_conn_type_;
     }
-    void SetErrno(eMultiError err)
+    inline void SetErrno(eActionError err)
     {
         m_errno_ = err;
     }
-    eMultiError GetErrno()
+    inline eActionError GetErrno()
     {
         return m_errno_;
     }
-    void SetCost(int cost)
+    inline void SetCost(int cost)
     {
         m_time_cost_ = cost;
     }
-    int GetCost()
+    inline int GetCost()
     {
         return m_time_cost_;
     }
-    void SetMsgFlag(eMultiState flag)
+    inline void SetMsgFlag(eActionState flag)
     {
         m_flag_ = flag;
     }
-    eMultiState GetMsgFlag()
+    inline eActionState GetMsgFlag()
     {
         return m_flag_;
     }
-    void SetIMessagePtr(IMessage* msg)
+    inline void SetIMessagePtr(IMessage* msg)
     {
         m_msg_ = msg;
     }
-    IMessage* GetIMessagePtr()
+    inline IMessage* GetIMessagePtr()
     {
         return m_msg_;
     }
-    void SetIConnection(IMtConnection* conn)
+    inline void SetIConnection(IMtConnection* conn)
     {
         m_conn_ = conn;
     }
-    IMtConnection* GetIConnection()
+    inline IMtConnection* GetIConnection()
     {
         return m_conn_;
     }
-    void* GetOwnerThread()
+    inline ThreadBase* GetOwnerThread()
     {
         return m_thread_;
-    }
-    void SetOwnerThread(ThreadBase* thread)
-    {
-        m_thread_ = thread;
     }
 
     Eventer* GetEventer();
@@ -142,21 +137,19 @@ public:
     virtual int DoError();
 
 protected:
-    eMultiState         m_flag_;
-    eMultiProto         m_proto_;
+    eActionState        m_flag_;
     eConnType           m_conn_type_;
-    eMultiError         m_errno_;
+    eActionError        m_errno_;
 
     int                 m_time_cost_;
     int                 m_buff_size_;
-    int                 m_session_name_;
 
-    IMessage*           m_msg_;
-    IMtConnection*      m_conn_;
-    ThreadBase*         m_thread_;
+    IMessage            *m_msg_;
+    IMtConnection       *m_conn_;
+    ThreadBase          *m_thread_;
 };
 
-class IMtActionFrame
+class IMtActionClient
 {
     typedef std::vector<IMtAction*> IMtActionList;
 
@@ -164,6 +157,7 @@ public:
     inline void Add(IMtAction* action)
     {
         m_action_list_.push_back(action);
+        LOG_TRACE("m_action_list_ size : %d", m_action_list_.size());
     }
 
     int SendRecv(int timeout);
@@ -182,6 +176,52 @@ public:
 
 private:
     IMtActionList m_action_list_;
+};
+
+class IMtActionServer
+{
+public:
+    IMtActionServer() : m_conn_(NULL), 
+        m_action_(NULL), m_accept_timeout_(50)
+    { }
+
+    inline void SetIMtAction(IMtAction* action)
+    {
+        m_action_ = action;
+    }
+
+    inline IMtActionBase* GetIMtActon()
+    {
+        return m_action_;
+    }
+
+    inline IMtConnection* GetConnection()
+    {
+        return m_conn_;
+    }
+
+    inline int GetAcceptTimeout()
+    {
+        return m_accept_timeout_;
+    }
+
+    inline void SetLocalAddr(struct sockaddr_in addr)
+    {
+        memcpy(&m_localaddr_, &addr, sizeof(addr));
+    }
+    
+    int NewSock();
+
+    int Accept(int timeout);
+
+public:
+    static void ListenFd(void *args);
+
+private:
+    IMtAction *m_action_;
+    struct sockaddr_in m_localaddr_;
+    IMtConnection *m_conn_;
+    int m_accept_timeout_;
 };
 
 #endif

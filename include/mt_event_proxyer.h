@@ -20,6 +20,9 @@
 #include "mt_buffer.h"
 #include "mt_sys_hook.h"
 
+// 设置default句柄的大小
+#define DEFAULT_MAX_FD_NUM  1000000
+
 MTHREAD_NAMESPACE_BEGIN
 
 class Eventer;
@@ -52,60 +55,60 @@ public:
     { 
         m_events_ |= MT_READABLE; 
     }
-    void EnableOutput() 
+    inline void EnableOutput() 
     { 
         m_events_ |= MT_WRITABLE; 
     }
-    void DisableInput() 
+    inline void DisableInput() 
     { 
         m_events_ &= ~MT_READABLE; 
     }
-    void DisableOutput() 
+    inline void DisableOutput() 
     { 
         m_events_ &= ~MT_WRITABLE; 
     }
-    int GetOsfd() 
+    inline int GetOsfd() 
     { 
         return m_fd_; 
     }
-    void SetOsfd(int fd) 
+    inline void SetOsfd(int fd) 
     { 
         m_fd_ = fd; 
     }
-    int GetEvents() 
+    inline int GetEvents() 
     { 
         return m_events_; 
     }
-    void SetRecvEvents(int revents) 
+    inline void SetRecvEvents(int revents) 
     { 
         m_revents_ = revents; 
     }
-    int GetRecvEvents() 
+    inline int GetRecvEvents() 
     { 
         return m_revents_; 
     }
-    void SetEventerType(int type)
+    inline void SetEventerType(int type)
     {
         m_type_ = type;
     }
-    int GetEventerType() 
+    inline int GetEventerType() 
     { 
         return m_type_; 
     }
-    void SetOwnerThread(ThreadBase* thread) 
+    inline void SetOwnerThread(ThreadBase* thread) 
     { 
         LOG_TRACE("ev : %p, thread : %p", this, thread);
         m_thread_ = thread; 
     }
-    ThreadBase* GetOwnerThread()
+    inline ThreadBase* GetOwnerThread()
     { 
         return m_thread_; 
     }
-    void SetOwnerProxyer(EventProxyer* proxyer)
+    inline void SetOwnerProxyer(EventProxyer* proxyer)
     {
         m_proxyer_ = proxyer;
     }
-    EventProxyer* GetOwnerProxyer()
+    inline EventProxyer* GetOwnerProxyer()
     {
         return m_proxyer_;
     }
@@ -136,7 +139,8 @@ public:
 class FdRef
 {
 public:
-    FdRef() : m_wr_ref_(0), m_rd_ref_(0), m_events_(0), m_ev_(NULL)
+    FdRef() : m_wr_ref_(0), m_rd_ref_(0), m_events_(0), 
+        m_ev_(NULL)
     { }
     ~FdRef()
     { }
@@ -218,8 +222,8 @@ public:
     void Close();
     bool AddList(EventerList& fdset);
     bool DelList(EventerList& fdset);
-    bool AddNode(Eventer* ev);
-    bool DelNode(Eventer* ev);
+    bool AddEventer(Eventer* ev);
+    bool DelEventer(Eventer* ev);
 
     void Dispatch(void);
     bool AddFd(int fd, int new_events);
@@ -354,6 +358,8 @@ public:
         return m_stack_;
     }
 
+    virtual void Run(void) = 0;
+
     virtual int IoWaitToRunable() = 0;
 
     virtual void RemoveIoWait() = 0;
@@ -362,7 +368,7 @@ public:
 
     virtual void InsertRunable() = 0;
 
-    virtual void SwitchContext() = 0;
+    virtual int SwitchContext() = 0;
 
     virtual void RestoreContext(ThreadBase* switch_thread) = 0;
 
@@ -373,6 +379,16 @@ public:
     virtual void AddFdList(EventerList* fdset) = 0;
 
     virtual EventerList& GetFdSet() = 0;
+
+    inline unsigned long GetMtThreadid()
+    {
+        if (NULL == m_stack_)
+        {
+            return -1;
+        }
+
+        return m_stack_->m_id_;
+    }
 
 protected:
     eThreadState m_state_;
@@ -390,7 +406,7 @@ protected:
 class IMtConnection
 {
 public:
-    IMtConnection() : m_type_(eCONN_UNDEF), m_action_(NULL), 
+    IMtConnection() : m_type_(eUNDEF_CONN), m_action_(NULL), 
         m_osfd_(-1), m_msg_buff_(NULL), m_ev_(NULL)
     { }
 
@@ -415,45 +431,45 @@ public:
 
     virtual void ResetEventer();
 
-    eConnType GetConnType()
+    inline eConnType GetConnType()
     {
         return m_type_;
     }
 
     // attach的action
-    void SetIMtActon(IMtActionBase* action)
+    inline void SetIMtActon(IMtActionBase* action)
     {
         m_action_ = action;
     }
 
-    IMtActionBase* GetIMtActon()
+    inline IMtActionBase* GetIMtActon()
     {
         return m_action_;
     }
 
     // 设置message的buffer
-    void SetIMtMsgBuffer(IMtMsgBuffer* msg_buff)
+    inline void SetIMtMsgBuffer(IMtMsgBuffer* msg_buff)
     {
         m_msg_buff_ = msg_buff;
     }
 
     // 获取message的buffer
-    IMtMsgBuffer* GetIMtMsgBuffer()
+    inline IMtMsgBuffer* GetIMtMsgBuffer()
     {
         return m_msg_buff_;
     }
 
-    void SetEventer(Eventer *ev)
+    inline void SetEventer(Eventer *ev)
     {
         m_ev_ = ev;
     }
 
-    Eventer* GetEventer()
+    inline Eventer* GetEventer()
     {
         return m_ev_;
     }
 
-    int CloseSocket()
+    inline int CloseSocket()
     {
         if (m_osfd_ < 0)
         {
@@ -466,12 +482,28 @@ public:
         return 0;
     }
 
-    int GetOsfd()
+    inline int GetOsfd()
     {
         return m_osfd_;
     }
 
-    void SetMsgDstAddr(struct sockaddr_in* dst)
+    inline void SetOsfd(int osfd)
+    { 
+        m_osfd_ = osfd;
+        LOG_TRACE("m_ev_ : %p", m_ev_);
+        if (NULL != m_ev_)
+        {
+            m_ev_->SetOsfd(m_osfd_);
+            m_ev_->EnableInput();
+            m_ev_->EnableOutput();
+        }
+        else
+        {
+            LOG_WARN("m_ev_ is NULL, cannot set m_osfd_ : %d", m_osfd_);
+        }
+    }
+
+    inline void SetMsgDstAddr(struct sockaddr_in* dst)
     {
         memcpy(&m_dst_addr_, dst, sizeof(m_dst_addr_));
     }
@@ -484,6 +516,11 @@ public:
     virtual int RecvData() = 0;
 
     virtual int OpenConnect()
+    {
+        return 0;
+    }
+    // server模式才需要重载Accept
+    virtual int Accept(struct sockaddr *client_addr, socklen_t *client_addr_len)
     {
         return 0;
     }

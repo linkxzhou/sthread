@@ -49,7 +49,7 @@ TEST(EventerTest, event)
     ev->EnableInput();
     ev->SetOwnerThread(m_primo_);
     ev->SetOwnerProxyer(proxyer);
-    proxyer->AddNode(ev);
+    proxyer->AddEventer(ev);
 
     int ret = ::connect(socket_fd, (struct sockaddr *)&servaddr, sizeof(servaddr));
     LOG_TRACE("socket_fd : %d, ret : %d, [errno : %d, strerror : %s]", socket_fd,
@@ -59,7 +59,7 @@ TEST(EventerTest, event)
     proxyer->Dispatch();
     ev->EnableOutput();
     ev->DisableInput();
-    proxyer->AddNode(ev);
+    proxyer->AddEventer(ev);
     LOG_TRACE("connect ok ... ");
 
     do {
@@ -71,7 +71,7 @@ TEST(EventerTest, event)
 	    	socket_fd, ret, buf1, errno, strerror(errno));
         ev->EnableInput();
         ev->DisableOutput();
-        proxyer->AddNode(ev);
+        proxyer->AddEventer(ev);
 	    proxyer->Dispatch();
 	    ret = ::recv(socket_fd, buf2, sizeof(buf2), 0);
         LOG_TRACE("[recv]socket_fd : %d, ret : %d, buf : %s, [errno : %d, strerror : %s]", 

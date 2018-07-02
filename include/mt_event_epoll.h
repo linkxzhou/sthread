@@ -92,7 +92,7 @@ public:
         return 0;
     }
 
-    void ApiDelEvent(int fd, int delmask) 
+    int ApiDelEvent(int fd, int delmask) 
     {
         struct epoll_event ee = {0}; /* avoid valgrind warning */
         int mask = m_file_events_[fd].mask & (~delmask);
@@ -104,14 +104,22 @@ public:
 
         if (mask != MT_NONE) 
         {
-            epoll_ctl(m_epfd_, EPOLL_CTL_MOD, fd, &ee);
+            if (epoll_ctl(m_epfd_, EPOLL_CTL_MOD, fd, &ee) == -1)
+            {
+                return -1;
+            }
         } 
         else 
         {
             /* Note, Kernel < 2.6.9 requires a non null event pointer even for
              * EPOLL_CTL_DEL. */
-            epoll_ctl(m_epfd_, EPOLL_CTL_DEL, fd, &ee);
+            if (epoll_ctl(m_epfd_, EPOLL_CTL_DEL, fd, &ee) == -1)
+            {
+                return -1;
+            }
         }
+
+        return 0;
     }
 
     int ApiPoll(struct timeval *tvp) 

@@ -149,7 +149,8 @@ void Receive(int sock, int availBytes)
 	// Write buf to the receive queue.
 	Enqueue(buf_, bytes);
     static const char send_buf[] = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: 0\r\n\r\n";
-	int r = send(sock, send_buf, strlen(send_buf), 0);
+	::sleep(1); // 延迟1s返回
+    int r = send(sock, send_buf, strlen(send_buf), 0);
     std::cout << "[INFO]send : " << send_buf << std::endl;
 }
 

@@ -3,6 +3,9 @@
 #include <stdlib.h>
 #include "queue.h"
 
+// 边界对齐
+#define MT_ALGIN(size)      ((size) + (8-(size)%8))
+
 typedef struct element_s 
 {
     int data;
@@ -39,6 +42,13 @@ int main()
     // 输出队列尾部元素
     p = TAILQ_LAST(&queueHead, queue_s);
     fprintf(stdout, "%d\n", p->data);
+
+    fprintf(stdout, "v : %d\n", MT_ALGIN(100));
+    fprintf(stdout, "v : %d\n", MT_ALGIN(1));
+    fprintf(stdout, "v : %d\n", MT_ALGIN(189));
+    fprintf(stdout, "v : %d\n", MT_ALGIN(200898));
+    fprintf(stdout, "v : %d\n", MT_ALGIN(5));
+    fprintf(stdout, "v : %d\n", MT_ALGIN(800));
 
     return 0;
 }

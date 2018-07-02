@@ -122,7 +122,7 @@ typedef struct ustack
     int  m_vaddr_size_;
     uchar *m_vaddr_;
     void *m_private_;
-    struct Context m_context_;
+    Context m_context_;
     uint m_id_;
 } Stack;
 

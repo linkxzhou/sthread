@@ -3,64 +3,10 @@
 
 MTHREAD_NAMESPACE_USING;
 
-#if MT_UTHREAD
-
-extern "C" int save_context(jmp_buf jbf);
-extern "C" void restore_context(jmp_buf jbf, int ret);
-extern "C" void replace_esp(jmp_buf jbf, void* esp);
-
-// =============== UThread调用 ===============
-void UThread::CleanState()
+// Scheduler调度系统
+int Scheduler::ThreadSchedule()
 {
-    CPP_TAILQ_INIT(&m_fdset_);
-    CPP_TAILQ_INIT(&m_sub_list_);
-    m_flag_ = eNOT_INLIST;
-    m_type_ = eNORMAL;
-    m_state_ = eINITIAL;
-    m_runfunc_ = NULL;
-    m_args_ = NULL;
-    m_parent_ = NULL;
-}
-
-void UThread::AddSubThread(UThread* sub)
-{
-    if (!sub->HasFlag(eSUB_LIST))
-    {
-        CPP_TAILQ_INSERT_TAIL(&m_sub_list_, sub, m_sub_entry_);
-        sub->m_parent_ = this;
-    }
-
-    sub->SetFlag(eSUB_LIST);
-}
-
-// thread睡眠ms
-void Thread::Sleep(int ms)
-{
-    utime64_t now = m_scheduler_->GetTime();
-    m_wakeup_time_ = now + ms;
-    LOG_TRACE("now :%ld, m_wakeup_time_ :%ld", now, m_wakeup_time_);
-
-    if (save_context(m_jmpbuf_) == 0)
-    {
-        LOG_TRACE("Sleep doing");
-        m_scheduler_->Sleep();
-    }
-}
-
-void Thread::Wait()
-{
-    if (save_context(m_jmpbuf_) == 0)
-    {
-        m_scheduler_->Pend(); // 线程组塞
-    }
-}
-
-#endif
-
-// Scheduler静态调度系统
-void Scheduler::ThreadSchedule()
-{
-    GetInstance<Frame>()->ThreadSchedule();
+    return GetInstance<Frame>()->ThreadSchedule();
 }
 utime64_t Scheduler::GetTime()
 {
@@ -75,7 +21,8 @@ void Scheduler::Sleep()
         return;
     }
     GetInstance<Frame>()->InsertSleep(thread);
-    ThreadSchedule();
+
+    Scheduler::ThreadSchedule();
 }
 void Scheduler::Pend()
 {
@@ -86,7 +33,8 @@ void Scheduler::Pend()
         return;
     }
     GetInstance<Frame>()->InsertPend(thread);
-    ThreadSchedule();
+    
+    Scheduler::ThreadSchedule();
 }
 void Scheduler::Unpend(Thread* pthread)
 {
@@ -97,7 +45,8 @@ void Scheduler::Unpend(Thread* pthread)
         return;
     }
     GetInstance<Frame>()->RemovePend(thread);
-    GetInstance<Frame>()->InsertRunable(thread);
+    
+    Scheduler::InsertRunable(thread);
 }
 void Scheduler::Reclaim()
 {
@@ -139,8 +88,8 @@ int Scheduler::IoWaitToRunable(Thread* thread)
         LOG_ERROR("active thread NULL (%p)", thread);
         return -1;
     }
-    GetInstance<Frame>()->RemoveIoWait(thread);
-    GetInstance<Frame>()->InsertRunable(thread);
+    Scheduler::RemoveIoWait(thread);
+    Scheduler::InsertRunable(thread);
     return 0;
 }
 int Scheduler::RemoveEvents(int fd, int events)
@@ -224,7 +173,6 @@ void Thread::FreeStack()
 
 void Thread::InitContext()
 {
-    // LOG_TRACE("init context, m_stack_ : %p", m_stack_);
     uint tx, ty;
 	ulong tz = (ulong)m_stack_;
 	ty = tz;
@@ -241,12 +189,16 @@ void Thread::InitContext()
 void Thread::RestoreContext(ThreadBase* switch_thread)
 {
     LOG_TRACE("this : %p, switch_thread : %p", this, switch_thread);
+    // 切换的线程相同
+    if (switch_thread == this)
+    {
+        return ;
+    }
     LOG_TRACE("================= run thread =================[%p]", this);
     contextswitch(&(((Thread*)switch_thread)->GetStack()->m_context_), 
         &(this->GetStack()->m_context_));
-    // TODO :
-    // GetInstance<Frame>()->GetEventProxyer()->Dispatch();
-    // LOG_TRACE("Thread Dispatch ...");
+    GetInstance<Frame>()->GetEventProxyer()->Dispatch();
+    LOG_TRACE("Thread Dispatch ...[%p]", this);
 }
 
 void Thread::Run()
@@ -284,21 +236,6 @@ void Thread::WakeupParent()
     }
 }
 
-bool Thread::HasNoSubThread()
-{
-    return CPP_TAILQ_EMPTY(&m_sub_list_);
-}
-
-void Thread::RemoveSubThread(Thread* sub)
-{
-    if (sub->HasFlag(eSUB_LIST))
-    {
-        CPP_TAILQ_REMOVE(&m_sub_list_, sub, m_sub_entry_);
-        sub->m_parent_ = NULL;
-    }
-    sub->UnsetFlag(eSUB_LIST);
-}
-
 // 用户态现场池
 unsigned int ThreadPool::s_default_thread_num_ = DEFAULT_THREAD_NUM;
 unsigned int ThreadPool::s_default_stack_size_ = DEFAULT_STACK_SIZE;
@@ -323,8 +260,10 @@ bool ThreadPool::InitialPool(int max_num)
         m_free_list_.push(thread);
     }
 
+    LOG_TRACE("max_num : %d, size : %d", max_num, m_free_list_.size());
+
     m_total_num_ = m_free_list_.size();
-    m_max_num_  = max_num;
+    m_max_num_ = max_num;
     m_use_num_ = 0;
     if (m_total_num_ <= 0)
     {
@@ -346,7 +285,6 @@ void ThreadPool::DestroyPool()
         thread->Destroy();
         safe_delete(thread);
     }
-
     m_total_num_ = 0;
     m_use_num_ = 0;
 }
@@ -360,7 +298,6 @@ Thread* ThreadPool::AllocThread()
         m_free_list_.pop();
         thread->UnsetFlag(eFREE_LIST);
         m_use_num_++;
-
         return thread;
     }
     if (m_total_num_ > m_max_num_)
@@ -369,7 +306,6 @@ Thread* ThreadPool::AllocThread()
             m_total_num_, m_max_num_);
         return NULL;
     }
-
     thread = new Thread();
     if ((NULL == thread) || (false == thread->Initial()))
     {
@@ -386,14 +322,13 @@ Thread* ThreadPool::AllocThread()
 
     return thread;
 }
-
 void ThreadPool::FreeThread(Thread* thread)
 {
     thread->Reset();
     m_use_num_--;
     m_free_list_.push(thread);
     thread->SetFlag(eFREE_LIST);
-
+    
     // 对于预分配大于的情况下需要删除
     unsigned int free_num = m_free_list_.size();
     if ((free_num > s_default_thread_num_) && (free_num > 1))

@@ -39,25 +39,31 @@ static void taskstart(uint y, uint x)
     while (t->m_id_ == 1)
     {
         contextswitch(&t1->m_context_, &t2->m_context_);
-        LOG_TRACE("id = 1 ... ");
-        char buf[10240] = {0};
+        LOG_TRACE("id = 1 ... begin : %d", t->m_id_);
+        char buf[1024] = {0};
         if (++c >= 10)
         {
             LOG_TRACE("c : %d", c);
             contextexit();
         }
+        LOG_TRACE("id = 1 ... end : %d", t->m_id_);
     }
+
+    LOG_TRACE("out ...");
 
     while (t->m_id_ == 2)
     {
         contextswitch(&t2->m_context_, &t1->m_context_);
-        LOG_TRACE("id = 2 ... ");
+        LOG_TRACE("id = 2 ... begin : %d", t->m_id_);
         if (++c >= 10)
         {
             LOG_TRACE("c : %d", c);
             contextexit();
         }
+        LOG_TRACE("id = 2 ... end : %d", t->m_id_);
     }
+
+    contextexit();
 }
 
 TEST(ucontextTest, ucontext)
@@ -84,10 +90,10 @@ TEST(ucontextTest, ucontext)
 	z >>= 16;
 	x = z>>16;
     int r = getcontext(&t1->m_context_.uc);
-    LOG_TRACE("r : %d", r);
+    LOG_TRACE("r : %ld", r);
 	if (r < 0)
     {
-		LOG_ERROR("getcontext error");
+		LOG_TRACE("getcontext error");
 		return ;
 	}
 	makecontext(&t1->m_context_.uc, (void(*)())taskstart, 2, y, x);
@@ -111,13 +117,14 @@ TEST(ucontextTest, ucontext)
 	x = z>>16;
 	if (getcontext(&t2->m_context_.uc) < 0)
     {
-		LOG_ERROR("getcontext error");
+		LOG_TRACE("getcontext error");
 		return ;
 	}
 	makecontext(&t2->m_context_.uc, (void(*)())taskstart, 2, y, x);
 
-    LOG_TRACE("t1 : %p, t2 : %p, t : %p", t1, t2, &taskschedcontext);
-    contextswitch(&taskschedcontext, &t1->m_context_);
+    LOG_TRACE("t1 : %p, t2 : %p, t : %p, t1 context : %p", 
+        t1, t2, &taskschedcontext, &(t1->m_context_));
+    contextswitch(&taskschedcontext, &(t1->m_context_));
     LOG_TRACE("end ...");
 }
 

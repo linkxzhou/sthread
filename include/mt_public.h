@@ -27,8 +27,6 @@
 #define mt_min(x,y) (((x)<(y))?(x):(y))
 #define mt_max(x,y) (((x)<(y))?(x):(y))
 
-#define DEFAULT_MAX_FD_NUM  1000000
-
 // 安全DELETE
 #define safe_delete(ptr) do {               \
     if (ptr != NULL) delete ptr;            \
@@ -65,32 +63,35 @@
 #define MT_FD_FLG_NOUSE     0x0
 #define MT_FD_FLG_INUSE     0x1
 #define MT_FD_FLG_UNBLOCK   0x2
+#define MT_LISTEN_LEN       1024
+
+// 边界对齐
+#define MT_ALGIN(size)      ((size) + (8-(size)%8))
 
 // 回调函数
 typedef void (*ThreadRunFunction)(void*);
 typedef unsigned int (*TcpCheckMsgLenFunction)(void* buf, int len);
 
-// 定义打印日志数据
-#define TRACE 1
-
 #if TRACE
-#define LOG_TRACE(fmt, args...) fprintf(stdout, (char*)"[TRACE][%-10s][%-4d][%-10s]"fmt"\n", __FILE__, __LINE__, __FUNCTION__, ##args);
-#define LOG_DEBUG(fmt, args...) fprintf(stdout, (char*)"[DEBUG][%-10s][%-4d][%-10s]"fmt"\n", __FILE__, __LINE__, __FUNCTION__, ##args);
-#define LOG_WARN(fmt, args...) fprintf(stdout, (char*)"[WARN][%-10s][%-4d][%-10s]"fmt"\n", __FILE__, __LINE__, __FUNCTION__, ##args);
-#define LOG_ERROR(fmt, args...) fprintf(stdout, (char*)"[ERROR][%-10s][%-4d][%-10s]"fmt"\n", __FILE__, __LINE__, __FUNCTION__, ##args);
-#define LOG_CHECK_FUNCTION	fprintf(stdout, (char*)"[TRACE][%-10s][%-4d][%-10s] check function ...\n", __FILE__, __LINE__, __FUNCTION__);
+#define LOG_TRACE(fmt, args...) fprintf(stdout, (char*)"[TRACE][%ld][%ld][%-10s][%-4d][%-10s]"fmt"\n", pthread_self(), mt_get_threadid(), __FILE__, __LINE__, __FUNCTION__, ##args);
+#define LOG_DEBUG(fmt, args...) fprintf(stdout, (char*)"[DEBUG][%ld][%ld][%-10s][%-4d][%-10s]"fmt"\n", pthread_self(), mt_get_threadid(), __FILE__, __LINE__, __FUNCTION__, ##args);
+#define LOG_WARN(fmt, args...) fprintf(stdout, (char*)"[WARN][%ld][%ld][%-10s][%-4d][%-10s]"fmt"\n", pthread_self(), mt_get_threadid(), __FILE__, __LINE__, __FUNCTION__, ##args);
+#define LOG_ERROR(fmt, args...) fprintf(stdout, (char*)"[ERROR][%ld][%ld][%-10s][%-4d][%-10s]"fmt"\n", pthread_self(), mt_get_threadid(), __FILE__, __LINE__, __FUNCTION__, ##args);
+#define LOG_CHECK_FUNCTION	fprintf(stdout, (char*)"[TRACE][%ld][%ld][%-10s][%-4d][%-10s] check function ...\n", pthread_self(), mt_get_threadid(), __FILE__, __LINE__, __FUNCTION__);
 #elif DEBUG
 #define LOG_TRACE(fmt, args...)
-#define LOG_DEBUG(fmt, args...) fprintf(stdout, (char*)"[DEBUG][%-10s][%-4d][%-10s]"fmt"\n", __FILE__, __LINE__, __FUNCTION__, ##args);
-#define LOG_WARN(fmt, args...) fprintf(stdout, (char*)"[WARN][%-10s][%-4d][%-10s]"fmt"\n", __FILE__, __LINE__, __FUNCTION__, ##args);
-#define LOG_ERROR(fmt, args...) fprintf(stdout, (char*)"[ERROR][%-10s][%-4d][%-10s]"fmt"\n", __FILE__, __LINE__, __FUNCTION__, ##args);
+#define LOG_DEBUG(fmt, args...) fprintf(stdout, (char*)"[DEBUG][%ld][%ld][%-10s][%-4d][%-10s]"fmt"\n", pthread_self(), mt_get_threadid(), __FILE__, __LINE__, __FUNCTION__, ##args);
+#define LOG_WARN(fmt, args...) fprintf(stdout, (char*)"[WARN][%ld][%ld][%-10s][%-4d][%-10s]"fmt"\n", pthread_self(), mt_get_threadid(), __FILE__, __LINE__, __FUNCTION__, ##args);
+#define LOG_ERROR(fmt, args...) fprintf(stdout, (char*)"[ERROR][%ld][%ld][%-10s][%-4d][%-10s]"fmt"\n", pthread_self(), mt_get_threadid(), __FILE__, __LINE__, __FUNCTION__, ##args);
 #define LOG_CHECK_FUNCTION
 #else
 #define LOG_TRACE(fmt, args...)
 #define LOG_DEBUG(fmt, args...)
-#define LOG_WARN(fmt, args...) fprintf(st`dout, (char*)"[WARN][%-10s][%-4d][%-10s]"fmt"\n", __FILE__, __LINE__, __FUNCTION__, ##args);
+#define LOG_WARN(fmt, args...) fprintf(stdout, (char*)"[WARN][%-10s][%-4d][%-10s]"fmt"\n", __FILE__, __LINE__, __FUNCTION__, ##args);
 #define LOG_ERROR(fmt, args...) fprintf(stdout, (char*)"[ERROR][%-10s][%-4d][%-10s]"fmt"\n", __FILE__, __LINE__, __FUNCTION__, ##args);
 #define LOG_CHECK_FUNCTION
 #endif
+
+#define MT_ASSERT(eq)
 
 #endif

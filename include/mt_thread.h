@@ -11,10 +11,6 @@
 
 MTHREAD_NAMESPACE_BEGIN
 
-using std::vector;
-using std::set;
-using std::queue;
-
 #define STACK_PAD_SIZE      128
 #define MEM_PAGE_SIZE       4096
 #define DEFAULT_STACK_SIZE  128 * 1024
@@ -22,9 +18,7 @@ using std::queue;
 
 class Thread;
 
-typedef std::set<Thread*>          ThreadSet; // 队列set信息
 typedef std::queue<Thread*>        ThreadList; // 队列信息
-
 typedef CPP_TAILQ_ENTRY<Thread>    ThreadLink;
 typedef CPP_TAILQ_HEAD<Thread>     SubThreadQueue;
 typedef CPP_TAILQ_HEAD<Thread>     TailQThreadQueue;
@@ -34,7 +28,7 @@ class Scheduler
 {
 public:
     static utime64_t GetTime();
-    static void ThreadSchedule(); // 主动调度线程
+    static int ThreadSchedule(); // 主动调度线程
     static void Sleep(); // 休眠
     static void Pend(); // 阻塞
     static void Unpend(Thread* thread);
@@ -63,7 +57,6 @@ public:
         m_stack_size_ = STACK;
         m_stack_ = NULL;
 
-        // memset(&m_entry_, 0, sizeof(m_entry_));
         CPP_TAILQ_INIT(&m_fdset_);
         CPP_TAILQ_INIT(&m_sub_list_);
     }
@@ -108,19 +101,18 @@ public:
         utime64_t now = Scheduler::GetTime();
         m_wakeup_time_ = now + ms;
         LOG_TRACE("now :%ld, m_wakeup_time_ :%ld", now, m_wakeup_time_);
-
-        LOG_TRACE("Sleep doing");
         Scheduler::Sleep();
     }
     virtual void Wait()
     {
         Scheduler::Pend(); // 线程组塞
     }
-    virtual void SwitchContext()
+    virtual int SwitchContext()
     {
-        Scheduler::ThreadSchedule(); // 主动线程调度
+        return Scheduler::ThreadSchedule(); // 主动线程调度
     }
     virtual void RestoreContext(ThreadBase* switch_thread);
+
     // 对各个状态的封装
     // 将状态从iowait转换到runable
     virtual int IoWaitToRunable() 
@@ -155,15 +147,11 @@ public:
 
     virtual void ClearAllFd(void)
     {
-        if (!CPP_TAILQ_EMPTY(&m_fdset_))
-        {
-            LOG_WARN("m_fdset_ is not NULL, init");
-        }
-        else
-        {
-            LOG_WARN("m_fdset_ is NULL");
-        }
-
+        // TODO : 不管fdset中是否为空都重置
+        // if (!CPP_TAILQ_EMPTY(&m_fdset_))
+        // {
+        //     LOG_WARN("m_fdset_ is not NULL, init");
+        // }
         CPP_TAILQ_INIT(&m_fdset_);
     }
 
@@ -215,13 +203,34 @@ public:
         m_parent_ = parent;
     }
 
+    inline void AddSubThread(Thread* sub)
+    {
+        if (!sub->HasFlag(eSUB_LIST))
+        {
+            CPP_TAILQ_INSERT_TAIL(&m_sub_list_, sub, m_sub_entry_);
+            sub->m_parent_ = this;
+        }
+        sub->SetFlag(eSUB_LIST);
+    }
+
+    inline void RemoveSubThread(Thread* sub)
+    {
+        if (sub->HasFlag(eSUB_LIST))
+        {
+            CPP_TAILQ_REMOVE(&m_sub_list_, sub, m_sub_entry_);
+            sub->m_parent_ = NULL;
+        }
+        sub->UnsetFlag(eSUB_LIST);
+    }
+
+    inline bool HasNoSubThread()
+    {
+        return CPP_TAILQ_EMPTY(&m_sub_list_);
+    }
+
     void WakeupParent();
-    void AddSubThread(Thread* sub);
-    void RemoveSubThread(Thread* sub);
-    bool HasNoSubThread();
 
 protected:
-    void CleanState(void);
     bool InitStack(void);
     void FreeStack(void);
     void InitContext(void);
@@ -240,15 +249,11 @@ protected:
 class ThreadPool
 {
 public:
-    static unsigned int s_default_thread_num_;
-    static unsigned int s_default_stack_size_;
-
-public:
-    static void SetDefaultThreadNum(unsigned int num)
+    inline static void SetDefaultThreadNum(unsigned int num)
     {
         s_default_thread_num_ = num;
     }
-    static void SetDefaultStackSize(unsigned int size)
+    inline static void SetDefaultStackSize(unsigned int size)
     {
         s_default_stack_size_ = (size + 1) / (MEM_PAGE_SIZE * MEM_PAGE_SIZE);
     }
@@ -257,6 +262,10 @@ public:
     void DestroyPool(void);
     Thread* AllocThread(void);
     void FreeThread(Thread* thread);
+
+public:
+    static unsigned int s_default_thread_num_;
+    static unsigned int s_default_stack_size_;
 
 private:
     ThreadList      m_free_list_;

@@ -22,15 +22,13 @@ void IMtAction::Reset(bool reset_all)
 
     if (reset_all)
     {
-        m_flag_       = eMULTI_FLAG_UNDEF;
-        m_proto_      = ePROTO_UDP;
-        m_conn_type_  = eUDP_SHORT_CONN;
+        m_flag_       = eACTION_FLAG_UNDEF;
+        m_conn_type_  = eTCP_SHORT_CLIENT_CONN;
         m_errno_      = eERR_NONE;
         m_time_cost_  = 0;
         m_buff_size_  = 0;
         m_msg_        = NULL;
         m_conn_       = NULL;
-        m_session_name_  = 0;
         memset(&m_addr_, 0, sizeof(m_addr_));
     }
 }
@@ -58,10 +56,8 @@ int IMtAction::InitConnection()
     Frame* frame = GetInstance<Frame>();
     EventProxyer* proxyer = frame->GetEventProxyer();
 
-    eEventType event_type = eEVENT_UNDEF;
-    eMultiProto proto = GetProtoType();
+    eEventType event_type = eEVENT_THREAD;
     eConnType conn_type = GetConnType();
-    event_type = (eUDP_SESSION_CONN == conn_type) ? eEVENT_SESSION : eEVENT_THREAD;
 
     m_conn_ = conn->GetConnection(conn_type, this->GetMsgDstAddr());
     if (!m_conn_)
@@ -82,7 +78,7 @@ int IMtAction::InitConnection()
     msg_buff->SetBufferType(eBUFF_SEND);
     m_conn_->SetIMtMsgBuffer(msg_buff);
 
-    Eventer* ev = ev_session->GetEventer(event_type, m_session_name_);
+    Eventer* ev = ev_session->GetEventer(event_type);
     if (!ev)
     {
         LOG_ERROR("memory type: %d, get failed", event_type);
@@ -95,13 +91,6 @@ int IMtAction::InitConnection()
     ThreadBase* thread = frame->GetActiveThread();
     ev->SetOwnerThread(thread);
     this->SetIMessagePtr((IMessage*)(thread->GetThreadArgs()));
-    if (conn_type == eUDP_SESSION_CONN)
-    {
-        this->SetOwnerThread(thread);
-        this->SetIConnection(m_conn_);
-        this->SetSessionId(session->GetSessionId());
-        session->InsertSession(this);
-    }
 
     return 0;
 }
@@ -181,6 +170,7 @@ int IMtAction::DoError()
 {
     return HandleError((int)m_errno_, m_msg_);
 }
+
 IMtAction::IMtAction()
 {
     Reset();
@@ -190,7 +180,7 @@ IMtAction::~IMtAction()
     Reset(true);
 }
 
-int IMtActionFrame::SendRecv(int timeout)
+int IMtActionClient::SendRecv(int timeout)
 {
     int ret = 0;
 
@@ -219,7 +209,7 @@ int IMtActionFrame::SendRecv(int timeout)
         iter != m_action_list_.end(); ++iter)
     {
         IMtAction* action = *iter;
-        if (action->GetMsgFlag() != eMULTI_FLAG_FIN)
+        if (action->GetMsgFlag() != eACTION_FLAG_FIN)
         {
             action->DoError();
             LOG_DEBUG("send recv failed: %d", action->GetErrno());
@@ -244,7 +234,7 @@ int IMtActionFrame::SendRecv(int timeout)
     return 0;
 }
 
-int IMtActionFrame::Poll(IMtActionList list, int mask, int timeout)
+int IMtActionClient::Poll(IMtActionList list, int mask, int timeout)
 {
     LOG_CHECK_FUNCTION;
 
@@ -307,7 +297,7 @@ int IMtActionFrame::Poll(IMtActionList list, int mask, int timeout)
     return 0;
 }
 
-int IMtActionFrame::NewSock()
+int IMtActionClient::NewSock()
 {
     int sock = -1, hasok_count = 0;
     IMtAction* action = NULL;
@@ -342,14 +332,7 @@ int IMtActionFrame::NewSock()
             return -3;
         }
         ++hasok_count;
-        if (action->GetProtoType() == ePROTO_UDP)
-        {
-            action->SetMsgFlag(eMULTI_FLAG_OPEN);
-        }
-        else
-        {
-            action->SetMsgFlag(eMULTI_FLAG_INIT);
-        }
+        action->SetMsgFlag(eACTION_FLAG_INIT);
     }
     // 不同的错误返回不同的值
     if (hasok_count >= m_action_list_.size())
@@ -366,7 +349,7 @@ int IMtActionFrame::NewSock()
     }
 }
 
-int IMtActionFrame::Open(int timeout)
+int IMtActionClient::Open(int timeout)
 {
     Frame* frame = GetInstance<Frame>();
     utime64_t start_ms = frame->GetLastClock();
@@ -377,7 +360,7 @@ int IMtActionFrame::Open(int timeout)
     IMtAction* action = NULL;
     IMtConnection* connection = NULL;
 
-    while (1)
+    while (true)
     {
         IMtActionList waitlist;
         for (IMtActionList::iterator iter = m_action_list_.begin(); 
@@ -388,7 +371,7 @@ int IMtActionFrame::Open(int timeout)
             {
                 continue;
             }
-            if (action->GetMsgFlag() == eMULTI_FLAG_OPEN)
+            if (action->GetMsgFlag() == eACTION_FLAG_OPEN)
             {
                 hasopen = 1;
                 continue;
@@ -407,7 +390,7 @@ int IMtActionFrame::Open(int timeout)
             }
             else
             {
-                action->SetMsgFlag(eMULTI_FLAG_OPEN);
+                action->SetMsgFlag(eACTION_FLAG_OPEN);
             }
         }
         cur_ms = frame->GetLastClock();
@@ -439,7 +422,7 @@ int IMtActionFrame::Open(int timeout)
     }
 }
 
-int IMtActionFrame::Sendto(int timeout)
+int IMtActionClient::Sendto(int timeout)
 {
     Frame* frame = GetInstance<Frame>();
     utime64_t start_ms = frame->GetLastClock();
@@ -461,7 +444,7 @@ int IMtActionFrame::Sendto(int timeout)
             {
                 continue;
             }
-            if (action->GetMsgFlag() == eMULTI_FLAG_SEND)
+            if (action->GetMsgFlag() == eACTION_FLAG_SEND)
             {
                 hassend = 1;
                 continue;
@@ -487,7 +470,7 @@ int IMtActionFrame::Sendto(int timeout)
             }
             else
             {
-                action->SetMsgFlag(eMULTI_FLAG_SEND);
+                action->SetMsgFlag(eACTION_FLAG_SEND);
             }
         }
         cur_ms = frame->GetLastClock();
@@ -521,7 +504,7 @@ int IMtActionFrame::Sendto(int timeout)
     return 0;
 }
 
-int IMtActionFrame::Recvfrom(int timeout)
+int IMtActionClient::Recvfrom(int timeout)
 {
     Frame* frame = GetInstance<Frame>();
     utime64_t start_ms = frame->GetLastClock();
@@ -543,7 +526,7 @@ int IMtActionFrame::Recvfrom(int timeout)
             {
                 continue;
             }
-            if (eMULTI_FLAG_FIN == action->GetMsgFlag())
+            if (eACTION_FLAG_FIN == action->GetMsgFlag())
             {
                 continue;
             }
@@ -568,7 +551,7 @@ int IMtActionFrame::Recvfrom(int timeout)
             }
             else
             {
-                action->SetMsgFlag(eMULTI_FLAG_FIN);
+                action->SetMsgFlag(eACTION_FLAG_FIN);
                 action->SetCost(frame->GetLastClock() - start_ms);
             }
         }
@@ -595,7 +578,7 @@ int IMtActionFrame::Recvfrom(int timeout)
     }
 }
 
-int IMtActionFrame::RunSendRecv(int timeout)
+int IMtActionClient::RunSendRecv(int timeout)
 {
     Frame* frame = GetInstance<Frame>();
     utime64_t start_ms = frame->GetLastClock();
@@ -631,5 +614,102 @@ int IMtActionFrame::RunSendRecv(int timeout)
         return -4;
     }
 
+    return 0;
+}
+
+int IMtActionServer::NewSock()
+{
+    if (m_conn_ == NULL)
+    {
+        m_conn_ = GetInstance<ConnectionCtrl>()->GetConnection(eTCP_SERVER_ACCEPT_CONN);
+    }
+
+    int sock = m_conn_->CreateSocket();
+    if (sock < 0)
+    {
+        LOG_ERROR("Get sock data failed, ret %d, errno %d!!", sock, errno);
+        GetInstance<ConnectionCtrl>()->FreeConnection(m_conn_);
+        m_conn_ = NULL;
+        return -2;
+    }
+    LOG_TRACE("sock : %d", sock);
+    // 地址复用 
+    int opt = 1;
+    mt_setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+
+    int ret = ::bind(sock, (struct sockaddr *)&m_localaddr_, sizeof(struct sockaddr_in));
+    if (ret < 0)
+    {
+        LOG_ERROR("bind error, ret %d, sock %d", ret, sock);
+        GetInstance<ConnectionCtrl>()->FreeConnection(m_conn_);
+        m_conn_ = NULL;
+        return -3;
+    }
+    ret = ::listen(sock, MT_LISTEN_LEN);
+    if (ret < 0)
+    {
+        LOG_ERROR("listen error, ret %d, sock %d", ret, sock);
+        return -4;
+    }
+    // 创建一个监听线程
+    ThreadBase* thread = Frame::CreateThread(IMtActionServer::ListenFd, this);
+    if (NULL == thread)
+    {
+        LOG_ERROR("thread is NULL");
+        return -5;
+    }
+
+    return 0;
+}
+
+void IMtActionServer::ListenFd(void *args)
+{
+    LOG_TRACE("ListenFd ... begin");
+    IMtActionServer *server = (IMtActionServer *)args;
+    IMtConnection *conn = server->GetConnection();
+    if (conn == NULL)
+    {
+        LOG_ERROR("conn is NULL");
+        return;
+    }
+
+    while (true)
+    {
+        int sock = conn->GetOsfd();
+        Frame* frame = GetInstance<Frame>();
+        EventProxyer* proxyer = frame->GetEventProxyer();
+        Thread* thread = (Thread*)(frame->GetActiveThread());
+        Eventer* ev = proxyer->GetEventer(sock);
+
+        if (NULL == ev) 
+        {
+            ev = GetInstance<ISessionEventerCtrl>()->GetEventer(eEVENT_THREAD);
+            ev->SetOwnerProxyer(proxyer);
+        }
+        ev->SetOsfd(sock);
+        ev->EnableInput();
+        ev->DisableOutput();
+        ev->SetOwnerThread(thread);
+        LOG_TRACE("ev : %p, GetOwnerThread : %p", ev, ev->GetOwnerThread());
+        int wakeup_timeout = server->GetAcceptTimeout() + frame->GetLastClock();
+        if (!(proxyer->Schedule(thread, NULL, ev, wakeup_timeout)))
+        {
+            GetInstance<ISessionEventerCtrl>()->FreeEventer(ev);
+            return;
+        }
+        conn->SetEventer(ev);
+        conn->SetIMtActon(server->GetIMtActon());
+        
+        struct sockaddr client_addr;
+        socklen_t client_addr_len;
+        int accept_fd = conn->Accept(&client_addr, &client_addr_len);
+        LOG_TRACE("ListenFd ... end, accept_fd = %d", accept_fd);
+    }
+
+    return;
+}
+
+int IMtActionServer::Accept(int timeout)
+{
     return 0;
 }
