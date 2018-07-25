@@ -17,7 +17,7 @@ static IMtConnection* s_get_conn(struct sockaddr_in* dst, int& sock, eConnType t
     }
 
     IMtConnection* conn = NULL;
-    conn = GetInstance<ConnectionCtrl>()->GetConnection(type, dst);
+    conn = GetInstance<ConnectionPool>()->GetConnection(type, dst);
     LOG_TRACE("IMtConnection conn : %p", conn);
     if (NULL == conn)
     {
@@ -32,7 +32,7 @@ static IMtConnection* s_get_conn(struct sockaddr_in* dst, int& sock, eConnType t
     LOG_TRACE("osfd : %d", osfd);
     if (osfd < 0)
     {
-        GetInstance<ConnectionCtrl>()->FreeConnection(conn, true);
+        GetInstance<ConnectionPool>()->FreeConnection(conn, true);
         GetInstance<ISessionEventerCtrl>()->FreeEventer(ev);
         LOG_ERROR("create socket failed, ret[%d]", osfd);
         return NULL;
@@ -167,7 +167,7 @@ EXIT_LABEL1:
     // 释放连接
     if (conn != NULL)
     {
-        GetInstance<ConnectionCtrl>()->FreeConnection(conn, true);
+        GetInstance<ConnectionPool>()->FreeConnection(conn, true);
     }
 
     return ret;
@@ -246,7 +246,7 @@ EXIT_LABEL2:
     {
         bool force_free = (ret < 0) ? true : false;
         force_free = (!is_keep) ? true : force_free;
-        GetInstance<ConnectionCtrl>()->FreeConnection(conn, force_free);
+        GetInstance<ConnectionPool>()->FreeConnection(conn, force_free);
     }
 
     return ret;

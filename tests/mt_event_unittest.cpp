@@ -1,5 +1,5 @@
 #include "gtest/googletest/include/gtest/gtest.h"
-#include "../include/mt_event_proxyer.h"
+#include "../include/mt_core.h"
 #include "../include/mt_session.h"
 #include "../include/mt_thread.h"
 #include "../include/mt_frame.h"

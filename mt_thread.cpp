@@ -317,6 +317,8 @@ Thread* ThreadPool::AllocThread()
 
         return NULL;
     }
+    // TODO : 增加引用
+    // thread->incrref();
     m_total_num_++;
     m_use_num_++;
 

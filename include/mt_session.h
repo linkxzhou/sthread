@@ -6,7 +6,7 @@
 #define _MT_PROEV_H_INCLUDED_
 
 #include "mt_utils.h"
-#include "mt_event_proxyer.h"
+#include "mt_core.h"
 #include "mt_buffer.h"
 #include "mt_connection.h"
 
@@ -170,7 +170,7 @@ public:
         if (m_conn_)
         {
             LOG_DEBUG("remote close, fd [%d] close connection", m_fd_);
-            GetInstance<ConnectionCtrl>()->CloseIdleTcpKeep(m_conn_);
+            GetInstance<ConnectionPool>()->CloseIdleTcpKeep(m_conn_);
         }
         else
         {

@@ -2,7 +2,7 @@
 
 MTHREAD_NAMESPACE_USING
 
-unsigned long       g_mt_threadid;
+unsigned long g_mt_threadid;
 
 unsigned long mt_get_threadid(void)
 {

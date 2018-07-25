@@ -18,7 +18,7 @@ enum eOrderType
     eOrderAsc
 };
 
-class HeapEntry : public Any
+class HeapEntry : public Any, public referenceable
 {
 public:
     HeapEntry() : m_index_(0) { }

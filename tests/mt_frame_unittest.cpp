@@ -36,7 +36,7 @@ TEST(FrameTest, frame_async)
     servaddr.sin_port = htons(4312);  ///服务器端口
     servaddr.sin_addr.s_addr = inet_addr("127.0.0.1");  ///服务器ip
 
-    TcpShortClientConnection* conn = dynamic_cast<TcpShortClientConnection*>(GetInstance<ConnectionCtrl>()->GetConnection(eTCP_SHORT_CLIENT_CONN, &servaddr));
+    TcpShortClientConnection* conn = dynamic_cast<TcpShortClientConnection*>(GetInstance<ConnectionPool>()->GetConnection(eTCP_SHORT_CLIENT_CONN, &servaddr));
     LOG_TRACE("TcpKeepClientConnection conn : %p", conn);
     if (NULL == conn)
     {
@@ -57,7 +57,7 @@ TEST(FrameTest, frame_async)
     LOG_TRACE("socket_fd :%d", socket_fd);
     if (socket_fd < 0)
     {
-        GetInstance<ConnectionCtrl>()->FreeConnection(conn, true);
+        GetInstance<ConnectionPool>()->FreeConnection(conn, true);
         GetInstance<ISessionEventerCtrl>()->FreeEventer(ev);
         LOG_ERROR("create socket failed, ret[%d]", socket_fd);
         return ;

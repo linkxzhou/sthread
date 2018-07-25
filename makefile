@@ -52,7 +52,7 @@ clean:
 	@rm -f $(BINARY) *.o
 
 LIB_O = mt_action.o mt_asm.o mt_buffer.o mt_c.o \
-	mt_connection.o mt_event_proxyer.o mt_session.o \
+	mt_connection.o mt_core.o mt_session.o \
 	mt_sys_hook.o mt_thread.o mt_ucontext.o mt_utils.o
 
 libmthread.a: $(LIB_O)

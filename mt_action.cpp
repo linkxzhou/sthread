@@ -16,7 +16,7 @@ void IMtAction::Reset(bool reset_all)
 
     if (NULL != m_conn_)
     {
-        GetInstance<ConnectionCtrl>()->FreeConnection((IMtConnection *)m_conn_, force_free);
+        GetInstance<ConnectionPool>()->FreeConnection((IMtConnection *)m_conn_, force_free);
         m_conn_ = NULL;
     }
 
@@ -49,7 +49,7 @@ Eventer* IMtAction::GetEventer()
 // 初始化环境
 int IMtAction::InitConnection()
 {
-    ConnectionCtrl* conn = GetInstance<ConnectionCtrl>();
+    ConnectionPool* conn = GetInstance<ConnectionPool>();
     IMsgBufferPool* buf_pool = GetInstance<IMsgBufferPool>();
     ISessionEventerCtrl* ev_session = GetInstance<ISessionEventerCtrl>();
     ISessionCtrl* session = GetInstance<ISessionCtrl>();
@@ -614,102 +614,5 @@ int IMtActionClient::RunSendRecv(int timeout)
         return -4;
     }
 
-    return 0;
-}
-
-int IMtActionServer::NewSock()
-{
-    if (m_conn_ == NULL)
-    {
-        m_conn_ = GetInstance<ConnectionCtrl>()->GetConnection(eTCP_SERVER_ACCEPT_CONN);
-    }
-
-    int sock = m_conn_->CreateSocket();
-    if (sock < 0)
-    {
-        LOG_ERROR("Get sock data failed, ret %d, errno %d!!", sock, errno);
-        GetInstance<ConnectionCtrl>()->FreeConnection(m_conn_);
-        m_conn_ = NULL;
-        return -2;
-    }
-    LOG_TRACE("sock : %d", sock);
-    // 地址复用 
-    int opt = 1;
-    mt_setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
-
-    int ret = ::bind(sock, (struct sockaddr *)&m_localaddr_, sizeof(struct sockaddr_in));
-    if (ret < 0)
-    {
-        LOG_ERROR("bind error, ret %d, sock %d", ret, sock);
-        GetInstance<ConnectionCtrl>()->FreeConnection(m_conn_);
-        m_conn_ = NULL;
-        return -3;
-    }
-    ret = ::listen(sock, MT_LISTEN_LEN);
-    if (ret < 0)
-    {
-        LOG_ERROR("listen error, ret %d, sock %d", ret, sock);
-        return -4;
-    }
-    // 创建一个监听线程
-    ThreadBase* thread = Frame::CreateThread(IMtActionServer::ListenFd, this);
-    if (NULL == thread)
-    {
-        LOG_ERROR("thread is NULL");
-        return -5;
-    }
-
-    return 0;
-}
-
-void IMtActionServer::ListenFd(void *args)
-{
-    LOG_TRACE("ListenFd ... begin");
-    IMtActionServer *server = (IMtActionServer *)args;
-    IMtConnection *conn = server->GetConnection();
-    if (conn == NULL)
-    {
-        LOG_ERROR("conn is NULL");
-        return;
-    }
-
-    while (true)
-    {
-        int sock = conn->GetOsfd();
-        Frame* frame = GetInstance<Frame>();
-        EventProxyer* proxyer = frame->GetEventProxyer();
-        Thread* thread = (Thread*)(frame->GetActiveThread());
-        Eventer* ev = proxyer->GetEventer(sock);
-
-        if (NULL == ev) 
-        {
-            ev = GetInstance<ISessionEventerCtrl>()->GetEventer(eEVENT_THREAD);
-            ev->SetOwnerProxyer(proxyer);
-        }
-        ev->SetOsfd(sock);
-        ev->EnableInput();
-        ev->DisableOutput();
-        ev->SetOwnerThread(thread);
-        LOG_TRACE("ev : %p, GetOwnerThread : %p", ev, ev->GetOwnerThread());
-        int wakeup_timeout = server->GetAcceptTimeout() + frame->GetLastClock();
-        if (!(proxyer->Schedule(thread, NULL, ev, wakeup_timeout)))
-        {
-            GetInstance<ISessionEventerCtrl>()->FreeEventer(ev);
-            return;
-        }
-        conn->SetEventer(ev);
-        conn->SetIMtActon(server->GetIMtActon());
-        
-        struct sockaddr client_addr;
-        socklen_t client_addr_len;
-        int accept_fd = conn->Accept(&client_addr, &client_addr_len);
-        LOG_TRACE("ListenFd ... end, accept_fd = %d", accept_fd);
-    }
-
-    return;
-}
-
-int IMtActionServer::Accept(int timeout)
-{
     return 0;
 }

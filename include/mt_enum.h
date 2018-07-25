@@ -9,23 +9,24 @@
 
 MTHREAD_NAMESPACE_BEGIN
 
-// buffer的类型
-// eBUFF_RECV 收包
-// eBUFF_SEND 发包
 enum eBuffType
 {
     eBUFF_UNDEF  =  0x0,
-    eBUFF_RECV   =  0x1,
-    eBUFF_SEND   =  0x2,
+    eBUFF_RECV   =  0x1, // 收包
+    eBUFF_SEND   =  0x2, // 发包
 };
 
+// events事件
 enum eEventType
 {
     eEVENT_UNDEF     = 0x0,
     eEVENT_THREAD    = 0x1,
     eEVENT_KEEPALIVE = 0x2,
     eEVENT_SESSION   = 0x3,
-    eEVENT_ACCEPT    = 0x4,
+    eEVENT_TIMEOUT   = 0x4,
+    eEVENT_USER1     = 0x5,
+    eEVENT_USER2     = 0x6,
+    eEVENT_USER3     = 0x7,
 };
 
 enum eThreadType

@@ -241,7 +241,7 @@ protected:
 
 class referenceable
 {
-protected:
+public:
     referenceable() : m_ref_count_(0)
     { }
 
@@ -250,12 +250,17 @@ protected:
         ++m_ref_count_;
     }
 
+    void decref()
+    {
+        --m_ref_count_;
+    }
+
     int getref()
     {
         return m_ref_count_;
     }
 
-protected:
+public:
     int m_ref_count_;
 };
 
@@ -393,8 +398,10 @@ ValueType any_cast(const Any& any)
 
 MTHREAD_NAMESPACE_END
 
+// ============== 不加入命名空间中 ==============
+// 获取协程id
 extern "C" unsigned long mt_get_threadid(void);
-
+// 设置协程id
 extern "C" void mt_set_threadid(unsigned long threadid);
 
 #endif

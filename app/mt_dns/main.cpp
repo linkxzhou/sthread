@@ -47,7 +47,7 @@ int main(int argc, char* argv[])
         std::string *s = new std::string(ss.str());
         Frame::CreateThread(func, s);
     }
-    Frame::PrimoRun();
+    Frame::FrontRun();
     LOG_DEBUG("--- end time : %ld", Utils::system_ms());
 
     return 0;

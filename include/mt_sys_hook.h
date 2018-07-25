@@ -48,9 +48,6 @@ typedef int (*RENAME_SYS_FUNC(ioctl))(int fildes, int request, ... );
 typedef unsigned int (*RENAME_SYS_FUNC(sleep))(unsigned int seconds);
 typedef int (*RENAME_SYS_FUNC(accept))(int socket, const struct sockaddr *address, socklen_t *address_len);
 
-// TODO : 暂时不实现
-// typedef int (*RENAME_SYS_FUNC(poll))(struct pollfd fds[], nfds_t nfds, int timeout);
-
 typedef struct syscall_func_tab
 {
     RENAME_SYS_FUNC(socket)     real_socket;

@@ -122,10 +122,10 @@ static void* thread_func(void *)
 //     LOG_TRACE("DoEncode ret : %d", ret);
 // }
 
-// TEST(ActionListTest1, action)
-// {
-//     thread_func(NULL);
-// }
+TEST(ActionListTest1, action)
+{
+    thread_func(NULL);
+}
 
 // TEST(ActionListTest2, action)
 // {
@@ -150,28 +150,28 @@ static void* thread_func(void *)
 //     pthread_join(tid2, NULL);
 // }
 
-TEST(ActionListTest3, server1)
-{
-    struct sockaddr_in servaddr;
-    memset(&servaddr, 0, sizeof(servaddr));
-    servaddr.sin_family = AF_INET;
-    servaddr.sin_port = htons(4312);  ///服务器端口
-    servaddr.sin_addr.s_addr = inet_addr("127.0.0.1");  ///服务器ip
+// TEST(ActionListTest3, server1)
+// {
+//     struct sockaddr_in servaddr;
+//     memset(&servaddr, 0, sizeof(servaddr));
+//     servaddr.sin_family = AF_INET;
+//     servaddr.sin_port = htons(4312);  ///服务器端口
+//     servaddr.sin_addr.s_addr = inet_addr("127.0.0.1");  ///服务器ip
 
-    int ret = mt_init_frame();
-    LOG_TRACE("init ret : %d, servaddr : %p", ret, &servaddr);
-    mt_set_hook_flag();
-    mt_set_timeout(30000);
+//     int ret = mt_init_frame();
+//     LOG_TRACE("init ret : %d, servaddr : %p", ret, &servaddr);
+//     mt_set_hook_flag();
+//     mt_set_timeout(30000);
 
-    IMtAction* action = new IMtAction();
+//     IMtAction* action = new IMtAction();
 
-    IMtActionServer *actionframe = GetInstance<IMtActionServer>();
-    actionframe->SetLocalAddr(servaddr);
-    actionframe->SetIMtAction(action);
-    ret = actionframe->NewSock();
-    LOG_TRACE("ret : %d, strerr : %s", ret, strerror(errno));
-    Frame::PrimoRun();
-}
+//     IMtActionServer *actionframe = GetInstance<IMtActionServer>();
+//     actionframe->SetLocalAddr(servaddr);
+//     actionframe->SetIMtAction(action);
+//     ret = actionframe->NewSock();
+//     LOG_TRACE("ret : %d, strerr : %s", ret, strerror(errno));
+//     Frame::FrontRun();
+// }
 
 // 测试所有的功能
 int main(int argc, char* argv[])

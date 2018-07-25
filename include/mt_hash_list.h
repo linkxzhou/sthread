@@ -187,7 +187,6 @@ public:
                 item = any_cast<value_type>(item->m_next_entry_);
                 m_count_--;
                 (m_buckets_[idx]->m_hash_value_)--;
-
                 safe_delete(tmp); // 释放指针
             }
             else

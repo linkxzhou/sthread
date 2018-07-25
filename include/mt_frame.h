@@ -7,7 +7,7 @@
 
 #include "mt_utils.h"
 #include "mt_heap_timer.h"
-#include "mt_event_proxyer.h"
+#include "mt_core.h"
 #include "mt_sys_hook.h"
 #include "mt_session.h"
 #include "mt_thread.h"
@@ -21,12 +21,10 @@ class Frame
 
 public:
     Frame() : m_daemon_(NULL), m_primo_(NULL), m_cur_thread_(NULL),
-        m_thead_pool_(NULL), m_ev_proxyer_(NULL), m_timer_(NULL),
-        m_last_clock_(0), m_wait_num_(0), m_timeout_(0), m_exitflag_(false)
-    { 
-        m_thead_pool_ = new ThreadPool();
-        m_ev_proxyer_ = new EventProxyer();
-    }
+        m_thead_pool_(new ThreadPool()), m_ev_proxyer_(new EventProxyer()), 
+        m_timer_(NULL), m_last_clock_(0), m_wait_num_(0), m_timeout_(0), 
+        m_exitflag_(false)
+    { }
 
     // 清理数据
     ~Frame()
@@ -117,7 +115,7 @@ public:
             goto Label_Destroy;
 	    }
 
-	    m_timer_ = new TimerCtrl(max_thread_num * 2);
+	    m_timer_ = new HeapTimer(max_thread_num * 2);
 	    if (NULL == m_timer_)
 	    {
 	        LOG_ERROR("init heap timer failed");
@@ -301,7 +299,7 @@ Label_Destroy:
         m_exitflag_ = _exit;
     }
 
-    inline TimerCtrl* GetTimerCtrl()
+    inline HeapTimer* GetHeapTimer()
     {
         return m_timer_;
     }
@@ -912,7 +910,7 @@ public:
 	    }
     }
     // 表示可以中断运行，非Daemon方式
-    static void PrimoRun()
+    static void FrontRun()
     {
         Frame* frame = GetInstance<Frame>();
     	Thread* primo = (Thread *)(frame->PrimoThread());
@@ -932,7 +930,7 @@ public:
     EventProxyer    *m_ev_proxyer_;
     utime64_t       m_last_clock_;
     int             m_wait_num_;
-    TimerCtrl*      m_timer_;
+    HeapTimer*      m_timer_;
     int             m_timeout_;
     bool            m_exitflag_;
 };

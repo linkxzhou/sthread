@@ -3,19 +3,19 @@
 
 MTHREAD_NAMESPACE_USING
 
-TEST(TimerNotifyTest, notify)
+TEST(TimerEntryTest, notify)
 {
-	TimerCtrl c;
+	HeapTimer c;
 
-	c.StartTimer(new TimerNotify(), 100);
-	c.StartTimer(new TimerNotify(), 160);
-	c.StartTimer(new TimerNotify(), 1500);
-	c.StartTimer(new TimerNotify(), 99);
-	c.StartTimer(new TimerNotify(), 20);
-	c.StartTimer(new TimerNotify(), 5000);
-	c.StartTimer(new TimerNotify(), 999);
-	c.StartTimer(new TimerNotify(), 900);
-	c.StartTimer(new TimerNotify(), 10000);
+	c.StartTimer(new TimerEntry(), 100);
+	c.StartTimer(new TimerEntry(), 160);
+	c.StartTimer(new TimerEntry(), 1500);
+	c.StartTimer(new TimerEntry(), 99);
+	c.StartTimer(new TimerEntry(), 20);
+	c.StartTimer(new TimerEntry(), 5000);
+	c.StartTimer(new TimerEntry(), 999);
+	c.StartTimer(new TimerEntry(), 900);
+	c.StartTimer(new TimerEntry(), 10000);
 
 	LOG_TRACE("==========================");
 	int count = 10;

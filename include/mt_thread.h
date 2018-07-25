@@ -7,7 +7,7 @@
 
 #include "mt_utils.h"
 #include "mt_heap_timer.h"
-#include "mt_event_proxyer.h"
+#include "mt_core.h"
 
 MTHREAD_NAMESPACE_BEGIN
 
@@ -70,12 +70,14 @@ public:
             LOG_ERROR("init stack failed");
             return false;
         }
+
         InitContext();
         return true;
     }
     inline void Destroy(void)
     {
         FreeStack();
+        decref(); // 标记引用-1
     }
     // 传入值是否强制初始化
     inline void Reset(bool force_init = true)
@@ -113,7 +115,7 @@ public:
     }
     virtual void RestoreContext(ThreadBase* switch_thread);
 
-    // 对各个状态的封装
+    // =========== 对各个状态的封装 ===========
     // 将状态从iowait转换到runable
     virtual int IoWaitToRunable() 
     {

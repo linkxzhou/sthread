@@ -10,14 +10,14 @@
 
 MTHREAD_NAMESPACE_BEGIN
 
-class TimerCtrl;
-class TimerNotify;
+class HeapTimer;
+class TimerEntry;
 
 // 时间通知
-class TimerNotify : public HeapEntry
+class TimerEntry : public HeapEntry
 {
 public:
-    virtual void Notify() 
+    virtual void Notify(eEventType type) 
     { 
         return ;
     }
@@ -25,9 +25,9 @@ public:
     {
         return (unsigned long long)m_time_expired_;
     }
-    TimerNotify() : m_time_expired_(0)
+    TimerEntry() : m_time_expired_(0)
     { }
-    virtual ~TimerNotify()
+    virtual ~TimerEntry()
     { 
         m_time_expired_ = 0;
     }
@@ -45,18 +45,18 @@ private:
 };
 
 // 时间控制器
-class TimerCtrl
+class HeapTimer
 {
 public:
-    explicit TimerCtrl(uint32_t max_item = 100000)
+    explicit HeapTimer(uint32_t max_item = 100000)
     {
-        m_heap_ = new HeapList<TimerNotify>(max_item);
+        m_heap_ = new HeapList<TimerEntry>(max_item);
     }
-    ~TimerCtrl()
+    ~HeapTimer()
     {
         safe_delete(m_heap_);
     }
-    bool StartTimer(TimerNotify* timerable, uint32_t interval)
+    bool StartTimer(TimerEntry* timerable, uint32_t interval)
     {
         if (!m_heap_ || !timerable)
         {
@@ -78,7 +78,7 @@ public:
 
         return true;
     }
-    void StopTimer(TimerNotify* timerable)
+    void StopTimer(TimerEntry* timerable)
     {
         if (!m_heap_ || !timerable)
         {
@@ -98,19 +98,19 @@ public:
 
         utime64_t now = Utils::system_ms();
         LOG_TRACE("now_ms = %llu", now);
-        TimerNotify* timer = any_cast<TimerNotify>(m_heap_->HeapTop());
+        TimerEntry* timer = any_cast<TimerEntry>(m_heap_->HeapTop());
         while (timer && (timer->GetExpiredTime() <= now))
         {
             m_heap_->HeapDelete(timer); // 删除对应的过期时间
-            timer->Notify();
-            timer = any_cast<TimerNotify>(m_heap_->HeapTop());
+            timer->Notify(eEVENT_TIMEOUT); // 传递超时事件
+            timer = any_cast<TimerEntry>(m_heap_->HeapTop());
         }
 
         LOG_TRACE("size = %d", m_heap_->HeapSize());
     }
 
 private:
-    HeapList<TimerNotify>* m_heap_;
+    HeapList<TimerEntry>* m_heap_;
 };
 
 MTHREAD_NAMESPACE_END

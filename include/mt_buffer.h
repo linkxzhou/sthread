@@ -14,6 +14,31 @@ MTHREAD_NAMESPACE_BEGIN
 
 class IMtMsgBuffer;
 
+class IMessage
+{
+public:
+    // 虚函数，子类继承
+    virtual int HandleProcess() 
+    { 
+        return -1; 
+    }
+    IMessage() 
+    { }
+    virtual ~IMessage() 
+    { }
+    inline void SetDataPtr(void *data)
+    {
+        m_data_ = data;
+    }
+    inline void* GetDataPtr()
+    {
+        return m_data_;
+    }
+    
+private:
+    void *m_data_;
+};
+
 typedef CPP_TAILQ_ENTRY<IMtMsgBuffer>  IMsgBufferLink;
 typedef CPP_TAILQ_HEAD<IMtMsgBuffer>   IMsgBufferQueue;
 

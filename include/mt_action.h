@@ -7,37 +7,12 @@
 
 #include "mt_utils.h"
 #include "mt_buffer.h"
-#include "mt_event_proxyer.h"
+#include "mt_core.h"
 #include "mt_connection.h"
 #include "mt_c.h"
 #include "mt_frame.h"
 
 MTHREAD_NAMESPACE_USING
-
-class IMessage
-{
-public:
-    // 虚函数，子类继承
-    virtual int HandleProcess() 
-    { 
-        return -1; 
-    }
-    IMessage() 
-    { }
-    virtual ~IMessage() 
-    { }
-    inline void SetDataPtr(void *data)
-    {
-        m_data_ = data;
-    }
-    inline void* GetDataPtr()
-    {
-        return m_data_;
-    }
-    
-private:
-    void *m_data_;
-};
 
 // IMtAction继承ISession
 class IMtAction : public ISession, public IMtActionBase
@@ -176,52 +151,6 @@ public:
 
 private:
     IMtActionList m_action_list_;
-};
-
-class IMtActionServer
-{
-public:
-    IMtActionServer() : m_conn_(NULL), 
-        m_action_(NULL), m_accept_timeout_(50)
-    { }
-
-    inline void SetIMtAction(IMtAction* action)
-    {
-        m_action_ = action;
-    }
-
-    inline IMtActionBase* GetIMtActon()
-    {
-        return m_action_;
-    }
-
-    inline IMtConnection* GetConnection()
-    {
-        return m_conn_;
-    }
-
-    inline int GetAcceptTimeout()
-    {
-        return m_accept_timeout_;
-    }
-
-    inline void SetLocalAddr(struct sockaddr_in addr)
-    {
-        memcpy(&m_localaddr_, &addr, sizeof(addr));
-    }
-    
-    int NewSock();
-
-    int Accept(int timeout);
-
-public:
-    static void ListenFd(void *args);
-
-private:
-    IMtAction *m_action_;
-    struct sockaddr_in m_localaddr_;
-    IMtConnection *m_conn_;
-    int m_accept_timeout_;
 };
 
 #endif
