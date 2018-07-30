@@ -1,3 +1,7 @@
+/*
+ * Copyright (C) zhoulv2000@163.com
+ */
+
 #include "mt_buffer.h"
 
 MTHREAD_NAMESPACE_USING

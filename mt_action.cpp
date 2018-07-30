@@ -1,3 +1,7 @@
+/*
+ * Copyright (C) zhoulv2000@163.com
+ */
+
 #include "mt_action.h"
 #include "mt_session.h"
 #include "mt_frame.h"
@@ -51,8 +55,7 @@ int IMtAction::InitConnection()
 {
     ConnectionPool* conn = GetInstance<ConnectionPool>();
     IMsgBufferPool* buf_pool = GetInstance<IMsgBufferPool>();
-    ISessionEventerCtrl* ev_session = GetInstance<ISessionEventerCtrl>();
-    ISessionCtrl* session = GetInstance<ISessionCtrl>();
+    ISessionEventerPool* ev_session = GetInstance<ISessionEventerPool>();
     Frame* frame = GetInstance<Frame>();
     EventProxyer* proxyer = frame->GetEventProxyer();
 
@@ -90,7 +93,8 @@ int IMtAction::InitConnection()
     m_conn_->SetEventer(ev);
     ThreadBase* thread = frame->GetActiveThread();
     ev->SetOwnerThread(thread);
-    this->SetIMessagePtr((IMessage*)(thread->GetThreadArgs()));
+    // TODO : 用户自己设置
+    // this->SetIMessagePtr((IMessage*)(thread->GetThreadArgs()));
 
     return 0;
 }
@@ -109,6 +113,7 @@ int IMtAction::DoEncode()
     }
 
     int msg_len = msg_buff->GetMaxLen();
+    LOG_TRACE("msg_len : %d, m_msg_ : %p", msg_len, m_msg_);
     int ret = HandleEncode(msg_buff->GetMsgBuffer(), msg_len, m_msg_);
     if (ret < 0)
     {
@@ -184,6 +189,8 @@ int IMtActionClient::SendRecv(int timeout)
 {
     int ret = 0;
 
+    LOG_TRACE("m_action_list_ size : %d", m_action_list_.size());
+
     for (IMtActionList::iterator iter = m_action_list_.begin(); 
         iter != m_action_list_.end(); ++iter)
     {
@@ -194,6 +201,7 @@ int IMtActionClient::SendRecv(int timeout)
             return -1;
         }
 
+        LOG_TRACE("action -> DoEncode");
         ret = action->DoEncode();
         if (ret < 0)
         {

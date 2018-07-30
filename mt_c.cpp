@@ -1,3 +1,7 @@
+/*
+ * Copyright (C) zhoulv2000@163.com
+ */
+
 #include "mt_c.h"
 #include "mt_frame.h"
 
@@ -7,7 +11,7 @@ MTHREAD_NAMESPACE_USING
 static IMtConnection* s_get_conn(struct sockaddr_in* dst, int& sock, eConnType type)
 {
     EventProxyer* proxyer = GetInstance<Frame>()->GetEventProxyer();
-	Eventer* ev = GetInstance<ISessionEventerCtrl>()->GetEventer(eEVENT_THREAD);
+	Eventer* ev = GetInstance<ISessionEventerPool>()->GetEventer(eEVENT_THREAD);
     ev->SetOwnerProxyer(proxyer);
     LOG_TRACE("ev node :%p", ev);
     if (NULL == ev)
@@ -22,7 +26,7 @@ static IMtConnection* s_get_conn(struct sockaddr_in* dst, int& sock, eConnType t
     if (NULL == conn)
     {
         LOG_ERROR("get connection failed, dst[%p]", dst);
-        GetInstance<ISessionEventerCtrl>()->FreeEventer(ev);
+        GetInstance<ISessionEventerPool>()->FreeEventer(ev);
         return NULL;
     }
     conn->SetEventer(ev);
@@ -33,7 +37,7 @@ static IMtConnection* s_get_conn(struct sockaddr_in* dst, int& sock, eConnType t
     if (osfd < 0)
     {
         GetInstance<ConnectionPool>()->FreeConnection(conn, true);
-        GetInstance<ISessionEventerCtrl>()->FreeEventer(ev);
+        GetInstance<ISessionEventerPool>()->FreeEventer(ev);
         LOG_ERROR("create socket failed, ret[%d]", osfd);
         return NULL;
     }

@@ -170,7 +170,7 @@ TEST(ActionListTest1, action)
 //     actionframe->SetIMtAction(action);
 //     ret = actionframe->NewSock();
 //     LOG_TRACE("ret : %d, strerr : %s", ret, strerror(errno));
-//     Frame::FrontRun();
+//     Frame::Run(true);
 // }
 
 // 测试所有的功能

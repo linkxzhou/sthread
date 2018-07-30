@@ -13,16 +13,16 @@
 MTHREAD_NAMESPACE_BEGIN
 
 // 管理的单例类
-class ISessionCtrl
+class ISessionPool
 {
 public:
-    ISessionCtrl()
+    ISessionPool()
     {
         m_cur_session_ = 0; // 初始化
         m_hash_map_ = new HashList<ISession>(10000);
     }
 
-    ~ISessionCtrl()
+    ~ISessionPool()
     {
         safe_delete(m_hash_map_);
     }
@@ -180,7 +180,7 @@ public:
 };
 
 // 单例类型
-class ISessionEventerCtrl
+class ISessionEventerPool
 {
 public:
 	typedef UtilsPtrPool<Eventer>			EventerQueue;

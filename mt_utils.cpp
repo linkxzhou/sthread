@@ -1,3 +1,7 @@
+/*
+ * Copyright (C) zhoulv2000@163.com
+ */
+
 #include "mt_utils.h"
 
 MTHREAD_NAMESPACE_USING

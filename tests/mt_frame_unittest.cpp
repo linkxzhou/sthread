@@ -18,7 +18,7 @@ TEST(FrameTest, frame_async)
     frame->SetHookFlag();
 
     EventProxyer* proxyer = frame->GetEventProxyer();
-	Eventer* ev = GetInstance<ISessionEventerCtrl>()->GetEventer(eEVENT_THREAD);
+	Eventer* ev = GetInstance<ISessionEventerPool>()->GetEventer(eEVENT_THREAD);
     ev->SetOwnerProxyer(proxyer);
     LOG_TRACE("ev node :%p", ev);
     if (NULL == ev)
@@ -41,7 +41,7 @@ TEST(FrameTest, frame_async)
     if (NULL == conn)
     {
         LOG_ERROR("get connection failed, dst[%p]", &servaddr);
-        GetInstance<ISessionEventerCtrl>()->FreeEventer(ev);
+        GetInstance<ISessionEventerPool>()->FreeEventer(ev);
         return ;
     }
     conn->SetEventer(ev);
@@ -58,7 +58,7 @@ TEST(FrameTest, frame_async)
     if (socket_fd < 0)
     {
         GetInstance<ConnectionPool>()->FreeConnection(conn, true);
-        GetInstance<ISessionEventerCtrl>()->FreeEventer(ev);
+        GetInstance<ISessionEventerPool>()->FreeEventer(ev);
         LOG_ERROR("create socket failed, ret[%d]", socket_fd);
         return ;
     }

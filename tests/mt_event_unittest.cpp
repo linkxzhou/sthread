@@ -43,7 +43,7 @@ TEST(EventerTest, event)
     proxyer->Init(10000);
     // proxyer->SetTimeout(10);
     // proxyer->AddFd(socket_fd, MT_READABLE|MT_WRITABLE);
-    Eventer* ev = GetInstance<ISessionEventerCtrl>()->GetEventer(eEVENT_THREAD);
+    Eventer* ev = GetInstance<ISessionEventerPool>()->GetEventer(eEVENT_THREAD);
     ev->SetOsfd(socket_fd);
     ev->EnableOutput();
     ev->EnableInput();

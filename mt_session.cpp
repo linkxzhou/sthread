@@ -1,3 +1,7 @@
+/*
+ * Copyright (C) zhoulv2000@163.com
+ */
+
 #include "mt_session.h"
 #include "mt_action.h"
 #include "mt_frame.h"
@@ -23,7 +27,7 @@ void ISessionEventer::RemoveWriteWait(ISessionEventer* sev)
     }
 }
 
-Eventer* ISessionEventerCtrl::GetEventer(int type)
+Eventer* ISessionEventerPool::GetEventer(int type)
 {
     Eventer* ev = NULL;
     ISessionEventer* sev = NULL;
@@ -43,7 +47,7 @@ Eventer* ISessionEventerCtrl::GetEventer(int type)
     return ev;
 }
 
-void ISessionEventerCtrl::FreeEventer(Eventer* ev)
+void ISessionEventerPool::FreeEventer(Eventer* ev)
 {
     ISessionEventer* sev = NULL;
     if (NULL == ev)
@@ -63,7 +67,7 @@ void ISessionEventerCtrl::FreeEventer(Eventer* ev)
         case eEVENT_KEEPALIVE:
         default: break;
     }
+
     ev->Reset(); // 重置
-    
     return;
 }

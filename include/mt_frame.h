@@ -427,7 +427,7 @@ public:
 	        Eventer* ev = proxyer->GetEventer(fd);
             if (NULL == ev) 
             {
-                ev = GetInstance<ISessionEventerCtrl>()->GetEventer(eEVENT_THREAD);
+                ev = GetInstance<ISessionEventerPool>()->GetEventer(eEVENT_THREAD);
                 ev->SetOwnerProxyer(proxyer);
             }
 	        ev->SetOsfd(fd);
@@ -436,7 +436,7 @@ public:
 	        int wakeup_timeout = timeout + frame->GetLastClock();
 	        if (!(proxyer->Schedule(thread, NULL, ev, wakeup_timeout)))
 	        {
-	        	GetInstance<ISessionEventerCtrl>()->FreeEventer(ev);
+	        	GetInstance<ISessionEventerPool>()->FreeEventer(ev);
 	            return -3;
 	        }
 	    }
@@ -469,7 +469,7 @@ public:
 	        Eventer* ev = proxyer->GetEventer(fd);
             if (NULL == ev) 
             {
-                ev = GetInstance<ISessionEventerCtrl>()->GetEventer(eEVENT_THREAD);
+                ev = GetInstance<ISessionEventerPool>()->GetEventer(eEVENT_THREAD);
                 ev->SetOwnerProxyer(proxyer);
             }
 	        ev->SetOsfd(fd);
@@ -480,7 +480,7 @@ public:
 	        {
 	            LOG_ERROR("eventer schedule failed, errno: %d, strerr: %s", 
                     errno, strerror(errno));
-	            GetInstance<ISessionEventerCtrl>()->FreeEventer(ev);
+	            GetInstance<ISessionEventerPool>()->FreeEventer(ev);
 	            return -2;
 	        }
 
@@ -547,7 +547,7 @@ public:
 	        Eventer* ev = proxyer->GetEventer(fd);
             if (NULL == ev) 
             {
-                ev = GetInstance<ISessionEventerCtrl>()->GetEventer(eEVENT_THREAD);
+                ev = GetInstance<ISessionEventerPool>()->GetEventer(eEVENT_THREAD);
                 ev->SetOwnerProxyer(proxyer);
             }
 	        ev->SetOsfd(fd);
@@ -557,7 +557,7 @@ public:
 	        if (!(proxyer->Schedule(thread, NULL, ev, wakeup_timeout)))
 	        {
 	        	LOG_ERROR("schedule error");
-	        	GetInstance<ISessionEventerCtrl>()->FreeEventer(ev);
+	        	GetInstance<ISessionEventerPool>()->FreeEventer(ev);
 	            return -3;
 	        }
 	    }
@@ -597,7 +597,7 @@ public:
 	        Eventer* ev = proxyer->GetEventer(fd);
             if (NULL == ev) 
             {
-                ev = GetInstance<ISessionEventerCtrl>()->GetEventer(eEVENT_THREAD);
+                ev = GetInstance<ISessionEventerPool>()->GetEventer(eEVENT_THREAD);
                 ev->SetOwnerProxyer(proxyer);
             }
 	        ev->SetOsfd(fd);
@@ -606,7 +606,7 @@ public:
 	        int wakeup_timeout = timeout + frame->GetLastClock();
 	        if (!(proxyer->Schedule(thread, NULL, ev, wakeup_timeout)))
 	        {
-	        	GetInstance<ISessionEventerCtrl>()->FreeEventer(ev);
+	        	GetInstance<ISessionEventerPool>()->FreeEventer(ev);
 	            return -3;
 	        }
 	    }
@@ -659,7 +659,7 @@ public:
 	        Eventer* ev = proxyer->GetEventer(fd);
             if (NULL == ev) 
             {
-                ev = GetInstance<ISessionEventerCtrl>()->GetEventer(eEVENT_THREAD);
+                ev = GetInstance<ISessionEventerPool>()->GetEventer(eEVENT_THREAD);
                 ev->SetOwnerProxyer(proxyer);
             }
 	        ev->SetOsfd(fd);
@@ -668,7 +668,7 @@ public:
 	        int wakeup_timeout = timeout + frame->GetLastClock();
 	        if (!(proxyer->Schedule(thread, NULL, ev, wakeup_timeout)))
 	        {
-	        	GetInstance<ISessionEventerCtrl>()->FreeEventer(ev);
+	        	GetInstance<ISessionEventerPool>()->FreeEventer(ev);
 	            return -3;
 	        }
 	    }
@@ -705,7 +705,7 @@ public:
 	        Eventer* ev = proxyer->GetEventer(fd);
             if (NULL == ev) 
             {
-                ev = GetInstance<ISessionEventerCtrl>()->GetEventer(eEVENT_THREAD);
+                ev = GetInstance<ISessionEventerPool>()->GetEventer(eEVENT_THREAD);
                 ev->SetOwnerProxyer(proxyer);
             }
 	        ev->SetOsfd(fd);
@@ -714,7 +714,7 @@ public:
 	        int wakeup_timeout = timeout + frame->GetLastClock();
 	        if (!(proxyer->Schedule(thread, NULL, ev, wakeup_timeout)))
 	        {
-	        	GetInstance<ISessionEventerCtrl>()->FreeEventer(ev);
+	        	GetInstance<ISessionEventerPool>()->FreeEventer(ev);
 	            return -2;
 	        }
 
@@ -789,7 +789,7 @@ public:
 	        Eventer* ev = proxyer->GetEventer(fd);
             if (NULL == ev) 
             {
-                ev = GetInstance<ISessionEventerCtrl>()->GetEventer(eEVENT_THREAD);
+                ev = GetInstance<ISessionEventerPool>()->GetEventer(eEVENT_THREAD);
                 ev->SetOwnerProxyer(proxyer);
             }
 	        ev->SetOsfd(fd);
@@ -798,7 +798,7 @@ public:
 	        int wakeup_timeout = timeout + frame->GetLastClock();
 	        if (!(proxyer->Schedule(thread, NULL, ev, wakeup_timeout)))
 	        {
-	        	GetInstance<ISessionEventerCtrl>()->FreeEventer(ev);
+	        	GetInstance<ISessionEventerPool>()->FreeEventer(ev);
 	            return -3;
 	        }
 	    }
@@ -841,7 +841,7 @@ public:
 	        Eventer* ev = proxyer->GetEventer(fd);
             if (NULL == ev) 
             {
-                ev = GetInstance<ISessionEventerCtrl>()->GetEventer(eEVENT_THREAD);
+                ev = GetInstance<ISessionEventerPool>()->GetEventer(eEVENT_THREAD);
                 ev->SetOwnerProxyer(proxyer);
             }
 	        ev->SetOsfd(fd);
@@ -858,7 +858,7 @@ public:
 	        if (!(proxyer->Schedule(thread, NULL, ev, wakeup_timeout)))
 	        {
 	            LOG_TRACE("schedule failed, errno: %d", errno);
-	            GetInstance<ISessionEventerCtrl>()->FreeEventer(ev);
+	            GetInstance<ISessionEventerPool>()->FreeEventer(ev);
 	            return -2;
 	        }
 
@@ -909,16 +909,23 @@ public:
 	        frame->CheckExpired();
 	    }
     }
-    // 表示可以中断运行，非Daemon方式
-    static void FrontRun()
+    // 可以中断运行，非Daemon方式，is_front = true 前端运行，is_front = false Daemon运行
+    static void Run(bool is_front = false)
     {
-        Frame* frame = GetInstance<Frame>();
-    	Thread* primo = (Thread *)(frame->PrimoThread());
-        Thread* daemon = (Thread *)(frame->DaemonThread());
-        frame->SetExitFlag(true);
-        frame->SetActiveThread(daemon);
-	    daemon->SetState(eRUNNING);
-	    daemon->RestoreContext((ThreadBase *)primo);
+        if (is_front)
+        {
+            Frame* frame = GetInstance<Frame>();
+            Thread* primo = (Thread *)(frame->PrimoThread());
+            Thread* daemon = (Thread *)(frame->DaemonThread());
+            frame->SetExitFlag(true);
+            frame->SetActiveThread(daemon);
+            daemon->SetState(eRUNNING);
+            daemon->RestoreContext((ThreadBase *)primo);
+        }
+        else
+        {
+            DaemonRun(NULL);
+        }
     }
 
 public:

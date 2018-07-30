@@ -3,7 +3,7 @@ mthread
 
 # 简介
 
-[mthread]是一个基于协程的高性能网络库，目前提供支持TCP/UDP等协议的非阻塞式的客户端库(服务端正在开发中...)。
+[mthread]是一个基于协程的高性能网络库，目前提供支持TCP/UDP等协议的非阻塞式的客户端库(服务端正在开发中...)
 
 # 特性
 
@@ -78,7 +78,7 @@ int main(int argc, char* argv[])
         std::string *s = new std::string(ss.str());
         Frame::CreateThread(func, s);
     }
-    Frame::FrontRun();
+    Frame::Run(true);
     LOG_DEBUG("--- end time : %ld", Utils::system_ms());
 
     return 0;

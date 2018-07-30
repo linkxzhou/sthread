@@ -1,3 +1,7 @@
+/*
+ * Copyright (C) zhoulv2000@163.com
+ */
+
 #include "mt_core.h"
 #include "mt_session.h"
 
@@ -447,7 +451,7 @@ void IMtConnection::ResetEventer()
     // 释放event
     if (NULL != m_ev_)
     {
-        GetInstance<ISessionEventerCtrl>()->FreeEventer(m_ev_);
+        GetInstance<ISessionEventerPool>()->FreeEventer(m_ev_);
     }
     m_ev_ = NULL;
 }

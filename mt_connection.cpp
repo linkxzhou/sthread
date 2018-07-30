@@ -1,3 +1,7 @@
+/*
+ * Copyright (C) zhoulv2000@163.com
+ */
+
 #include "mt_connection.h"
 #include "mt_action.h"
 #include "mt_frame.h"

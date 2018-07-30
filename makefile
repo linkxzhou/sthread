@@ -20,6 +20,7 @@ INC = -I./include
 #	$(CC) -c $*.c
 
 all: $(BINARY) 
+	@rm -rf *.o
 
 # RED = \\e[1m\\e[31m
 # DARKRED = \\e[31m
