@@ -129,7 +129,7 @@ int udp_sendrecv(struct sockaddr_in* dst, void* pkg, int len, void* recv_buf,
     int time_left = timeout;
     int sock = -1;
 
-    IMtConnection* conn = s_get_conn(dst, sock, eUDP_CLIENT_CONN);
+    IMtConnection* conn = s_get_conn(dst, sock, eUDP_CONN);
     LOG_TRACE("current socket :%d, conn : %p", sock, conn);
     if ((conn == NULL) || (sock < 0))
     {
@@ -197,7 +197,7 @@ int tcp_sendrecv(struct sockaddr_in* dst, void* pkg, int len, void* recv_buf, in
     int sock = -1;
 
     // 判断是否为长连接
-    IMtConnection* conn = s_get_conn(dst, sock, is_keep ? eTCP_KEEP_CLIENT_CONN : eTCP_SHORT_CLIENT_CONN);
+    IMtConnection* conn = s_get_conn(dst, sock, is_keep ? eTCP_KEEP_CONN : eTCP_SHORT_CONN);
     LOG_TRACE("current socket :%d, conn : %p", sock, conn);
     if ((conn == NULL) || (sock < 0))
     {

@@ -10,7 +10,7 @@ MTHREAD_NAMESPACE_USING
 using namespace std;
 
 // Udp的短连接
-int UdpClientConnection::CreateSocket()
+int UdpIMtConnection::CreateSocket()
 {
     m_osfd_ = mt_socket(AF_INET, SOCK_DGRAM, 0);
     if (m_osfd_ < 0)
@@ -45,7 +45,7 @@ int UdpClientConnection::CreateSocket()
 }
 
 // TODO : udp的短连接
-int UdpClientConnection::SendData()
+int UdpIMtConnection::SendData()
 {
     if (!m_msg_buff_)
     {
@@ -75,7 +75,7 @@ int UdpClientConnection::SendData()
 }
 
 // TODO : 接收数据
-int UdpClientConnection::RecvData()
+int UdpIMtConnection::RecvData()
 {
     if (!m_msg_buff_)
     {
@@ -131,8 +131,63 @@ int UdpClientConnection::RecvData()
     }
 }
 
+int TcpAcceptIMtConnection::CreateSocket()
+{
+    m_osfd_ = mt_socket(AF_INET, SOCK_STREAM, 0);
+    if (m_osfd_ < 0)
+    {
+        LOG_ERROR("socket create failed, errno %d(%s)", errno, strerror(errno));
+        return -1;
+    }
+
+    int flags = 1;
+    // 设置为非阻塞
+    if (mt_ioctl(m_osfd_, FIONBIO, &flags) < 0)
+    {
+        LOG_ERROR("socket unblock failed, errno %d(%s)", errno, strerror(errno));
+        mt_close(m_osfd_);
+        m_osfd_ = -1;
+        return -2;
+    }
+
+    LOG_TRACE("m_ev_ : %p", m_ev_);
+    if (NULL != m_ev_)
+    {
+        m_ev_->SetOsfd(m_osfd_);
+        m_ev_->EnableInput();
+        m_ev_->EnableOutput();
+    }
+    else
+    {
+        LOG_WARN("m_ev_ is NULL, cannot set m_osfd_ : %d", m_osfd_);
+    }
+
+    int ret = ::bind(m_osfd_, (struct sockaddr *)&m_dst_addr_, sizeof(m_dst_addr_));
+    if (ret < 0)
+    {
+        LOG_ERROR("m_osfd_ bind error, ret : %d", ret);
+        return -3;
+    }
+
+    ret = ::listen(m_osfd_, 1024);
+    if (ret < 0)
+    {
+        LOG_ERROR("m_osfd_ listen error, ret : %d", ret);
+        return -4;
+    }
+
+    return m_osfd_;
+}
+
+int TcpAcceptIMtConnection::Accept()
+{
+    // accept
+
+    return 0;
+}
+
 // Tcp的短链接
-int TcpShortClientConnection::CreateSocket()
+int TcpShortIMtConnection::CreateSocket()
 {
     m_osfd_ = mt_socket(AF_INET, SOCK_STREAM, 0);
     if (m_osfd_ < 0)
@@ -167,7 +222,7 @@ int TcpShortClientConnection::CreateSocket()
 }
 
 // 发送数据
-int TcpShortClientConnection::SendData()
+int TcpShortIMtConnection::SendData()
 {
     if (!m_action_ || !m_msg_buff_)
     {
@@ -209,7 +264,7 @@ int TcpShortClientConnection::SendData()
 }
 
 // 接收数据
-int TcpShortClientConnection::RecvData()
+int TcpShortIMtConnection::RecvData()
 {
     if (!m_msg_buff_)
     {
@@ -261,7 +316,7 @@ int TcpShortClientConnection::RecvData()
     }
 }
 
-int TcpShortClientConnection::OpenConnect()
+int TcpShortIMtConnection::OpenConnect()
 {
     if (!m_msg_buff_)
     {
@@ -302,12 +357,12 @@ int TcpShortClientConnection::OpenConnect()
     }
 }
 
-int TcpKeepClientConnection::CreateSocket()
+int TcpKeepIMtConnection::CreateSocket()
 {
     LOG_TRACE("m_osfd_ : %d", m_osfd_);
     if (m_osfd_ <= 0)
     {
-        TcpShortClientConnection::CreateSocket();
+        TcpShortIMtConnection::CreateSocket();
     }
     else
     {
@@ -327,7 +382,7 @@ int TcpKeepClientConnection::CreateSocket()
     return m_osfd_;
 }
 
-bool TcpKeepClientConnection::IdleAttach()
+bool TcpKeepIMtConnection::IdleAttach()
 {
     if (m_osfd_ < 0)
     {
@@ -362,7 +417,7 @@ bool TcpKeepClientConnection::IdleAttach()
     }
 }
 
-bool TcpKeepClientConnection::IdleDetach()
+bool TcpKeepIMtConnection::IdleDetach()
 {
     if (m_osfd_ < 0)
     {
@@ -405,7 +460,7 @@ bool TcpKeepClientConnection::IdleDetach()
 }
 
 // 超时处理
-void TcpKeepClientConnection::Notify(eEventType type)
+void TcpKeepIMtConnection::Notify(eEventType type)
 {
     switch (type)
     {
@@ -418,10 +473,10 @@ void TcpKeepClientConnection::Notify(eEventType type)
 }
 
 // 找到对应的连接
-TcpKeepClientConnection* TcpKeepPool::GetConnection(struct sockaddr_in* dst)
+TcpKeepIMtConnection* TcpKeepPool::GetConnection(struct sockaddr_in* dst)
 {
     LOG_TRACE("dst : %p", dst);
-    TcpKeepClientConnection* conn = NULL;
+    TcpKeepIMtConnection* conn = NULL;
     if (NULL == dst)
     {
         LOG_ERROR("input param dst null, error");
@@ -455,7 +510,7 @@ TcpKeepClientConnection* TcpKeepPool::GetConnection(struct sockaddr_in* dst)
     return conn;
 }
 // 移除tcp的conn链接
-bool TcpKeepPool::RemoveConnection(TcpKeepClientConnection* conn)
+bool TcpKeepPool::RemoveConnection(TcpKeepIMtConnection* conn)
 {
     struct sockaddr_in* dst = conn->GetDestAddr();
     if ((dst->sin_addr.s_addr == 0) || (dst->sin_port == 0))
@@ -476,7 +531,7 @@ bool TcpKeepPool::RemoveConnection(TcpKeepClientConnection* conn)
 
     return true;
 }
-bool TcpKeepPool::CacheConnection(TcpKeepClientConnection* conn)
+bool TcpKeepPool::CacheConnection(TcpKeepIMtConnection* conn)
 {
     struct sockaddr_in* dst = conn->GetDestAddr();
     if ((dst->sin_addr.s_addr == 0) || (dst->sin_port == 0))
@@ -509,7 +564,7 @@ bool TcpKeepPool::CacheConnection(TcpKeepClientConnection* conn)
     return true;
 }
 
-void TcpKeepPool::FreeConnection(TcpKeepClientConnection* conn, bool force_free)
+void TcpKeepPool::FreeConnection(TcpKeepIMtConnection* conn, bool force_free)
 {
     if (force_free)
     {
@@ -532,9 +587,9 @@ IMtConnection* ConnectionPool::GetConnection(eConnType type, struct sockaddr_in*
 {
     switch (type)
     {
-        case eUDP_CLIENT_CONN: return m_udp_queue_.AllocPtr();
-        case eTCP_SHORT_CLIENT_CONN: return m_tcp_short_queue_.AllocPtr(); // tcp短连接
-        case eTCP_KEEP_CLIENT_CONN: return m_tcp_keep_.GetConnection(dst); // tcp长连接
+        case eUDP_CONN: return m_udp_queue_.AllocPtr();
+        case eTCP_SHORT_CONN: return m_tcp_short_queue_.AllocPtr(); // tcp短连接
+        case eTCP_KEEP_CONN: return m_tcp_keep_.GetConnection(dst); // tcp长连接
         default: return NULL;
     }
 }
@@ -549,9 +604,9 @@ void ConnectionPool::FreeConnection(IMtConnection* conn, bool force_free)
     eConnType type = conn->GetConnType();
     switch (type)
     {
-        case eUDP_CLIENT_CONN: return m_udp_queue_.FreePtr(dynamic_cast<UdpClientConnection*>(conn));
-        case eTCP_SHORT_CLIENT_CONN: return m_tcp_short_queue_.FreePtr(dynamic_cast<TcpShortClientConnection*>(conn));
-        case eTCP_KEEP_CLIENT_CONN: return m_tcp_keep_.FreeConnection(dynamic_cast<TcpKeepClientConnection*>(conn), force_free);
+        case eUDP_CONN: return m_udp_queue_.FreePtr(dynamic_cast<UdpIMtConnection*>(conn));
+        case eTCP_SHORT_CONN: return m_tcp_short_queue_.FreePtr(dynamic_cast<TcpShortIMtConnection*>(conn));
+        case eTCP_KEEP_CONN: return m_tcp_keep_.FreeConnection(dynamic_cast<TcpKeepIMtConnection*>(conn), force_free);
         default: break;
     }
     // 重置数据
@@ -562,7 +617,7 @@ void ConnectionPool::FreeConnection(IMtConnection* conn, bool force_free)
 
 void ConnectionPool::CloseIdleTcpKeep(IMtConnection* conn)
 {
-    TcpKeepClientConnection* _conn = (TcpKeepClientConnection *)conn;
+    TcpKeepIMtConnection* _conn = (TcpKeepIMtConnection *)conn;
     m_tcp_keep_.RemoveConnection(_conn);
     m_tcp_keep_.FreeConnection(_conn, true);
 }

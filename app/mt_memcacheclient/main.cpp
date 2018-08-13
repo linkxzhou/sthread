@@ -171,7 +171,7 @@ static void* thread_func(void *)
     IMtAction* action1 = new MemcacheIMtAction();
     action1->SetIMessagePtr(msg1);
     action1->SetMsgDstAddr(&servaddr);
-    action1->SetConnType(eTCP_SHORT_CLIENT_CONN);
+    action1->SetConnType(eTCP_SHORT_CONN);
     actionclient->Add(action1);
 
     MemcacheIMessage *msg2 = new MemcacheIMessage();
@@ -183,7 +183,7 @@ static void* thread_func(void *)
     IMtAction* action2 = new MemcacheIMtAction();
     action2->SetIMessagePtr(msg2);
     action2->SetMsgDstAddr(&servaddr);
-    action2->SetConnType(eTCP_SHORT_CLIENT_CONN);
+    action2->SetConnType(eTCP_SHORT_CONN);
     actionclient->Add(action2);
     
     LOG_TRACE("wait thread : %d", GetInstance<Frame>()->m_wait_num_);

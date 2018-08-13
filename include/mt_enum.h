@@ -93,17 +93,17 @@ enum eSessionFlag
 
 enum eConnType
 {
-    eUNDEF_CONN     = 0x0, // 链接错误
-    eUDP_CLIENT_CONN       = 0x1, // udp client链接
-    eTCP_KEEP_CLIENT_CONN  = 0x2, // tcp client长连接
-    eTCP_SHORT_CLIENT_CONN = 0x3, // tcp client短连接
-    eUDP_SERVER_CONN       = 0x4,
-    eTCP_SERVER_ACCEPT_CONN = 0x5,
-    eTCP_KEEP_SERVER_CONN  = 0x6,
-    eTCP_SERVER_CONN = 0x7,
+    eUNDEF_CONN             = 0x0, // 链接错误
+    eUDP_CONN               = 0x1, // udp client链接
+    eTCP_KEEP_CONN          = 0x2, // tcp client长连接
+    eTCP_SHORT_CONN         = 0x3, // tcp client短连接
+    eTCP_SERVER_ACCEPT_CONN = 0x4,
+    eTCP_SERVER             = 0x5,
+    eUDP_SERVER             = 0x6,
+    eTCP_ACCEPT_CONN        = 0x7,
 };
 
-enum eTcpKeepFlag
+enum eKeepFlag
 {
     eTCP_KEEP_IN_LIST  = 0x1,
     eTCP_KEEP_IN_POLL  = 0x2,

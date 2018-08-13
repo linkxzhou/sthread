@@ -12,20 +12,20 @@
 
 MTHREAD_NAMESPACE_BEGIN
 
-class TcpKeepClientConnection;
+class TcpKeepIMtConnection;
 class HeapTimer;
 
 // udp的无session连接
-class UdpClientConnection : public IMtConnection
+class UdpIMtConnection : public IMtConnection
 {
 public:
-    UdpClientConnection()
+    UdpIMtConnection()
     {
         m_osfd_ = -1;
-        m_type_ = eUDP_CLIENT_CONN;
+        m_type_ = eUDP_CONN;
     }
 
-    virtual ~UdpClientConnection()
+    virtual ~UdpIMtConnection()
     {
         IMtConnection::CloseSocket();
     }
@@ -44,16 +44,16 @@ public:
 };
 
 // tcp短连接
-class TcpShortClientConnection : public IMtConnection
+class TcpShortIMtConnection : public IMtConnection
 {
 public:
-    TcpShortClientConnection()
+    TcpShortIMtConnection()
     {
         m_osfd_ = -1;
-        m_type_ = eTCP_SHORT_CLIENT_CONN;
+        m_type_ = eTCP_SHORT_CONN;
     }
 
-    virtual ~TcpShortClientConnection()
+    virtual ~TcpShortIMtConnection()
     {
         IMtConnection::CloseSocket();
     }
@@ -85,22 +85,65 @@ public:
     }
 };
 
-// tcp长链接
-typedef CPP_TAILQ_ENTRY<TcpKeepClientConnection> KeepConnLink;
-typedef CPP_TAILQ_HEAD<TcpKeepClientConnection> KeepConnList;
-
-class TcpKeepClientConnection : public TcpShortClientConnection, public TimerEntry
+// tcp accept连接
+class TcpAcceptIMtConnection
 {
 public:
-    TcpKeepClientConnection() : m_timer_(NULL)
+    TcpAcceptIMtConnection()
+    {
+        m_osfd_ = -1;
+        m_type_ = eTCP_ACCEPT_CONN;
+    }
+
+    virtual ~TcpAcceptIMtConnection()
+    {
+        if (m_osfd_ > 0)
+        {
+            mt_close(m_osfd_);
+            m_osfd_ = -1;
+        }
+    }
+
+    virtual int CreateSocket();
+
+    virtual int Accept();
+
+    inline void SetDestAddr(struct sockaddr_in* dst)
+    {
+        memcpy(&m_dst_addr_, dst, sizeof(m_dst_addr_));
+    }
+
+    inline struct sockaddr_in* GetDestAddr()
+    {
+        return &m_dst_addr_;
+    }
+
+protected:
+    eConnType           m_type_;
+    IMtActionBase*      m_action_;
+    IMtMsgBuffer*       m_msg_buff_;
+    Eventer*            m_ev_;
+
+    int                 m_osfd_;
+    struct sockaddr_in  m_dst_addr_;
+};
+
+// tcp长链接
+typedef CPP_TAILQ_ENTRY<TcpKeepIMtConnection> KeepConnLink;
+typedef CPP_TAILQ_HEAD<TcpKeepIMtConnection> KeepConnList;
+
+class TcpKeepIMtConnection : public TcpShortIMtConnection, public TimerEntry
+{
+public:
+    TcpKeepIMtConnection() : m_timer_(NULL)
     {
         m_osfd_ = -1;
         m_keep_time_ = 10 * 60 * 1000;
         m_keep_flag_ = 0;
-        m_type_ = eTCP_KEEP_CLIENT_CONN;
+        m_type_ = eTCP_KEEP_CONN;
     }
 
-    virtual ~TcpKeepClientConnection()
+    virtual ~TcpKeepIMtConnection()
     {
         IMtConnection::CloseSocket();
     }
@@ -186,7 +229,7 @@ public:
         
         return 0;
     }
-    void InsertConn(TcpKeepClientConnection *conn)
+    void InsertConn(TcpKeepIMtConnection *conn)
     {
         if (conn->m_keep_flag_ & eTCP_KEEP_IN_LIST)
         {
@@ -196,7 +239,7 @@ public:
         CPP_TAILQ_INSERT_TAIL(&m_list_, conn, m_entry_);
         conn->m_keep_flag_ |= eTCP_KEEP_IN_LIST;
     }
-    void RemoveConn(TcpKeepClientConnection* conn)
+    void RemoveConn(TcpKeepIMtConnection* conn)
     {
         if (!(conn->m_keep_flag_ & eTCP_KEEP_IN_LIST))
         {
@@ -206,7 +249,7 @@ public:
         CPP_TAILQ_REMOVE(&m_list_, conn, m_entry_);
         conn->m_keep_flag_ &= ~eTCP_KEEP_IN_LIST;
     }
-    TcpKeepClientConnection* GetFirstConn()
+    TcpKeepIMtConnection* GetFirstConn()
     {
         return CPP_TAILQ_FIRST(&m_list_);
     }
@@ -221,7 +264,7 @@ private:
 class TcpKeepPool
 {
 public:
-    typedef UtilsPtrPool<TcpKeepClientConnection> TcpKeepQueue;
+    typedef UtilsPtrPool<TcpKeepIMtConnection> TcpKeepQueue;
 
     TcpKeepPool() : m_keep_map_(NULL)
     {
@@ -247,13 +290,13 @@ public:
         safe_delete(m_keep_map_);
     }
 
-    TcpKeepClientConnection* GetConnection(struct sockaddr_in* dst);
+    TcpKeepIMtConnection* GetConnection(struct sockaddr_in* dst);
 
-    bool CacheConnection(TcpKeepClientConnection* conn);
+    bool CacheConnection(TcpKeepIMtConnection* conn);
 
-    bool RemoveConnection(TcpKeepClientConnection* conn);
+    bool RemoveConnection(TcpKeepIMtConnection* conn);
 
-    void FreeConnection(TcpKeepClientConnection* conn, bool force_free); // 是否强制释放
+    void FreeConnection(TcpKeepIMtConnection* conn, bool force_free); // 是否强制释放
 
 private:
     HashList<TcpKeepKey>*   m_keep_map_;
@@ -264,8 +307,8 @@ private:
 class ConnectionPool
 {
 public:
-    typedef UtilsPtrPool<UdpClientConnection>       UdpQueue;
-    typedef UtilsPtrPool<TcpShortClientConnection>  TcpShortQueue;
+    typedef UtilsPtrPool<UdpIMtConnection>       UdpQueue;
+    typedef UtilsPtrPool<TcpShortIMtConnection>  TcpShortQueue;
 
     IMtConnection* GetConnection(eConnType type, struct sockaddr_in* dst = NULL);
 

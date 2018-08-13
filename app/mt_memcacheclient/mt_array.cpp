@@ -6,7 +6,8 @@ struct array * array_create(uint32_t n, size_t size)
     struct array *a;
 
     a = (struct array *)malloc(sizeof(*a));
-    if (a == NULL) {
+    if (a == NULL) 
+    {
         return NULL;
     }
 

@@ -434,7 +434,7 @@ bool EventProxyer::Schedule(ThreadBase* thread, EventerList* ev_list,
     if (recv_num == 0)
     {
         errno = ETIME;
-        LOG_WARN("recv_num : %d", recv_num);
+        LOG_TRACE("[WARN]recv_num : %d", recv_num);
         return false;
     }
     else

@@ -13,12 +13,14 @@
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <sys/ioctl.h>
+#include <sys/syscall.h>
 #include <math.h>
 #include <queue>
 #include <set>
 #include <map>
 #include <vector>
 #include <errno.h>
+#include <unistd.h>
 
 #define MTHREAD_NAMESPACE_BEGIN namespace mthread {
 #define MTHREAD_NAMESPACE_END   }
@@ -26,6 +28,7 @@
 
 #define mt_min(x,y) (((x)<(y))?(x):(y))
 #define mt_max(x,y) (((x)<(y))?(x):(y))
+#define mt_gettid() pthread_self()
 
 // 安全DELETE
 #define safe_delete(ptr) do {               \
@@ -73,22 +76,22 @@ typedef void (*ThreadRunFunction)(void*);
 typedef unsigned int (*TcpCheckMsgLenFunction)(void* buf, int len);
 
 #if TRACE
-#define LOG_TRACE(fmt, args...) fprintf(stdout, (char*)"[TRACE][%ld][%ld][%-10s][%-4d][%-10s]"fmt"\n", pthread_self(), mt_get_threadid(), __FILE__, __LINE__, __FUNCTION__, ##args);
-#define LOG_DEBUG(fmt, args...) fprintf(stdout, (char*)"[DEBUG][%ld][%ld][%-10s][%-4d][%-10s]"fmt"\n", pthread_self(), mt_get_threadid(), __FILE__, __LINE__, __FUNCTION__, ##args);
-#define LOG_WARN(fmt, args...) fprintf(stdout, (char*)"[WARN][%ld][%ld][%-10s][%-4d][%-10s]"fmt"\n", pthread_self(), mt_get_threadid(), __FILE__, __LINE__, __FUNCTION__, ##args);
-#define LOG_ERROR(fmt, args...) fprintf(stdout, (char*)"[ERROR][%ld][%ld][%-10s][%-4d][%-10s]"fmt"\n", pthread_self(), mt_get_threadid(), __FILE__, __LINE__, __FUNCTION__, ##args);
-#define LOG_CHECK_FUNCTION	fprintf(stdout, (char*)"[TRACE][%ld][%ld][%-10s][%-4d][%-10s] check function ...\n", pthread_self(), mt_get_threadid(), __FILE__, __LINE__, __FUNCTION__);
+#define LOG_TRACE(fmt, args...) fprintf(stdout, (char*)"[TRACE][%ld][%ld][%-10s][%-4d][%-10s]"fmt"\n", mt_gettid(), mt_get_threadid(), __FILE__, __LINE__, __FUNCTION__, ##args);
+#define LOG_DEBUG(fmt, args...) fprintf(stdout, (char*)"[DEBUG][%ld][%ld][%-10s][%-4d][%-10s]"fmt"\n", mt_gettid(), mt_get_threadid(), __FILE__, __LINE__, __FUNCTION__, ##args);
+#define LOG_WARN(fmt, args...) fprintf(stdout, (char*)"[WARN][%ld][%ld][%-10s][%-4d][%-10s]"fmt"\n", mt_gettid(), mt_get_threadid(), __FILE__, __LINE__, __FUNCTION__, ##args);
+#define LOG_ERROR(fmt, args...) fprintf(stdout, (char*)"[ERROR][%ld][%ld][%-10s][%-4d][%-10s]"fmt"\n", mt_gettid(), mt_get_threadid(), __FILE__, __LINE__, __FUNCTION__, ##args);
+#define LOG_CHECK_FUNCTION	fprintf(stdout, (char*)"[TRACE][%ld][%ld][%-10s][%-4d][%-10s] check function ...\n", mt_gettid(), mt_get_threadid(), __FILE__, __LINE__, __FUNCTION__);
 #elif DEBUG
 #define LOG_TRACE(fmt, args...)
-#define LOG_DEBUG(fmt, args...) fprintf(stdout, (char*)"[DEBUG][%ld][%ld][%-10s][%-4d][%-10s]"fmt"\n", pthread_self(), mt_get_threadid(), __FILE__, __LINE__, __FUNCTION__, ##args);
-#define LOG_WARN(fmt, args...) fprintf(stdout, (char*)"[WARN][%ld][%ld][%-10s][%-4d][%-10s]"fmt"\n", pthread_self(), mt_get_threadid(), __FILE__, __LINE__, __FUNCTION__, ##args);
-#define LOG_ERROR(fmt, args...) fprintf(stdout, (char*)"[ERROR][%ld][%ld][%-10s][%-4d][%-10s]"fmt"\n", pthread_self(), mt_get_threadid(), __FILE__, __LINE__, __FUNCTION__, ##args);
+#define LOG_DEBUG(fmt, args...) fprintf(stdout, (char*)"[DEBUG][%ld][%ld][%-10s][%-4d][%-10s]"fmt"\n", mt_gettid(), mt_get_threadid(), __FILE__, __LINE__, __FUNCTION__, ##args);
+#define LOG_WARN(fmt, args...) fprintf(stdout, (char*)"[WARN][%ld][%ld][%-10s][%-4d][%-10s]"fmt"\n", mt_gettid(), mt_get_threadid(), __FILE__, __LINE__, __FUNCTION__, ##args);
+#define LOG_ERROR(fmt, args...) fprintf(stdout, (char*)"[ERROR][%ld][%ld][%-10s][%-4d][%-10s]"fmt"\n", mt_gettid(), mt_get_threadid(), __FILE__, __LINE__, __FUNCTION__, ##args);
 #define LOG_CHECK_FUNCTION
 #else
 #define LOG_TRACE(fmt, args...)
 #define LOG_DEBUG(fmt, args...)
-#define LOG_WARN(fmt, args...) fprintf(stdout, (char*)"[WARN][%-10s][%-4d][%-10s]"fmt"\n", __FILE__, __LINE__, __FUNCTION__, ##args);
-#define LOG_ERROR(fmt, args...) fprintf(stdout, (char*)"[ERROR][%-10s][%-4d][%-10s]"fmt"\n", __FILE__, __LINE__, __FUNCTION__, ##args);
+#define LOG_WARN(fmt, args...) fprintf(stdout, (char*)"[WARN][%ld][%-10s][%-4d][%-10s]"fmt"\n", mt_gettid(), __FILE__, __LINE__, __FUNCTION__, ##args);
+#define LOG_ERROR(fmt, args...) fprintf(stdout, (char*)"[ERROR][%ld][%-10s][%-4d][%-10s]"fmt"\n", mt_gettid(), __FILE__, __LINE__, __FUNCTION__, ##args);
 #define LOG_CHECK_FUNCTION
 #endif
 

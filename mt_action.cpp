@@ -27,7 +27,7 @@ void IMtAction::Reset(bool reset_all)
     if (reset_all)
     {
         m_flag_       = eACTION_FLAG_UNDEF;
-        m_conn_type_  = eTCP_SHORT_CLIENT_CONN;
+        m_conn_type_  = eTCP_SHORT_CONN;
         m_errno_      = eERR_NONE;
         m_time_cost_  = 0;
         m_buff_size_  = 0;
@@ -549,7 +549,7 @@ int IMtActionClient::Recvfrom(int timeout)
             if (ret < 0)
             {
                 action->SetErrno(eERR_RECV_FAIL);
-                LOG_ERROR("recv failed: %p", connection);
+                LOG_ERROR("recv failed: %p, ret: %d", connection, ret);
                 continue;
             }
             else if (ret == 0)
@@ -622,5 +622,25 @@ int IMtActionClient::RunSendRecv(int timeout)
         return -4;
     }
 
+    return 0;
+}
+
+int IMtActionServer::NewSock(struct sockaddr *servaddr, eConnType type)
+{
+    return 0;
+}
+
+int IMtActionServer::Accept(int timeout)
+{
+    return 0;
+}
+
+int IMtActionServer::Sendto(int timeout)
+{
+    return 0;
+}
+
+int IMtActionServer::Recvfrom(int timeout)
+{
     return 0;
 }

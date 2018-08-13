@@ -153,4 +153,16 @@ private:
     IMtActionList m_action_list_;
 };
 
+class IMtActionServer
+{
+public:
+    int NewSock(struct sockaddr *servaddr, eConnType type);
+    
+    int Accept(int timeout);
+
+    int Sendto(int timeout);
+
+    int Recvfrom(int timeout);
+};
+
 #endif
