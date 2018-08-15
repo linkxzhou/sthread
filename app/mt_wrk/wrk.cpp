@@ -10,12 +10,7 @@
 #include "process.h"
 
 static wrk::config cg;
-
-static struct 
-{
-    wrk::stats *latency;
-    wrk::stats *requests;
-} statistics;
+int wrk::Utils::s_verbose_ = 0;
 
 static void usage() 
 {
@@ -93,6 +88,9 @@ static int parse_args(wrk::config *_cg, char **url, struct http_parser_url *part
                 } 
                 _cg->timeout *= 1000;
                 break;
+            case 'v':
+                wrk::Utils::s_verbose_ = 1; // 打印版本和详细信息
+                break;
             case 'h':
             case '?':
             case ':':
@@ -153,7 +151,10 @@ void callback(void *data)
     servaddr.sin_addr.s_addr = inet_addr(ipstr);  ///服务器ip
 
     // TODO : debug
-    // printf("ipstr : %s, port : %d\n", ipstr, cg.port);
+    if (wrk::Utils::s_verbose_)
+    {
+        printf("dst_ip : %s, port : %d\n", ipstr, cg.port);
+    }
 
     int ret = mt_init_frame();
     mt_set_hook_flag();
@@ -161,13 +162,28 @@ void callback(void *data)
 
     // -------------- 2.创建action --------------
     int count = (int)(cg.connections / cg.numbers);
+    if (wrk::Utils::s_verbose_)
+    {
+        printf("mt_init_frame ret : %d, count : %d\n", ret, count);
+    }
     std::vector<wrk::HttpIMessage*> msg_vc;
     std::vector<IMtAction*> action_vc;
     for (int i = 0; i < count; i++)
     {
         wrk::HttpIMessage *msg = new wrk::HttpIMessage();
         msg->m_host_ = cg.host;
-        msg_vc.push_back(msg);
+        if (cg.path != NULL)
+        {
+            msg->m_get_ = std::string(cg.path);
+            if (cg.query != NULL)
+            {
+                msg->m_get_ += "?" + std::string(cg.query);
+            }
+        }
+        else
+        {
+            msg->m_get_ = "/";
+        }
 
         IMtAction* action = new wrk::HttpIMtAction();
         action->SetMsgDstAddr(&servaddr);
@@ -175,19 +191,27 @@ void callback(void *data)
         action->SetMsgBufferSize(4096); // 设置buffsize大小
         action->SetIMessagePtr(msg);
         actionframe->Add(action);
+
+        msg_vc.push_back(msg);
         action_vc.push_back(action);
     }
 
     ret = actionframe->SendRecv(10000);
-
-    // TODO : debug
-    // printf("print_number_debug[2] : \n");
-    // wrk::Utils::print_number_debug(&(msg->m_number_));
+    if (wrk::Utils::s_verbose_)
+    {
+        printf("actionframe ret : %d, count : %d\n", ret, count);
+    }
 
     std::vector<wrk::HttpIMessage*>::iterator iter = msg_vc.begin();
     while (iter != msg_vc.end())
     {
         p->ChildProcessSend(&((*iter)->m_number_), sizeof(wrk::number));
+        // TODO : debug
+        if (wrk::Utils::s_verbose_)
+        {
+            printf("[CHILDREN] send : \n");
+            wrk::Utils::print_number_debug(&((*iter)->m_number_));
+        }
         iter++;
     }
 
@@ -220,48 +244,75 @@ int main(int argc, char **argv)
     char *schema  = copy_url_part(url, &parts, UF_SCHEMA);
     char *host    = copy_url_part(url, &parts, UF_HOST);
     char *port    = copy_url_part(url, &parts, UF_PORT);
+    char *path    = copy_url_part(url, &parts, UF_PATH);
+    char *query   = copy_url_part(url, &parts, UF_QUERY);
     char *service = port ? port : schema;
 
     wrk::StatsCalculate slatency(cg.timeout * 1000), srequests(MAX_THREAD_RATE_S);
 
-    statistics.latency  = slatency.get_stats();
-    statistics.requests = srequests.get_stats();
     cg.host = host;
     cg.port = (port != NULL) ? atoi(port) : 80;
+    cg.path = path;
+    cg.query = query;
 
     // TODO : debug
-    // wrk::Utils::print_config_debug(&cg);
+    if (wrk::Utils::s_verbose_)
+    {
+        wrk::Utils::print_config_debug(&cg);
+    }
 
     // -------------- 开启进程，然后进行数据统计 ---------------
-    uint64_t start    = wrk::Utils::time_us();
-    uint64_t complete = 0;
-    uint64_t bytes    = 0;
-
+    uint64_t start = wrk::Utils::time_us();
     // 创建子进程
     wrk::Process p;
     int ret = p.Create(cg.numbers, callback);
     // 创建失败
     if (ret < 0)
     {
-        printf("create child process error, code : %d", ret);
+        printf("create child process error, code : %d\n", ret);
         exit(1);
     }
 
-    wrk::number *numbers = (wrk::number *)malloc(cg.numbers * sizeof(wrk::number));
-    int count = 0;
+    wrk::number *numbers = (wrk::number *)malloc(sizeof(wrk::number));
+    // 初始化为0
+    wrk::Utils::init_number(numbers);
     do
     {
+        wrk::number num_o;
         unsigned int num_len;
-        int r = p.ParentProcessRecv(numbers + count, num_len);
 
-        // TODO : debug
-        // wrk::Utils::print_number_debug(numbers + count);
-
+        int r = p.ParentProcessRecv(&num_o, num_len);
         if (r < 0)
         {
             break;
         }
-        count++;
+
+        numbers->connections += num_o.connections;
+        numbers->complete += num_o.complete;
+        numbers->requests += num_o.requests;
+        numbers->bytes += num_o.bytes;
+        numbers->errors.connect += num_o.errors.connect;
+        numbers->errors.read += num_o.errors.read;
+        numbers->errors.write += num_o.errors.write;
+        numbers->errors.status += num_o.errors.status;
+        numbers->errors.timeout += num_o.errors.timeout;
+
+        if (!slatency.record(num_o.end - num_o.start)) 
+        {
+            numbers->errors.timeout++;
+        }
+        if (num_o.requests > 0) 
+        {
+            uint64_t elapsed_ms = (num_o.end - num_o.start) / 1000;
+            srequests.record((num_o.requests / (double) elapsed_ms) * 1000);
+        }
+
+        // TODO : debug
+        if (wrk::Utils::s_verbose_)
+        {
+            printf("[PARENT] recv : \n");
+            wrk::Utils::print_number_debug(numbers);
+        }
     } while (true);
     p.Wait();
 
@@ -269,21 +320,15 @@ int main(int argc, char **argv)
     printf("Running %s test @ %s\n", time, url);
     printf("  %ld numbers and %ld connections\n", cg.numbers, cg.connections);
 
+    uint64_t complete = numbers->complete;
+    uint64_t bytes    = numbers->bytes;
+
     wrk::errors errors = { 0, 0, 0, 0, 0 };
-
-    for (uint64_t i = 0; i < cg.numbers; i++) 
-    {
-        wrk::number *t = &numbers[i];
-
-        complete += t->complete;
-        bytes    += t->bytes;
-
-        errors.connect += t->errors.connect;
-        errors.read    += t->errors.read;
-        errors.write   += t->errors.write;
-        errors.timeout += t->errors.timeout;
-        errors.status  += t->errors.status;
-    }
+    errors.connect += numbers->errors.connect;
+    errors.read    += numbers->errors.read;
+    errors.write   += numbers->errors.write;
+    errors.timeout += numbers->errors.timeout;
+    errors.status  += numbers->errors.status;
 
     uint64_t runtime_us = wrk::Utils::time_us() - start;
     long double runtime_s = runtime_us / 1000000.0;
@@ -318,6 +363,7 @@ int main(int argc, char **argv)
 
     printf("Requests/sec: %9.2Lf\n", req_per_s);
     printf("Transfer/sec: %10sB\n", wrk::Utils::format_binary(bytes_per_s));
+    printf("All Transfer: %10sB\n", wrk::Utils::format_binary(bytes));
 
     return 0;
 }

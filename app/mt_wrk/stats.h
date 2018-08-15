@@ -45,6 +45,7 @@ typedef struct
     uint64_t requests;
     uint64_t bytes;
     uint64_t start;
+    uint64_t end;
     errors errors;
 } number;
 
@@ -59,106 +60,9 @@ typedef struct
     bool     latency;
     char    *host;
     uint64_t port;
+    char    *path;
+    char    *query;
 } config;
-
-static int empty_cb (http_parser *p) { return 0; }
-static int empty_data_cb (http_parser *p, const char *buf, size_t len) { return 0; }
-
-static http_parser_settings settings_null =
-  {.on_message_begin = empty_cb
-  ,.on_header_field = empty_data_cb
-  ,.on_header_value = empty_data_cb
-  ,.on_url = empty_data_cb
-  ,.on_body = empty_data_cb
-  ,.on_message_complete = empty_cb
-  ,.on_chunk_header = empty_cb
-  ,.on_chunk_complete = empty_cb
-  };
-
-class HttpIMessage: public IMessage
-{
-public:
-    HttpIMessage()
-    {
-        m_parser_ = (http_parser *)malloc(sizeof(http_parser));
-        m_number_.complete = 0;
-        m_number_.requests = 0;
-        m_number_.bytes = 0;
-        m_number_.errors.connect = 0; 
-        m_number_.errors.read = 0; 
-        m_number_.errors.write = 0; 
-        m_number_.errors.status = 0; 
-        m_number_.errors.timeout = 0;
-    }
-
-public:
-    number m_number_;
-    http_parser *m_parser_;
-    std::string m_host_;
-};
-
-class HttpIMtAction: public IMtAction
-{
-public:
-    virtual int HandleEncode(void* buf, int& len, IMessage* msg)
-    {
-        HttpIMessage *m = ((HttpIMessage *)msg);
-        if (m == NULL)
-        {
-            return -1;
-        }
-
-        char request_buf[4096] = {0};
-        snprintf(request_buf, sizeof(request_buf) - 1, "GET / HTTP/1.1\r\nHost: %s\r\n"
-            "User-Agent: curl/7.54.0\r\nAccept: */*\r\n\r\n", m->m_host_.c_str()) ;
-        len = strlen(request_buf);
-        memcpy(buf, request_buf, len);
-        ((char *)buf)[len] = '\0';
-
-        http_parser_init(m->m_parser_, HTTP_REQUEST);
-        m->m_number_.requests++;
-
-        return 0;
-    }
-    virtual int HandleInput(void* buf, int len, IMessage* msg)
-    {
-        HttpIMessage *m = ((HttpIMessage *)msg);
-
-        http_parser_init(m->m_parser_, HTTP_RESPONSE); // 初始化parser为Response类型
-        int http_len = http_parser_execute(m->m_parser_, 
-            &settings_null, (const char *)buf, len);
-        
-        if (http_len > 0)
-        {
-            m->m_number_.bytes += http_len;
-            return http_len;
-        }
-        else
-        {
-            return (http_len == 0) ? -1 : http_len - 1; // 进入异常 
-        }
-    }
-    virtual int HandleProcess(void* buf, int len, IMessage* msg)
-    {
-        HttpIMessage *m = ((HttpIMessage *)msg);
-        m->m_number_.complete++;
-
-        return 0;
-    }
-    virtual int HandleError(int err, IMessage* msg)
-    {
-        HttpIMessage *m = ((HttpIMessage *)msg);
-
-        LOG_ERROR("http_parser_execute : %d", err + 1);
-
-        if (m != NULL)
-        {
-            m->m_number_.errors.connect++;
-        }
-
-        return 0;
-    }
-};
 
 class StatsCalculate
 {
