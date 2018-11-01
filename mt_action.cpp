@@ -3,7 +3,7 @@
  */
 
 #include "mt_action.h"
-#include "mt_session.h"
+#include "mt_ext.h"
 #include "mt_frame.h"
 
 MTHREAD_NAMESPACE_USING
@@ -55,23 +55,23 @@ int IMtAction::InitConnection()
 {
     ConnectionPool* conn = GetInstance<ConnectionPool>();
     IMsgBufferPool* buf_pool = GetInstance<IMsgBufferPool>();
-    ISessionEventerPool* ev_session = GetInstance<ISessionEventerPool>();
+    EventerPool* ev_pool = GetInstance<EventerPool>();
     Frame* frame = GetInstance<Frame>();
-    EventProxyer* proxyer = frame->GetEventProxyer();
+    EventDriver* driver = frame->GetEventDriver();
 
     eEventType event_type = eEVENT_THREAD;
     eConnType conn_type = GetConnType();
 
-    m_conn_ = conn->GetConnection(conn_type, this->GetMsgDstAddr());
+    m_conn_ = conn->GetConnection(conn_type, GetMsgDstAddr());
     if (!m_conn_)
     {
         LOG_ERROR("conn failed, type: %d", conn_type);
         return -1;
     }
     m_conn_->SetIMtActon(this);
-    m_conn_->SetMsgDstAddr(this->GetMsgDstAddr());
+    m_conn_->SetMsgDstAddr(GetMsgDstAddr());
 
-    int max_len = this->GetMsgBufferSize();
+    int max_len = GetMsgBufferSize();
     IMtMsgBuffer* msg_buff = buf_pool->GetMsgBuffer(max_len);
     if (!msg_buff)
     {
@@ -81,20 +81,17 @@ int IMtAction::InitConnection()
     msg_buff->SetBufferType(eBUFF_SEND);
     m_conn_->SetIMtMsgBuffer(msg_buff);
 
-    Eventer* ev = ev_session->GetEventer(event_type);
+    Eventer* ev = ev_pool->GetEventer(event_type);
     if (!ev)
     {
         LOG_ERROR("memory type: %d, get failed", event_type);
         return -3;
     }
     
-    LOG_TRACE("ev : %p", ev);
-    ev->SetOwnerProxyer(proxyer);
+    ev->SetOwnerDriver(driver);
     m_conn_->SetEventer(ev);
     ThreadBase* thread = frame->GetActiveThread();
     ev->SetOwnerThread(thread);
-    // TODO : 用户自己设置
-    // this->SetIMessagePtr((IMessage*)(thread->GetThreadArgs()));
 
     return 0;
 }
@@ -176,20 +173,240 @@ int IMtAction::DoError()
     return HandleError((int)m_errno_, m_msg_);
 }
 
-IMtAction::IMtAction()
+// 同时调度IMtActionList
+int IMtActionRunable::Poll(IMtActionList list, int mask, int timeout)
 {
-    Reset();
+    LOG_CHECK_FUNCTION;
+
+    EventerList evlist;
+    CPP_TAILQ_INIT(&evlist);
+
+    Eventer* ev = NULL;
+    IMtAction* action = NULL;
+    for (IMtActionList::iterator iter = list.begin(); 
+        iter != list.end(); ++iter)
+    {
+        action = *iter;
+        if (action) 
+        {
+            ev = action->GetEventer();
+        }
+        if (!action || !ev)
+        {
+            action->SetErrno(eERR_FRAME_ERROR);
+            LOG_ERROR("input action %p or ev null", action);
+            return -1;
+        }
+        // 清空recv事件
+        ev->SetRecvEvents(0);
+        if (mask & MT_READABLE)
+        {
+            ev->EnableInput();
+        }
+        else
+        {
+            ev->DisableInput();
+        }
+
+        if (mask & MT_WRITEABLE)
+        {
+            ev->EnableOutput();
+        }
+        else
+        {
+            ev->DisableOutput();
+        }
+
+        CPP_TAILQ_INSERT_TAIL(&evlist, ev, m_entry_);
+    }
+
+    LOG_TRACE("list size : %d", list.size());
+
+    Frame* frame = GetInstance<Frame>();
+    Thread* thread = (Thread* )frame->GetActiveThread();
+    EventDriver* driver = frame->GetEventDriver();
+    if (!driver || !driver->Schedule(thread, &evlist, NULL, (int)timeout))
+    {
+        if (errno != ETIME)
+        {
+            action->SetErrno(eERR_POLL_FAIL);
+            LOG_ERROR("frame %p, driver %p schedule failed, errno %d", 
+                frame, driver, errno);
+            return -2;
+        }
+
+        return -3;
+    }
+
+    return 0;
 }
-IMtAction::~IMtAction()
+
+int IMtActionRunable::Sendto(IMtActionList list, int timeout)
 {
-    Reset(true);
+    Frame* frame = GetInstance<Frame>();
+    time64_t start_ms = frame->GetLastClock(), 
+        end_ms = start_ms + timeout, current_ms = 0;
+
+    int ret = 0, hassend = 0;
+    IMtAction* action = NULL;
+    IMtConnection* connection = NULL;
+
+    do
+    {
+        IMtActionList waitlist;
+        for (IMtActionList::iterator iter = list.begin(); iter != list.end(); ++iter)
+        {
+            action = *iter;
+            if (action->GetErrno() != eERR_NONE)
+            {
+                LOG_ERROR("action: %p, error: %d", action, action->GetErrno());
+                continue;
+            }
+            if (action->GetMsgFlag() == eACTION_FLAG_SEND)
+            {
+                hassend = 1;
+                continue;
+            }
+
+            connection = action->GetIConnection();
+            if (NULL == connection)
+            {
+                action->SetErrno(eERR_FRAME_ERROR);
+                LOG_ERROR("Invalid param, conn %p null", connection);
+                return -1;
+            }
+
+            ret = connection->SendData();
+            LOG_DEBUG("ret: %d", ret);
+            if (ret == -1)
+            {
+                action->SetErrno(eERR_SEND_FAIL);
+                LOG_ERROR("msg send error %d", errno);
+                continue;
+            }
+            else if (ret == 0)
+            {
+                waitlist.push_back(action);
+                continue;
+            }
+            else
+            {
+                action->SetMsgFlag(eACTION_FLAG_SEND);
+            }
+        }
+
+        current_ms = frame->GetLastClock();
+        if (current_ms > end_ms)
+        {
+            LOG_DEBUG("send data timeout");
+            for (IMtActionList::iterator iter = waitlist.begin(); iter != waitlist.end(); ++iter)
+            {
+                (*iter)->SetErrno(eERR_SEND_TIMEOUT);
+            }
+
+            if (hassend)
+            {
+                return 0;
+            }
+            else
+            {
+                return -5;
+            }
+        }
+
+        LOG_DEBUG("waitlist size: %d", waitlist.size());
+
+        if (!waitlist.empty())
+        {
+            Poll(waitlist, MT_WRITEABLE, end_ms - current_ms);
+        }
+        else
+        {
+            return 0;
+        }
+    } while (true);
+
+    return 0;
+}
+
+int IMtActionRunable::Recvfrom(IMtActionList list, int timeout)
+{
+    Frame* frame = GetInstance<Frame>();
+    time64_t start_ms = frame->GetLastClock(), end_ms = start_ms + timeout, current_ms = 0;
+
+    int ret = 0;
+    IMtAction* action = NULL;
+    IMtConnection* connection = NULL;
+
+    do
+    {
+        IMtActionList waitlist;
+        for (IMtActionList::iterator iter = list.begin(); iter != list.end(); ++iter)
+        {
+            action = *iter;
+            if (action->GetErrno() != eERR_NONE) 
+            {
+                continue;
+            }
+            if (eACTION_FLAG_FIN == action->GetMsgFlag())
+            {
+                continue;
+            }
+            
+            connection = action->GetIConnection();
+            if (NULL == connection)
+            {
+                action->SetErrno(eERR_FRAME_ERROR);
+                LOG_ERROR("Invalid param, conn %p null", connection);
+                return -2;
+            }
+            ret = connection->RecvData();
+            if (ret < 0)
+            {
+                action->SetErrno(eERR_RECV_FAIL);
+                LOG_ERROR("recv failed: %p, ret: %d", connection, ret);
+                continue;
+            }
+            else if (ret == 0)
+            {
+                waitlist.push_back(action);
+                continue;
+            }
+            else
+            {
+                action->SetMsgFlag(eACTION_FLAG_FIN);
+                action->SetCost(frame->GetLastClock() - start_ms);
+            }
+        }
+        current_ms = frame->GetLastClock();
+        if (current_ms > end_ms)
+        {
+            LOG_DEBUG("Recv data timeout, current_ms: %llu, start_ms: %llu, end_ms: %llu", 
+                current_ms, start_ms, end_ms);
+            for (IMtActionList::iterator iter = waitlist.begin(); 
+                iter != waitlist.end(); ++iter)
+            {
+                (*iter)->SetErrno(eERR_RECV_TIMEOUT);
+            }
+            return -5;
+        }
+
+        LOG_DEBUG("waitlist size: %d", waitlist.size());
+
+        if (!waitlist.empty())
+        {
+            Poll(waitlist, MT_READABLE, end_ms - current_ms);
+        }
+        else
+        {
+            return 0;
+        }
+    } while (true);
 }
 
 int IMtActionClient::SendRecv(int timeout)
 {
     int ret = 0;
-
-    LOG_TRACE("m_action_list_ size : %d", m_action_list_.size());
 
     for (IMtActionList::iterator iter = m_action_list_.begin(); 
         iter != m_action_list_.end(); ++iter)
@@ -242,69 +459,6 @@ int IMtActionClient::SendRecv(int timeout)
     return 0;
 }
 
-int IMtActionClient::Poll(IMtActionList list, int mask, int timeout)
-{
-    LOG_CHECK_FUNCTION;
-
-    EventerList evlist;
-    CPP_TAILQ_INIT(&evlist);
-
-    Eventer* ev = NULL;
-    IMtAction* action = NULL;
-    for (IMtActionList::iterator iter = list.begin(); 
-        iter != list.end(); ++iter)
-    {
-        action = *iter;
-        if (action) 
-        {
-            ev = action->GetEventer();
-        }
-        if (!action || !ev)
-        {
-            action->SetErrno(eERR_FRAME_ERROR);
-            LOG_ERROR("input action %p or ev null", action);
-            return -1;
-        }
-        ev->SetRecvEvents(0);
-        if (mask & MT_READABLE)
-        {
-            ev->EnableInput();
-        }
-        else
-        {
-            ev->DisableInput();
-        }
-        if (mask & MT_WRITABLE)
-        {
-            ev->EnableOutput();
-        }
-        else
-        {
-            ev->DisableOutput();
-        }
-        CPP_TAILQ_INSERT_TAIL(&evlist, ev, m_entry_);
-    }
-
-    LOG_TRACE("list size : %d", list.size());
-
-    Frame* frame = GetInstance<Frame>();
-    Thread* thread = (Thread* )frame->GetActiveThread();
-    EventProxyer* proxyer = frame->GetEventProxyer();
-    if (!proxyer || !proxyer->Schedule(thread, &evlist, NULL, (int)timeout))
-    {
-        if (errno != ETIME)
-        {
-            action->SetErrno(eERR_POLL_FAIL);
-            LOG_ERROR("frame %p, proxyer %p schedule failed, errno %d", 
-                frame, proxyer, errno);
-            return -2;
-        }
-        return -3;
-    }
-
-    return 0;
-}
-
 int IMtActionClient::NewSock()
 {
     int sock = -1, hasok_count = 0;
@@ -325,6 +479,7 @@ int IMtActionClient::NewSock()
         {
             continue;
         }
+
         connection = action->GetIConnection();
         if (NULL == connection)
         {
@@ -353,16 +508,14 @@ int IMtActionClient::NewSock()
     }
     else
     {
-        return 5;
+        return -5;
     }
 }
 
 int IMtActionClient::Open(int timeout)
 {
     Frame* frame = GetInstance<Frame>();
-    utime64_t start_ms = frame->GetLastClock();
-    utime64_t end_ms = start_ms + timeout;
-    utime64_t cur_ms = 0;
+    time64_t start_ms = frame->GetLastClock(), end_ms = start_ms + timeout, current_ms = 0;
 
     int ret = 0, hasopen = 0;
     IMtAction* action = NULL;
@@ -384,6 +537,7 @@ int IMtActionClient::Open(int timeout)
                 hasopen = 1;
                 continue;
             }
+
             connection = action->GetIConnection();
             if (NULL == connection)
             {
@@ -401,15 +555,16 @@ int IMtActionClient::Open(int timeout)
                 action->SetMsgFlag(eACTION_FLAG_OPEN);
             }
         }
-        cur_ms = frame->GetLastClock();
-        if (cur_ms > end_ms)
+        current_ms = frame->GetLastClock();
+        if (current_ms > end_ms)
         {
-            LOG_DEBUG("Open connect timeout, errno : %d", errno);
+            LOG_DEBUG("Open connect timeout, errno: %d", errno);
             for (IMtActionList::iterator iter = waitlist.begin(); 
                 iter != waitlist.end(); ++iter)
             {
                 (*iter)->SetErrno(eERR_CONNECT_FAIL);
             }
+
             if (!hasopen)
             {
                 return 0;
@@ -421,163 +576,7 @@ int IMtActionClient::Open(int timeout)
         }
         if (!waitlist.empty())
         {
-            Poll(waitlist, MT_WRITABLE, end_ms - cur_ms);
-        }
-        else
-        {
-            return 0;
-        }
-    }
-}
-
-int IMtActionClient::Sendto(int timeout)
-{
-    Frame* frame = GetInstance<Frame>();
-    utime64_t start_ms = frame->GetLastClock();
-    utime64_t end_ms = start_ms + timeout;
-    utime64_t cur_ms = 0;
-
-    int ret = 0, hassend = 0;
-    IMtAction* action = NULL;
-    IMtConnection* connection = NULL;
-
-    while (true)
-    {
-        IMtActionList waitlist;
-        for (IMtActionList::iterator iter = m_action_list_.begin(); 
-            iter != m_action_list_.end(); ++iter)
-        {
-            action = *iter;
-            if (action->GetErrno() != eERR_NONE)
-            {
-                continue;
-            }
-            if (action->GetMsgFlag() == eACTION_FLAG_SEND)
-            {
-                hassend = 1;
-                continue;
-            }
-            connection = action->GetIConnection();
-            if (NULL == connection)
-            {
-                action->SetErrno(eERR_FRAME_ERROR);
-                LOG_ERROR("Invalid param, conn %p null", connection);
-                return -2;
-            }
-            ret = connection->SendData();
-            if (ret == -1)
-            {
-                action->SetErrno(eERR_SEND_FAIL);
-                LOG_ERROR("msg send error %d", errno);
-                continue;
-            }
-            else if (ret == 0)
-            {
-                waitlist.push_back(action);
-                continue;
-            }
-            else
-            {
-                action->SetMsgFlag(eACTION_FLAG_SEND);
-            }
-        }
-        cur_ms = frame->GetLastClock();
-        if (cur_ms > end_ms)
-        {
-            LOG_DEBUG("send data timeout");
-            for (IMtActionList::iterator iter = waitlist.begin(); 
-                iter != waitlist.end(); ++iter)
-            {
-                (*iter)->SetErrno(eERR_SEND_FAIL);
-            }
-            if (hassend)
-            {
-                return 0;
-            }
-            else
-            {
-                return -5;
-            }
-        }
-        if (!waitlist.empty())
-        {
-            Poll(waitlist, MT_WRITABLE, end_ms - cur_ms);
-        }
-        else
-        {
-            return 0;
-        }
-    }
-
-    return 0;
-}
-
-int IMtActionClient::Recvfrom(int timeout)
-{
-    Frame* frame = GetInstance<Frame>();
-    utime64_t start_ms = frame->GetLastClock();
-    utime64_t end_ms = start_ms + timeout;
-    utime64_t cur_ms = 0;
-
-    int ret = 0;
-    IMtAction* action = NULL;
-    IMtConnection* connection = NULL;
-
-    while (true)
-    {
-        IMtActionList waitlist;
-        for (IMtActionList::iterator iter = m_action_list_.begin(); 
-            iter != m_action_list_.end(); ++iter)
-        {
-            action = *iter;
-            if (action->GetErrno() != eERR_NONE) 
-            {
-                continue;
-            }
-            if (eACTION_FLAG_FIN == action->GetMsgFlag())
-            {
-                continue;
-            }
-            connection = action->GetIConnection();
-            if (NULL == connection)
-            {
-                action->SetErrno(eERR_FRAME_ERROR);
-                LOG_ERROR("Invalid param, conn %p null", connection);
-                return -2;
-            }
-            ret = connection->RecvData();
-            if (ret < 0)
-            {
-                action->SetErrno(eERR_RECV_FAIL);
-                LOG_ERROR("recv failed: %p, ret: %d", connection, ret);
-                continue;
-            }
-            else if (ret == 0)
-            {
-                waitlist.push_back(action);
-                continue;
-            }
-            else
-            {
-                action->SetMsgFlag(eACTION_FLAG_FIN);
-                action->SetCost(frame->GetLastClock() - start_ms);
-            }
-        }
-        cur_ms = frame->GetLastClock();
-        if (cur_ms > end_ms)
-        {
-            LOG_DEBUG("Recv data timeout, cur_ms: %llu, start_ms: %llu", cur_ms, start_ms);
-            for (IMtActionList::iterator iter = waitlist.begin(); 
-                iter != waitlist.end(); ++iter)
-            {
-                (*iter)->SetErrno(eERR_RECV_TIMEOUT);
-            }
-            return -5;
-        }
-
-        if (!waitlist.empty())
-        {
-            Poll(waitlist, MT_READABLE, end_ms - cur_ms);
+            Poll(waitlist, MT_WRITEABLE, end_ms - current_ms);
         }
         else
         {
@@ -589,8 +588,6 @@ int IMtActionClient::Recvfrom(int timeout)
 int IMtActionClient::RunSendRecv(int timeout)
 {
     Frame* frame = GetInstance<Frame>();
-    utime64_t start_ms = frame->GetLastClock();
-    utime64_t cur_ms = 0;
 
     int rc = NewSock();
     if (rc < 0)
@@ -606,16 +603,14 @@ int IMtActionClient::RunSendRecv(int timeout)
         return -2;
     }
 
-    cur_ms = frame->GetLastClock();
-    rc = Sendto(timeout - (cur_ms - start_ms));
+    rc = Sendto(m_action_list_, timeout);
     if (rc < 0)
     {
         LOG_ERROR("send failed, ret: %d", rc);
         return -3;
     }
 
-    cur_ms = frame->GetLastClock();
-    rc = Recvfrom(timeout - (cur_ms - start_ms));
+    rc = Recvfrom(m_action_list_, timeout);
     if (rc < 0)
     {
         LOG_ERROR("recv failed, ret: %d", rc);
@@ -625,22 +620,201 @@ int IMtActionClient::RunSendRecv(int timeout)
     return 0;
 }
 
-int IMtActionServer::NewSock(struct sockaddr *servaddr, eConnType type)
+_IMtAction_construct IMtActionServer::m_construct_callback_ = NULL;
+_IMtAction_destruct IMtActionServer::m_destruct_callback_ = NULL;
+
+int IMtActionServer::Loop(int timeout)
 {
+    Frame* frame = GetInstance<Frame>();
+    EventDriver* driver = frame->GetEventDriver();
+
+    int ret = m_accept_action_->InitConnection();
+    if (ret < 0)
+    {
+        LOG_ERROR("InitConnection error, ret : %d", ret);
+        return ret;
+    }
+
+    IMtConnection* accept_connection = m_accept_action_->GetIConnection();
+    m_listen_fd_ = accept_connection->CreateSocket();
+    if (m_listen_fd_ < 0)
+    {
+        LOG_ERROR("CreateSocket error, m_listen_fd_: %d", m_listen_fd_);
+        return m_listen_fd_;
+    }
+
+    LOG_TRACE("m_listen_fd_ : %d", m_listen_fd_);
+
+    IMtAction* action = NULL;
+    IMtConnection* connection = NULL;
+    NewThreadTransform *transform = NULL;
+    do
+    {
+        Eventer* ev = NULL;
+        if (m_accept_action_) 
+        {
+            ev = m_accept_action_->GetEventer();
+        }
+
+        if (!ev)
+        {
+            m_accept_action_->SetErrno(eERR_FRAME_ERROR);
+            LOG_ERROR("input m_accept_action_ %p or ev NULL", m_accept_action_);
+            ret = -1;
+        }
+        ev->EnableInput();
+        ev->DisableOutput();
+        Thread* thread = (Thread* )frame->GetActiveThread();
+        if (!driver || !(driver->Schedule(thread, NULL, ev, (int)timeout)))
+        {
+            if (errno != ETIME)
+            {
+                m_accept_action_->SetErrno(eERR_POLL_FAIL);
+                LOG_ERROR("frame %p, driver %p schedule failed, errno %d", 
+                    frame, driver, errno);
+                ret = -2;
+            }
+            else
+            {
+                ret = 1;
+            }
+        }
+        // 事件处理返回值
+        if (ret < 0)
+        {
+            LOG_ERROR("ev error, ret: %d", ret);
+            continue;
+        }
+
+        struct sockaddr client_address;
+        socklen_t address_len = sizeof(client_address);
+        int fd = -1;
+        if (transform == NULL)
+        {
+            transform = new NewThreadTransform();
+            transform->SetTimeout(timeout);
+        }
+
+        while ((fd = mt_accept(m_listen_fd_, &client_address, &address_len)) > 0)
+        {
+            LOG_TRACE("m_listen_fd_: %d, accept fd: %d", m_listen_fd_, fd);
+            IMtAction* action = m_construct_callback_ ? m_construct_callback_() : NULL;
+            action->SetMsgDstAddr((struct sockaddr_in *)&client_address);
+            action->SetMsgBufferSize(8192);
+            action->SetTimeout(timeout);
+
+            transform->Add(action, fd, &client_address);
+            if (transform->Size() >= TRANSFORM_MAX_SIZE)
+            {
+                Frame::CreateThread(IMtActionServer::NewThread, transform);
+                transform = new NewThreadTransform();
+                transform->SetTimeout(timeout);
+            }
+        }
+        if (transform->Size() > 0)
+        {
+            Frame::CreateThread(IMtActionServer::NewThread, transform);
+            transform = new NewThreadTransform();
+            transform->SetTimeout(timeout);
+        }
+
+        LOG_TRACE("mt_accept ...");
+    } while (true);
+
     return 0;
 }
 
-int IMtActionServer::Accept(int timeout)
+void IMtActionServer::NewThread(void *args)
 {
-    return 0;
-}
+    NewThreadTransform* transform = (NewThreadTransform*)args;
+    IMtConnection* connection = NULL;
+    IMtAction* action = NULL;
+    Frame* frame = GetInstance<Frame>();
 
-int IMtActionServer::Sendto(int timeout)
-{
-    return 0;
-}
+    int ret = 0;
+    IMtActionList action_list;
 
-int IMtActionServer::Recvfrom(int timeout)
-{
-    return 0;
+    for (int idx = 0; idx < transform->Size(); idx++)
+    {
+        action = transform->m_action_arr_[idx];
+        if (!action || action->InitConnection() < 0)
+        {
+            LOG_ERROR("invalid action(%p) or int failed, error", action);
+            if (m_destruct_callback_) 
+            {
+                m_destruct_callback_(action);
+            }
+        }
+
+        LOG_TRACE("action: %p", action);
+
+        connection = action->GetIConnection();
+        if (NULL == connection)
+        {
+            LOG_ERROR("connection is NULL");
+            if (m_destruct_callback_) 
+            {
+                m_destruct_callback_(action);
+            }
+        }
+        connection->CreateSocket(transform->m_fd_arr_[idx]);
+        action_list.push_back(action);
+    }
+
+    int timeout = transform->GetTimeout();
+    LOG_DEBUG("timeout: %d", timeout);
+
+    ret = transform->GetServer()->Recvfrom(action_list, timeout);
+    if (ret < 0)
+    {
+        LOG_ERROR("recv failed, ret: %d", ret);
+        return;
+    }
+
+    LOG_DEBUG("Recvfrom ...");
+
+    // 中间处理
+    for (IMtActionList::iterator iter = action_list.begin(); 
+        iter != action_list.end(); ++iter)
+    {
+        IMtAction* action = *iter;
+        if (action->GetMsgFlag() != eACTION_FLAG_FIN)
+        {
+            action->DoError();
+            LOG_DEBUG("send recv failed: %d", action->GetErrno());
+            continue;
+        }
+        ret = action->DoEncode();
+        if (ret < 0)
+        {
+            LOG_DEBUG("action process failed: %d", ret);
+            continue;
+        }
+    }
+
+    ret = transform->GetServer()->Sendto(action_list, timeout);
+    if (ret < 0)
+    {
+        LOG_ERROR("send failed, ret: %d", ret);
+        return;
+    }
+
+    LOG_DEBUG("Sendto ...");
+
+    // 最后处理
+    for (IMtActionList::iterator iter = action_list.begin(); 
+        iter != action_list.end(); ++iter)
+    {
+        IMtAction* action = *iter;
+        if (action->GetMsgFlag() != eACTION_FLAG_SEND)
+        {
+            action->DoError();
+            LOG_DEBUG("send recv failed: %d", action->GetErrno());
+        }
+        
+        if (m_destruct_callback_) 
+        {
+            m_destruct_callback_(action);
+        }
+    }
 }

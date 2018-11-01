@@ -2,8 +2,8 @@
  * Copyright (C) zhoulv2000@163.com
  */
 
-#ifndef _MT_PUBLICLIB_H_INCLUDED_
-#define _MT_PUBLICLIB_H_INCLUDED_
+#ifndef _MT_PUBLIC_H_INCLUDED_
+#define _MT_PUBLIC_H_INCLUDED_
 
 #include <stddef.h>
 #include <stdlib.h>
@@ -29,6 +29,16 @@
 #define mt_min(x,y) (((x)<(y))?(x):(y))
 #define mt_max(x,y) (((x)<(y))?(x):(y))
 #define mt_gettid() pthread_self()
+#define mt_maxint   0x7fffffff
+#define mt_maxtime  2177280000
+
+#if defined(__APPLE__)
+#if __GNUC__ == 2 && __GNUC_MINOR__ < 96 
+#define __builtin_expect(x, expected_value) (x) 
+#endif
+#define likely(x)   __builtin_expect((x),1) 
+#define unlikely(x) __builtin_expect((x),0)
+#endif
 
 // 安全DELETE
 #define safe_delete(ptr) do {               \
@@ -58,7 +68,7 @@
 
 #define MT_NONE 		0
 #define MT_READABLE 	1 // EPOLLIN
-#define	MT_WRITABLE 	2 // EPOLLOUT
+#define	MT_WRITEABLE 	2 // EPOLLOUT
 #define MT_EVERR		4 // ERR, HUP
 
 // 判断是否使用协程
@@ -72,8 +82,9 @@
 #define MT_ALGIN(size)      ((size) + (8-(size)%8))
 
 // 回调函数
-typedef void (*ThreadRunFunction)(void*);
-typedef unsigned int (*TcpCheckMsgLenFunction)(void* buf, int len);
+typedef void (*ThreadRunCallback)(void*);
+typedef unsigned int (*TcpCheckMsgLenCallback)(void* buf, int len);
+typedef void (*FrameCallback)(void*);
 
 #if TRACE
 #define LOG_TRACE(fmt, args...) fprintf(stdout, (char*)"[TRACE][%ld][%ld][%-10s][%-4d][%-10s]"fmt"\n", mt_gettid(), mt_get_threadid(), __FILE__, __LINE__, __FUNCTION__, ##args);
@@ -86,12 +97,12 @@ typedef unsigned int (*TcpCheckMsgLenFunction)(void* buf, int len);
 #define LOG_DEBUG(fmt, args...) fprintf(stdout, (char*)"[DEBUG][%ld][%ld][%-10s][%-4d][%-10s]"fmt"\n", mt_gettid(), mt_get_threadid(), __FILE__, __LINE__, __FUNCTION__, ##args);
 #define LOG_WARN(fmt, args...) fprintf(stdout, (char*)"[WARN][%ld][%ld][%-10s][%-4d][%-10s]"fmt"\n", mt_gettid(), mt_get_threadid(), __FILE__, __LINE__, __FUNCTION__, ##args);
 #define LOG_ERROR(fmt, args...) fprintf(stdout, (char*)"[ERROR][%ld][%ld][%-10s][%-4d][%-10s]"fmt"\n", mt_gettid(), mt_get_threadid(), __FILE__, __LINE__, __FUNCTION__, ##args);
-#define LOG_CHECK_FUNCTION
+#define LOG_CHECK_FUNCTION fprintf(stdout, (char*)"[TRACE][%ld][%ld][%-10s][%-4d][%-10s] check function ...\n", mt_gettid(), mt_get_threadid(), __FILE__, __LINE__, __FUNCTION__);
 #else
 #define LOG_TRACE(fmt, args...)
 #define LOG_DEBUG(fmt, args...)
-#define LOG_WARN(fmt, args...) fprintf(stdout, (char*)"[WARN][%ld][%-10s][%-4d][%-10s]"fmt"\n", mt_gettid(), __FILE__, __LINE__, __FUNCTION__, ##args);
-#define LOG_ERROR(fmt, args...) fprintf(stdout, (char*)"[ERROR][%ld][%-10s][%-4d][%-10s]"fmt"\n", mt_gettid(), __FILE__, __LINE__, __FUNCTION__, ##args);
+#define LOG_WARN(fmt, args...) fprintf(stdout, (char*)"[WARN][%ld][%ld][%-10s][%-4d][%-10s]"fmt"\n", mt_gettid(), mt_get_threadid(), __FILE__, __LINE__, __FUNCTION__, ##args);
+#define LOG_ERROR(fmt, args...) fprintf(stdout, (char*)"[ERROR][%ld][%ld][%-10s][%-4d][%-10s]"fmt"\n", mt_gettid(), mt_get_threadid(), __FILE__, __LINE__, __FUNCTION__, ##args);
 #define LOG_CHECK_FUNCTION
 #endif
 

@@ -82,7 +82,7 @@ void makecontext(ucontext_t *ucp, void (*func)(void), int argc, ...)
 	memset(&ucp->uc_mcontext, 0, sizeof ucp->uc_mcontext);
 	if (argc != 2)
     {
-        *(int*)0 = 0;
+        *(int*)0 = 0; // 如果argc不为2则直接crash
     }
 	va_start(va, argc);
 	ucp->uc_mcontext.mc_rdi = va_arg(va, int);
@@ -150,24 +150,25 @@ int swapcontext(ucontext_t *oucp, const ucontext_t *ucp)
 
 int contextswitch(Context *from, Context *to)
 {
-    LOG_TRACE("from : %p, to : %p, runing : %p, init : %p", 
-        from, to, sContextRuning, sContextInitial);
+    // LOG_TRACE("from : %p, to : %p, runing : %p, init : %p", 
+    //     from, to, sContextRuning, sContextInitial);
     if (sContextInitial == NULL)
     {
         sContextInitial = from;
-        LOG_TRACE("sContextInitial : %p", sContextInitial);
+        // LOG_TRACE("sContextInitial : %p", sContextInitial);
     }
     if (sContextRuning != to)
     {
         sContextRuning = to;
-        LOG_TRACE("sContextRuning : %p", sContextRuning);
+        // LOG_TRACE("sContextRuning : %p", sContextRuning);
     }
+
 	return swapcontext(&from->uc, &to->uc);
 }
 
 void contextexit()
 {
-    LOG_TRACE("exit ..., runing : %p, init : %p", sContextRuning, sContextInitial);
+    // LOG_TRACE("exit ..., runing : %p, init : %p", sContextRuning, sContextInitial);
     if (sContextRuning != NULL && sContextInitial != NULL)
     {
         contextswitch(sContextRuning, sContextInitial);

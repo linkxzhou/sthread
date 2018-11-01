@@ -25,7 +25,7 @@ public:
 
     virtual ~HeapEntry() { }
 
-    virtual unsigned long long HeapValue() = 0;
+    virtual time64_t HeapValue() = 0;
     // 迭代处理
     virtual void HeapIterate()
     {
@@ -62,6 +62,7 @@ public:
 private:
     int  m_index_;
 };
+
 // 堆的list
 template<class T = HeapEntryNode>
 class HeapList
@@ -179,11 +180,11 @@ public:
     }
     void HeapForeach()
     {
-        LOG_DEBUG("count : %d", m_count_);
+        // LOG_DEBUG("count : %d", m_count_);
         int per = 1;
         for (int i = 1; i <= m_count_; i++)
         {
-            LOG_DEBUG("%llu", m_list_[i]->HeapValue());
+            // LOG_DEBUG("%llu", m_list_[i]->HeapValue());
             m_list_[i]->HeapIterate();
         }
     }
@@ -220,6 +221,7 @@ private:
             this->Swap(1, pos);
             this->ReBuildHeap(1, pos - 1, eOrderAsc);
         }  
+        
         //LOG_TRACE("HeapForeach:");
         //this->HeapForeach();
     }

@@ -10,53 +10,57 @@ MTHREAD_NAMESPACE_USING
 // 获取连接的句柄信息
 static IMtConnection* s_get_conn(struct sockaddr_in* dst, int& sock, eConnType type)
 {
-    EventProxyer* proxyer = GetInstance<Frame>()->GetEventProxyer();
-	Eventer* ev = GetInstance<ISessionEventerPool>()->GetEventer(eEVENT_THREAD);
-    ev->SetOwnerProxyer(proxyer);
-    LOG_TRACE("ev node :%p", ev);
-    if (NULL == ev)
-    {
-        LOG_ERROR("get ev failed");
-        return NULL;
-    }
-
-    IMtConnection* conn = NULL;
-    conn = GetInstance<ConnectionPool>()->GetConnection(type, dst);
-    LOG_TRACE("IMtConnection conn : %p", conn);
+    EventDriver* driver = GetInstance<Frame>()->GetEventDriver();
+    IMtConnection* conn = GetInstance<ConnectionPool>()->GetConnection(type, dst);
     if (NULL == conn)
     {
         LOG_ERROR("get connection failed, dst[%p]", dst);
-        GetInstance<ISessionEventerPool>()->FreeEventer(ev);
         return NULL;
     }
-    conn->SetEventer(ev);
-    conn->SetMsgDstAddr(dst);
+    LOG_TRACE("IMtConnection conn: %p", conn);
+
+    // 判断conn是否存在eventer
+    Eventer* ev = NULL;
+    if (NULL == conn->GetEventer())
+    {
+        ev = GetInstance<EventerPool>()->GetEventer(eEVENT_THREAD);
+        if (NULL == ev)
+        {
+            LOG_ERROR("get eventer failed");
+            return NULL;
+        }
+        ev->SetOwnerDriver(driver);
+        conn->SetEventer(ev);
+        conn->SetMsgDstAddr(dst);
+        driver->AddEventer(ev);
+    }
+
+    LOG_TRACE("ev: %p", ev);
 
     int osfd = conn->CreateSocket();
-    LOG_TRACE("osfd : %d", osfd);
+    LOG_TRACE("osfd: %d", osfd);
     if (osfd < 0)
     {
         GetInstance<ConnectionPool>()->FreeConnection(conn, true);
-        GetInstance<ISessionEventerPool>()->FreeEventer(ev);
+        GetInstance<EventerPool>()->FreeEventer(ev);
         LOG_ERROR("create socket failed, ret[%d]", osfd);
         return NULL;
     }
-    proxyer->AddEventer(ev);
     sock = osfd;
 
     return conn;
 }
 // 获取tcp的接收信息
 static int s_tcp_check_recv(int sock, char* recv_buf, int &len, int flags, 
-    int timeout, TcpCheckMsgLenFunction func)
+    int timeout, TcpCheckMsgLenCallback func)
 {
     int recv_len = 0;
-    utime64_t start_ms = GetInstance<Frame>()->GetLastClock();
+    time64_t start_ms = GetInstance<Frame>()->GetLastClock();
     do
     {
-        utime64_t cost_time = GetInstance<Frame>()->GetLastClock() - start_ms;
+        time64_t cost_time = GetInstance<Frame>()->GetLastClock() - start_ms;
         LOG_TRACE("current cost_time : %ld", cost_time);
-        if (cost_time > (utime64_t)timeout)
+        if (cost_time > (time64_t)timeout)
         {
             errno = ETIME;
             LOG_ERROR("tcp socket[%d] recv not ok, timeout", sock);
@@ -122,15 +126,14 @@ int udp_sendrecv(struct sockaddr_in* dst, void* pkg, int len, void* recv_buf,
     int ret = 0, rc = 0;
     struct sockaddr_in from_addr = {0};
     int addr_len = sizeof(from_addr);
-    // 获取frame的时间戳
-    utime64_t start_ms = GetInstance<Frame>()->GetLastClock();
-    utime64_t cost_time = 0;
+    // 获取时间戳
+    time64_t start_ms = GetInstance<Frame>()->GetSystemMS(), cost_time = 0;
     // 连接超时时间
     int time_left = timeout;
     int sock = -1;
 
     IMtConnection* conn = s_get_conn(dst, sock, eUDP_CONN);
-    LOG_TRACE("current socket :%d, conn : %p", sock, conn);
+    LOG_TRACE("current socket: %d, conn: %p", sock, conn);
     if ((conn == NULL) || (sock < 0))
     {
         LOG_ERROR("socket[%d] get conn failed, ret", sock);
@@ -152,7 +155,7 @@ int udp_sendrecv(struct sockaddr_in* dst, void* pkg, int len, void* recv_buf,
     // 接收数据
     rc = Frame::recvfrom(sock, recv_buf, buf_size, 0, (struct sockaddr*)&from_addr, 
         (socklen_t*)&addr_len, time_left);
-    LOG_TRACE("from_addr %s:%d, time_left : %d", inet_ntoa(from_addr.sin_addr), 
+    LOG_TRACE("from_addr %s: %d, time_left: %d", inet_ntoa(from_addr.sin_addr), 
         ntohs(from_addr.sin_port), time_left);
     if (rc < 0)
     {
@@ -176,9 +179,10 @@ EXIT_LABEL1:
 
     return ret;
 }
+
 // tcp的发送和接收信息(长连接)
 int tcp_sendrecv(struct sockaddr_in* dst, void* pkg, int len, void* recv_buf, int& buf_size, int timeout, 
-        TcpCheckMsgLenFunction func, bool is_keep)
+        TcpCheckMsgLenCallback func, bool tcp_long)
 {
     if (!dst || !pkg || !recv_buf || !func || buf_size <= 0)
     {
@@ -189,15 +193,14 @@ int tcp_sendrecv(struct sockaddr_in* dst, void* pkg, int len, void* recv_buf, in
 
     int ret = 0, rc = 0;
     int addr_len = sizeof(struct sockaddr_in);
-    // 获取frame的时间戳
-    utime64_t start_ms = GetInstance<Frame>()->GetLastClock();
-    utime64_t cost_time = 0;
+    // 获取时间戳
+    time64_t start_ms = GetInstance<Frame>()->GetSystemMS(), cost_time = 0;
     // 连接超时时间
     int time_left = timeout;
     int sock = -1;
 
     // 判断是否为长连接
-    IMtConnection* conn = s_get_conn(dst, sock, is_keep ? eTCP_KEEP_CONN : eTCP_SHORT_CONN);
+    IMtConnection* conn = s_get_conn(dst, sock, tcp_long ? eTCP_LONG_CONN : eTCP_SHORT_CONN);
     LOG_TRACE("current socket :%d, conn : %p", sock, conn);
     if ((conn == NULL) || (sock < 0))
     {
@@ -238,48 +241,53 @@ int tcp_sendrecv(struct sockaddr_in* dst, void* pkg, int len, void* recv_buf, in
         goto EXIT_LABEL2;
     }
     // 短连接close
-    if (!is_keep)
+    if (!tcp_long)
     {
         mt_close(sock);
     }
-    ret = 0;
 
 EXIT_LABEL2:
     // 释放连接(条件 : 如果ret<0，则强制释放，否则判断是否为短连接)
     if (conn != NULL)
     {
-        bool force_free = (ret < 0) ? true : false;
-        force_free = (!is_keep) ? true : force_free;
+        bool force_free = ((ret < 0) ? true : false);
+        force_free = ((!tcp_long) ? true : force_free);
         GetInstance<ConnectionPool>()->FreeConnection(conn, force_free);
     }
 
     return ret;
 }
+
 // 设置私有数据
 void mt_set_private(void *data)
 {
     Thread *thread = (Thread*)(GetInstance<Frame>()->GetRootThread());
     thread->SetPrivate(data);
 }
+
 // 获取私有数据
 void* mt_get_private()
 {
     Thread *thread = (Thread*)(GetInstance<Frame>()->GetRootThread());
     return thread->GetPrivate();
 }
+
 // 初始化frame
 bool mt_init_frame()
 {
     return GetInstance<Frame>()->InitFrame();
 }
+
 void mt_set_stack_size(unsigned int bytes)
 {
     ThreadPool::SetDefaultStackSize(bytes);
 }
+
 void mt_set_hook_flag()
 {
-    return GetInstance<Frame>()->SetHookFlag();
+    GetInstance<Frame>()->SetHookFlag();
 }
+
 void mt_set_timeout(int timeout_ms)
 {
     GetInstance<Frame>()->SetTimeout(timeout_ms);

@@ -2,15 +2,16 @@
  * Copyright (C) zhoulv2000@163.com
  */
 
+#include <stdarg.h>
 #include "mt_sys_hook.h"
 #include "mt_frame.h"
 
 MTHREAD_NAMESPACE_USING
 
-SyscallFuncTab      g_syscall_tab;
-int                 g_hook_flag;
+SyscallCallbackTab      g_syscall_tab;
+int                     g_hook_flag;
 
-static HookFd       g_hookfd_tab[MT_HOOK_MAX_FD];
+static HookFd           g_hookfd_tab[MT_HOOK_MAX_FD];
 
 HookFd* mt_find_fd(int fd)
 {
@@ -34,7 +35,7 @@ HookFd* mt_find_fd(int fd)
 
 void mt_new_fd(int fd)
 {
-    LOG_CHECK_FUNCTION;
+    // LOG_CHECK_FUNCTION;
 
     if ((fd < 0) || (fd >= MT_HOOK_MAX_FD))
     {
@@ -43,13 +44,13 @@ void mt_new_fd(int fd)
 
     HookFd* fd_info = &g_hookfd_tab[fd];
     fd_info->sock_flag_ = MT_FD_FLG_INUSE;
-    fd_info->read_timeout_ = 500; // 设置等待的ms
-    fd_info->write_timeout_ = 500; // 设置等待的ms
+    fd_info->read_timeout_ = 500; // 设置等待的ms，默认500ms
+    fd_info->write_timeout_ = 500; // 设置等待的ms，默认500ms
 }
 
 void mt_free_fd(int fd)
 {
-    LOG_CHECK_FUNCTION;
+    // LOG_CHECK_FUNCTION;
 
     if ((fd < 0) || (fd >= MT_HOOK_MAX_FD))
     {
@@ -64,7 +65,7 @@ void mt_free_fd(int fd)
 
 int mt_socket(int domain, int type, int protocol)
 {
-    LOG_CHECK_FUNCTION;
+    // LOG_CHECK_FUNCTION;
 
     HOOK_SYSCALL(socket);
     if (!HOOK_ACTIVE())
@@ -80,6 +81,7 @@ int mt_socket(int domain, int type, int protocol)
 
     mt_new_fd(fd);
 
+    // 默认都设置为非阻塞
     int flags;
     flags = mt_fcntl(fd, F_GETFL, 0);
     flags |= O_NONBLOCK;
@@ -90,7 +92,7 @@ int mt_socket(int domain, int type, int protocol)
 
 int mt_close(int fd)
 {
-    LOG_CHECK_FUNCTION;
+    // LOG_CHECK_FUNCTION;
 
     HOOK_SYSCALL(close);
     HookFd* hook_fd = mt_find_fd(fd);
@@ -107,7 +109,7 @@ int mt_close(int fd)
 
 int mt_connect(int fd, const struct sockaddr *address, socklen_t address_len)
 {
-    LOG_CHECK_FUNCTION;
+    // LOG_CHECK_FUNCTION;
 
     HOOK_SYSCALL(connect);
     HookFd* hook_fd = mt_find_fd(fd);
@@ -124,17 +126,13 @@ int mt_connect(int fd, const struct sockaddr *address, socklen_t address_len)
     else
     {
         mt_new_fd(fd);
-        int flags;
-        flags = mt_fcntl(fd, F_GETFL, 0);
-        flags |= O_NONBLOCK;
-        mt_fcntl(fd, F_SETFL, flags);
         return Frame::connect(fd, address, (int)address_len, hook_fd->write_timeout_);
     }
 }
 
 ssize_t mt_read(int fd, void *buffer, size_t nbyte)
 {
-    LOG_CHECK_FUNCTION;
+    // LOG_CHECK_FUNCTION;
 
     HOOK_SYSCALL(read);
     HookFd* hook_fd = mt_find_fd(fd);
@@ -151,17 +149,13 @@ ssize_t mt_read(int fd, void *buffer, size_t nbyte)
     else
     {
         mt_new_fd(fd);
-        int flags;
-        flags = mt_fcntl(fd, F_GETFL, 0);
-        flags |= O_NONBLOCK;
-        mt_fcntl(fd, F_SETFL, flags);
         return Frame::read(fd, buffer, nbyte, hook_fd->read_timeout_);
     }
 }
 
 ssize_t mt_write(int fd, const void *buffer, size_t nbyte)
 {
-    LOG_CHECK_FUNCTION;
+    // LOG_CHECK_FUNCTION;
 
     HOOK_SYSCALL(write);
     HookFd* hook_fd = mt_find_fd(fd);
@@ -178,10 +172,6 @@ ssize_t mt_write(int fd, const void *buffer, size_t nbyte)
     else
     {
         mt_new_fd(fd);
-        int flags;
-        flags = mt_fcntl(fd, F_GETFL, 0);
-        flags |= O_NONBLOCK;
-        mt_fcntl(fd, F_SETFL, flags);
         return Frame::write(fd, buffer, nbyte, hook_fd->write_timeout_);
     }
 }
@@ -189,7 +179,7 @@ ssize_t mt_write(int fd, const void *buffer, size_t nbyte)
 ssize_t mt_sendto(int fd, const void *buffer, size_t length, int flags,
                const struct sockaddr *dest_addr, socklen_t dest_len)
 {
-    LOG_CHECK_FUNCTION;
+    // LOG_CHECK_FUNCTION;
 
     HOOK_SYSCALL(sendto);
     HookFd* hook_fd = mt_find_fd(fd);
@@ -206,10 +196,6 @@ ssize_t mt_sendto(int fd, const void *buffer, size_t length, int flags,
     else
     {
         mt_new_fd(fd);
-        int flags;
-        flags = mt_fcntl(fd, F_GETFL, 0);
-        flags |= O_NONBLOCK;
-        mt_fcntl(fd, F_SETFL, flags);
         return Frame::sendto(fd, buffer, (int)length, flags, dest_addr, dest_len, hook_fd->write_timeout_);
     }
 }
@@ -217,7 +203,7 @@ ssize_t mt_sendto(int fd, const void *buffer, size_t length, int flags,
 ssize_t mt_recvfrom(int fd, void *buffer, size_t length, int flags,
                   struct sockaddr *address, socklen_t *address_len)
 {
-    LOG_CHECK_FUNCTION;
+    // LOG_CHECK_FUNCTION;
 
     HOOK_SYSCALL(recvfrom);
     HookFd* hook_fd = mt_find_fd(fd);
@@ -234,17 +220,13 @@ ssize_t mt_recvfrom(int fd, void *buffer, size_t length, int flags,
     else
     {
         mt_new_fd(fd);
-        int flags;
-        flags = mt_fcntl(fd, F_GETFL, 0);
-        flags |= O_NONBLOCK;
-        mt_fcntl(fd, F_SETFL, flags);
         return Frame::recvfrom(fd, buffer, length, flags, address, address_len, hook_fd->read_timeout_);
     }
 }
 
 ssize_t mt_recv(int fd, void *buffer, size_t length, int flags)
 {
-    LOG_CHECK_FUNCTION;
+    // LOG_CHECK_FUNCTION;
 
     HOOK_SYSCALL(recv);
     HookFd* hook_fd = mt_find_fd(fd);
@@ -260,17 +242,13 @@ ssize_t mt_recv(int fd, void *buffer, size_t length, int flags)
     else
     {
         mt_new_fd(fd);
-        int flags;
-        flags = mt_fcntl(fd, F_GETFL, 0);
-        flags |= O_NONBLOCK;
-        mt_fcntl(fd, F_SETFL, flags);
         return Frame::recv(fd, buffer, length, flags, hook_fd->read_timeout_);
     }
 }
 
 ssize_t mt_send(int fd, const void *buffer, size_t nbyte, int flags)
 {
-    LOG_CHECK_FUNCTION;
+    // LOG_CHECK_FUNCTION;
 
     HOOK_SYSCALL(send);
     HookFd* hook_fd = mt_find_fd(fd);
@@ -287,10 +265,6 @@ ssize_t mt_send(int fd, const void *buffer, size_t nbyte, int flags)
     else
     {
         mt_new_fd(fd);
-        int flags;
-        flags = mt_fcntl(fd, F_GETFL, 0);
-        flags |= O_NONBLOCK;
-        mt_fcntl(fd, F_SETFL, flags);
         return Frame::send(fd, buffer, nbyte, flags, hook_fd->write_timeout_);
     }
 }
@@ -298,7 +272,7 @@ ssize_t mt_send(int fd, const void *buffer, size_t nbyte, int flags)
 int mt_setsockopt(int fd, int level, int option_name, const void *option_value, 
     socklen_t option_len)
 {
-    LOG_CHECK_FUNCTION;
+    // LOG_CHECK_FUNCTION;
 
     HOOK_SYSCALL(setsockopt);
     HookFd* hook_fd = mt_find_fd(fd);
@@ -325,12 +299,12 @@ int mt_setsockopt(int fd, int level, int option_name, const void *option_value,
 
 int mt_fcntl(int fd, int cmd, ...)
 {
-    LOG_CHECK_FUNCTION;
+    // LOG_CHECK_FUNCTION;
 
     va_list ap;
-    va_start(ap, cmd);
+    ::va_start(ap, cmd);
     void* arg = va_arg(ap, void *);
-    va_end(ap);
+    ::va_end(ap);
 
     HOOK_SYSCALL(fcntl);
     HookFd* hook_fd = mt_find_fd(fd);
@@ -342,13 +316,12 @@ int mt_fcntl(int fd, int cmd, ...)
 
     if (cmd == F_SETFL)
     {
-        va_start(ap, cmd);
+        ::va_start(ap, cmd);
         int flags = va_arg(ap, int);
-        va_end(ap);
+        ::va_end(ap);
 
         if (flags & O_NONBLOCK)
         {
-            LOG_TRACE("socket MT_FD_FLG_UNBLOCK");
             hook_fd->sock_flag_ |= MT_FD_FLG_UNBLOCK;
         }
     }
@@ -358,7 +331,7 @@ int mt_fcntl(int fd, int cmd, ...)
 
 int mt_ioctl(int fd, uint64_t cmd, ...)
 {
-    LOG_CHECK_FUNCTION;
+    // LOG_CHECK_FUNCTION;
 
     va_list ap;
     va_start(ap, cmd);
@@ -402,6 +375,15 @@ int mt_accept(int fd, const struct sockaddr *address, socklen_t *address_len)
 
     int accept_fd = REAL_FUNC(accept)(fd, address, address_len);
     mt_new_fd(accept_fd);
+
+    // 设置为非阻塞
+    if (accept_fd > 0)
+    {
+        int flags;
+        flags = mt_fcntl(accept_fd, F_GETFL, 0);
+        flags |= O_NONBLOCK;
+        mt_fcntl(accept_fd, F_SETFL, flags);
+    }
     
     return accept_fd;
 }

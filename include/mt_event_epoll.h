@@ -81,7 +81,7 @@ public:
         ee.events = 0;
         mask |= m_file_events_[fd].mask; /* Merge old events */
         if (mask & MT_READABLE) ee.events |= EPOLLIN;
-        if (mask & MT_WRITABLE) ee.events |= EPOLLOUT;
+        if (mask & MT_WRITEABLE) ee.events |= EPOLLOUT;
         ee.data.fd = fd;
 
         if (epoll_ctl(m_epfd_, op, fd, &ee) == -1) 
@@ -99,7 +99,7 @@ public:
 
         ee.events = 0;
         if (mask & MT_READABLE) ee.events |= EPOLLIN;
-        if (mask & MT_WRITABLE) ee.events |= EPOLLOUT;
+        if (mask & MT_WRITEABLE) ee.events |= EPOLLOUT;
         ee.data.fd = fd;
 
         if (mask != MT_NONE) 
@@ -139,7 +139,7 @@ public:
                 struct epoll_event *e = m_events_ + j;
 
                 if (e->events & EPOLLIN) mask |= MT_READABLE;
-                if (e->events & EPOLLOUT) mask |= MT_WRITABLE;
+                if (e->events & EPOLLOUT) mask |= MT_WRITEABLE;
                 if (e->events & EPOLLERR) mask |= MT_EVERR;
                 if (e->events & EPOLLHUP) mask |= MT_EVERR;
 

@@ -17,9 +17,9 @@ TEST(FrameTest, frame_async)
 	frame->InitFrame();
     frame->SetHookFlag();
 
-    EventProxyer* proxyer = frame->GetEventProxyer();
-	Eventer* ev = GetInstance<ISessionEventerPool>()->GetEventer(eEVENT_THREAD);
-    ev->SetOwnerProxyer(proxyer);
+    EventDriver* proxyer = frame->GetEventDriver();
+	Eventer* ev = GetInstance<EventerPool>()->GetEventer(eEVENT_THREAD);
+    ev->SetOwnerDriver(proxyer);
     LOG_TRACE("ev node :%p", ev);
     if (NULL == ev)
     {
@@ -36,12 +36,12 @@ TEST(FrameTest, frame_async)
     servaddr.sin_port = htons(4312);  ///服务器端口
     servaddr.sin_addr.s_addr = inet_addr("127.0.0.1");  ///服务器ip
 
-    TcpShortClientConnection* conn = dynamic_cast<TcpShortClientConnection*>(GetInstance<ConnectionPool>()->GetConnection(eTCP_SHORT_CLIENT_CONN, &servaddr));
-    LOG_TRACE("TcpKeepClientConnection conn : %p", conn);
+    TcpShortIMtConnection* conn = dynamic_cast<TcpShortIMtConnection*>(GetInstance<ConnectionPool>()->GetConnection(eTCP_SHORT_CONN, &servaddr));
+    LOG_TRACE("TcpLongIMtConnection conn : %p", conn);
     if (NULL == conn)
     {
         LOG_ERROR("get connection failed, dst[%p]", &servaddr);
-        GetInstance<ISessionEventerPool>()->FreeEventer(ev);
+        GetInstance<EventerPool>()->FreeEventer(ev);
         return ;
     }
     conn->SetEventer(ev);
@@ -58,7 +58,7 @@ TEST(FrameTest, frame_async)
     if (socket_fd < 0)
     {
         GetInstance<ConnectionPool>()->FreeConnection(conn, true);
-        GetInstance<ISessionEventerPool>()->FreeEventer(ev);
+        GetInstance<EventerPool>()->FreeEventer(ev);
         LOG_ERROR("create socket failed, ret[%d]", socket_fd);
         return ;
     }

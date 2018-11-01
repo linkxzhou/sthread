@@ -34,27 +34,25 @@ int main(int argc, char* argv[])
     int ret = mt_init_frame();
     LOG_DEBUG("init ret : %d", ret);
     mt_set_hook_flag();
-    mt_set_timeout(200);
+    mt_set_timeout(100);
 
     Frame *frame = GetInstance<Frame>();
 
     // 测试 : 使用协程请求耗时
-    LOG_DEBUG("--- start time : %ld", Utils::system_ms());
-    for (int i = 2000; i < 2005; i++)
+    long start = Utils::system_ms(), end = 0;
+    LOG_DEBUG("--- start time : %ld", start);
+    for (int i = 2000; i < 2150; i++)
     {
         std::stringstream ss;
         ss << "www." << i << ".com";
         std::string *s = new std::string(ss.str());
         Frame::CreateThread(func, s);
     }
-    Frame::Run(true);
-    LOG_DEBUG("--- end time : %ld", Utils::system_ms());
+    Frame::Loop(true);
+    end = Utils::system_ms();
+    LOG_DEBUG("--- end time : %ld", end);
 
-    int count = 10;
-    while (count-- > 0)
-    {
-        LOG_DEBUG("----- count : %d", count);
-    }
+    LOG_DEBUG("cost time : %ld", end - start);
 
     return 0;
 }

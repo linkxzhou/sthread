@@ -72,12 +72,12 @@ static void* thread_func(void *)
 
     IMtAction* action1 = new TestIMtAction();
     action1->SetMsgDstAddr(&servaddr);
-    action1->SetConnType(eTCP_SHORT_CLIENT_CONN);
+    action1->SetConnType(eTCP_SHORT_CONN);
     actionframe->Add(action1);
 
     IMtAction* action2 = new TestIMtAction();
     action2->SetMsgDstAddr(&servaddr);
-    action2->SetConnType(eTCP_SHORT_CLIENT_CONN);
+    action2->SetConnType(eTCP_SHORT_CONN);
     actionframe->Add(action2);
     
     LOG_TRACE("wait thread : %d", GetInstance<Frame>()->m_wait_num_);
@@ -170,7 +170,7 @@ TEST(ActionListTest1, action)
 //     actionframe->SetIMtAction(action);
 //     ret = actionframe->NewSock();
 //     LOG_TRACE("ret : %d, strerr : %s", ret, strerror(errno));
-//     Frame::Run(true);
+//     Frame::Loop(true);
 // }
 
 // 测试所有的功能

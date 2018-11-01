@@ -1,5 +1,5 @@
 #include "gtest/googletest/include/gtest/gtest.h"
-#include "../include/mt_session.h"
+#include "../include/mt_ext.h"
 
 MTHREAD_NAMESPACE_USING
 

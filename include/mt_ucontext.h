@@ -111,6 +111,8 @@ enum
     STACK = 131072 // 128K
 };
 
+typedef unsigned char uchar;
+
 typedef struct Context
 {
     ucontext_t uc;

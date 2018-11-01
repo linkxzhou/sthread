@@ -15,7 +15,7 @@
 #define PUBLIC_DNS_DEFAULT_SERVER   "8.8.8.8"
 #define PUBLIC_DNS_DEFAULT_PORT     53
 #define DNS_DEFAULT_DATA_SIZE       512
-#define DNS_TIMEOUT                 30000
+#define DNS_TIMEOUT                 10000
 
 #define MT_DNS_NAMESPACE_BEGIN namespace mt_dns {
 #define MT_DNS_NAMESPACE_END   }

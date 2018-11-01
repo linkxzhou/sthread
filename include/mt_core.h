@@ -8,11 +8,10 @@
 #include "mt_utils.h"
 #include "mt_ucontext.h"
 
-#define MT_OS_OSX 1
-
-#if MT_OS_OSX
+// 选择不同的头文件
+#if defined(__APPLE__) || defined(__OpenBSD__)
 #include "mt_event_kqueue.h"
-#elif MT_OS_LINUX
+#else
 #include "mt_event_epoll.h"
 #endif
 
@@ -26,7 +25,8 @@
 MTHREAD_NAMESPACE_BEGIN
 
 class Eventer;
-class EventProxyer;
+class EventDriver;
+class IMtConnection;
 class ThreadBase;
 class IMtActionBase;
 
@@ -36,7 +36,7 @@ class Eventer : public referenceable
 {
 public:
     explicit Eventer(int fd = -1) : m_fd_(fd), m_events_(0), 
-        m_revents_(0), m_type_(0), m_thread_(NULL), m_proxyer_(NULL)
+        m_revents_(0), m_type_(0), m_thread_(NULL), m_driver_(NULL)
     { }
     virtual ~Eventer()
     { }
@@ -52,8 +52,8 @@ public:
         m_events_ |= MT_READABLE; 
     }
     inline void EnableOutput() 
-    { 
-        m_events_ |= MT_WRITABLE; 
+    {
+        m_events_ |= MT_WRITEABLE; 
     }
     inline void DisableInput() 
     { 
@@ -61,11 +61,11 @@ public:
     }
     inline void DisableOutput() 
     { 
-        m_events_ &= ~MT_WRITABLE; 
+        m_events_ &= ~MT_WRITEABLE; 
     }
     inline int GetOsfd() 
     { 
-        return m_fd_; 
+        return m_fd_;
     }
     inline void SetOsfd(int fd) 
     { 
@@ -97,30 +97,21 @@ public:
     }
     inline void SetOwnerThread(ThreadBase* thread) 
     { 
-        LOG_TRACE("ev : %p, thread : %p", this, thread);
         m_thread_ = thread; 
     }
     inline ThreadBase* GetOwnerThread()
     { 
         return m_thread_; 
     }
-    inline void SetOwnerProxyer(EventProxyer* proxyer)
+    inline void SetOwnerDriver(EventDriver* driver)
     {
-        m_proxyer_ = proxyer;
+        m_driver_ = driver;
     }
-    inline EventProxyer* GetOwnerProxyer()
+    inline EventDriver* GetOwnerDriver()
     {
-        return m_proxyer_;
+        return m_driver_;
     }
-    // 虚函数
-    virtual void Reset()
-    {
-        m_fd_      = -1;
-        m_events_  = 0;
-        m_revents_ = 0;
-        m_type_    = 0;
-        m_thread_  = NULL;
-    }
+    void Reset(); // 重置数据
 
 protected:
     int m_fd_;      // 监听句柄
@@ -129,24 +120,25 @@ protected:
     int m_type_;    // notify的类型
 
     ThreadBase* m_thread_; // 当前依附的线程
-    EventProxyer* m_proxyer_; // 当前依附的proxyer
+    EventDriver* m_driver_; // 当前依附的driver
 
 public:
     CPP_TAILQ_ENTRY<Eventer> m_entry_;
 };
 
-class EventProxyer
+class EventDriver
 {
     typedef Eventer* EventerPtr;
+
 public:
-    EventProxyer() : m_maxfd_(DEFAULT_MAX_FD_NUM), m_state_(new IMtApiState()), 
-        m_ev_arr_(NULL), m_timeout_(0)
+    EventDriver() : m_maxfd_(DEFAULT_MAX_FD_NUM), m_state_(new IMtApiState()), 
+        m_ev_array_(NULL), m_timeout_(0)
     { }
-    virtual ~EventProxyer()
+    virtual ~EventDriver()
     { 
         // 清理数据
         safe_delete(m_state_);
-        safe_delete_arr(m_ev_arr_);
+        safe_delete_arr(m_ev_array_);
     }
     int Init(int max_num);
     void Stop(void);
@@ -159,7 +151,7 @@ public:
         m_timeout_ = timeout_ms;
     }
     bool Schedule(ThreadBase* thread, EventerList* fdlist, 
-        Eventer* ev, int timeout);
+        Eventer* ev, time64_t timeout);
 
     void Close();
     bool AddList(EventerList& fdset);
@@ -170,20 +162,19 @@ public:
     void Dispatch(void);
     bool AddFd(int fd, int new_events);
     bool DelFd(int fd, int new_events);
-    // TODO : 需要重新处理
-    bool DelRef(int fd, int new_events, bool use_ref);
+    // 注意：use_ref = true 对其句柄的引用统一处理
+    bool DelRef(int fd, int new_events, bool useref);
 
     inline bool IsValidFd(int fd)
     {
-        LOG_TRACE("fd : %d", fd);
         return ((fd >= m_maxfd_) || (fd < 0)) ? false : true;
     }
 
     inline bool SetEventer(int fd, Eventer* ev)
     {
-        if (IsValidFd(fd))
+        if (unlikely(IsValidFd(fd)))
         {
-            m_ev_arr_[fd] = ev;
+            m_ev_array_[fd] = ev;
             return true;
         }
 
@@ -192,9 +183,9 @@ public:
 
     inline Eventer* GetEventer(int fd)
     {
-        if (IsValidFd(fd))
+        if (unlikely(IsValidFd(fd)))
         {
-            return m_ev_arr_[fd];
+            return m_ev_array_[fd];
         }
 
         return NULL;
@@ -206,7 +197,7 @@ protected:
 protected:
     int             m_maxfd_;
     IMtApiState*    m_state_;
-    EventerPtr*     m_ev_arr_;
+    EventerPtr*     m_ev_array_;
     int             m_timeout_;
 };
 
@@ -240,6 +231,10 @@ protected:
 class ThreadBase : public HeapEntry
 {
 public:
+    ThreadBase() : m_wakeup_time_(0), m_flag_(eNOT_INLIST),
+        m_type_(eNORMAL), m_state_(eINITIAL), m_callback_(NULL),
+        m_args_(NULL), m_stack_(NULL)
+    { }
     inline void SetFlag(eThreadFlag flag)
     {
         m_flag_ = (eThreadFlag)(m_flag_ | flag);
@@ -272,20 +267,20 @@ public:
     {
         return m_state_;
     }
-    inline void SetRunFunction(ThreadRunFunction func, void* args)
+    inline void SetRunCallback(ThreadRunCallback func, void* args)
     {
-        m_runfunc_ = func;
+        m_callback_ = func;
         m_args_  = args;
     }
     void* GetThreadArgs()
     {
         return m_args_;
     }
-    inline utime64_t GetWakeupTime(void)
+    inline time64_t GetWakeupTime(void)
     {
         return m_wakeup_time_;
     }
-    inline void SetWakeupTime(utime64_t waketime)
+    inline void SetWakeupTime(time64_t waketime)
     {
         m_wakeup_time_ = waketime;
     }
@@ -338,20 +333,22 @@ protected:
     eThreadState m_state_;
     eThreadType m_type_;
     eThreadFlag m_flag_;
-    utime64_t   m_wakeup_time_;
+    time64_t    m_wakeup_time_;
     Stack*      m_stack_; // 堆栈信息
     void*       m_private_;
 
-    ThreadRunFunction m_runfunc_; // 启动函数
+    ThreadRunCallback m_callback_; // 启动函数
     void*       m_args_; // 参数
 };
 
-// connection的基类
+typedef CPP_TAILQ_ENTRY<IMtConnection> KeepConnLink;
+typedef CPP_TAILQ_HEAD<IMtConnection> KeepConnList;
+
 class IMtConnection : public referenceable
 {
 public:
-    IMtConnection() : m_type_(eUNDEF_CONN), m_action_(NULL), 
-        m_osfd_(-1), m_msg_buff_(NULL), m_ev_(NULL)
+    IMtConnection() : m_type_(eUNDEF_CONN), m_action_(NULL), m_keep_flag_(0),
+        m_osfd_(-1), m_msg_buff_(NULL), m_ev_(NULL), m_timeout_(mt_maxint)
     { }
 
     virtual ~IMtConnection()
@@ -361,19 +358,6 @@ public:
             GetInstance<IMsgBufferPool>()->FreeMsgBuffer(m_msg_buff_);
         }
     }
-
-    virtual void Reset()
-    {
-        // 清空buffer
-        if (m_msg_buff_)
-        {
-            GetInstance<IMsgBufferPool>()->FreeMsgBuffer(m_msg_buff_);
-        }
-        m_action_ = NULL;
-        m_msg_buff_ = NULL;
-    }
-
-    virtual void ResetEventer();
 
     inline eConnType GetConnType()
     {
@@ -415,13 +399,11 @@ public:
 
     inline int CloseSocket()
     {
-        if (m_osfd_ < 0)
+        if (m_osfd_ > 0)
         {
-            return 0;
+            mt_close(m_osfd_);
+            m_osfd_ = -1;
         }
-
-        mt_close(m_osfd_);
-        m_osfd_ = -1;
 
         return 0;
     }
@@ -431,29 +413,46 @@ public:
         return m_osfd_;
     }
 
-    inline void SetOsfd(int osfd)
-    { 
-        m_osfd_ = osfd;
-        LOG_TRACE("m_ev_ : %p", m_ev_);
-        if (NULL != m_ev_)
-        {
-            m_ev_->SetOsfd(m_osfd_);
-            m_ev_->EnableInput();
-            m_ev_->EnableOutput();
-        }
-        else
-        {
-            LOG_WARN("m_ev_ is NULL, cannot set m_osfd_ : %d", m_osfd_);
-        }
-    }
-
     inline void SetMsgDstAddr(struct sockaddr_in* dst)
     {
         memcpy(&m_dst_addr_, dst, sizeof(m_dst_addr_));
     }
 
+    inline struct sockaddr_in* GetMsgDstAddr()
+    {
+        return &m_dst_addr_;
+    }
+
+    inline void SetTimeout(int timeout)
+    {
+        m_timeout_ = timeout;
+    }
+
+    inline int GetTimeout()
+    {
+        return m_timeout_;
+    }
+
+    inline void Reset()
+    {
+        // 清空buffer
+        if (NULL != m_msg_buff_)
+        {
+            GetInstance<IMsgBufferPool>()->FreeMsgBuffer(m_msg_buff_);
+        }
+        m_action_ = NULL;
+        m_msg_buff_ = NULL;
+        m_keep_flag_ = 0;
+
+        memset(&m_dst_addr_, 0, sizeof(m_dst_addr_));
+        CloseSocket();
+        ResetEventer();
+    }
+
+    void ResetEventer();
+
 public:
-    virtual int CreateSocket() = 0;
+    virtual int CreateSocket(int fd = -1) = 0;
 
     virtual int SendData() = 0;
 
@@ -472,47 +471,88 @@ protected:
 
     int                 m_osfd_;
     struct sockaddr_in  m_dst_addr_;
+    int                 m_timeout_;
+
+public:
+    KeepConnLink        m_entry_;
+    int                 m_keep_flag_;
 };
 
-// session信息
-class ISession : public HashKey
+// 请求链接的标识
+class KeepKey : public HashKey
 {
 public:
-    ISession() : m_session_id_(0), m_session_flag_(0) 
-    { }
-    // 虚析构函数
-    virtual ~ISession()
-    { }
+    KeepKey()
+    {
+        m_addr_ipv4_  = 0;
+        m_addr_port_   = 0;
+        CPP_TAILQ_INIT(&m_list_);
 
-public:
-    void SetSessionId(int id)
-    {
-        m_session_id_ = id;
+        this->SetDataPtr(this);
     }
-    int GetSessionId()
+    KeepKey(struct sockaddr_in * dst)
     {
-        return m_session_id_;
+        m_addr_ipv4_  = dst->sin_addr.s_addr;
+        m_addr_port_  = dst->sin_port;
+        CPP_TAILQ_INIT(&m_list_);
+
+        this->SetDataPtr(this);
     }
-    void SetSessionFlag(int flag)
+    ~KeepKey()
     {
-        m_session_flag_ = flag;
+        CPP_TAILQ_INIT(&m_list_);
     }
-    int GetSessionFlag()
-    {
-        return m_session_flag_;
-    }
+    // 端口和ip组合
     virtual uint32_t HashValue()
     {
-        return m_session_id_;
+        return m_addr_ipv4_ ^ ((m_addr_port_ << 16) | m_addr_port_);
     }
     virtual int HashCmp(HashKey* rhs)
     {
-        return m_session_id_ - (int)rhs->HashValue();
+        KeepKey* data = dynamic_cast<KeepKey*>(rhs);
+        if (!data)
+        {
+            return -1;
+        }
+
+        if (m_addr_ipv4_ != data->m_addr_ipv4_)
+        {
+            return m_addr_ipv4_ - data->m_addr_ipv4_;
+        }
+        if (m_addr_port_ != data->m_addr_port_)
+        {
+            return m_addr_port_ - data->m_addr_port_;
+        }
+        
+        return 0;
+    }
+    void InsertConnection(IMtConnection *conn)
+    {
+        if (conn->m_keep_flag_ & eKEEP_IN_LIST)
+        {
+            return;
+        }
+        CPP_TAILQ_INSERT_TAIL(&m_list_, conn, m_entry_);
+        conn->m_keep_flag_ |= eKEEP_IN_LIST;
+    }
+    void RemoveConnection(IMtConnection* conn)
+    {
+        if (!(conn->m_keep_flag_ & eKEEP_IN_LIST))
+        {
+            return;
+        }
+        CPP_TAILQ_REMOVE(&m_list_, conn, m_entry_);
+        conn->m_keep_flag_ &= ~eKEEP_IN_LIST;
+    }
+    IMtConnection* GetFirstConnection()
+    {
+        return CPP_TAILQ_FIRST(&m_list_);
     }
 
-protected:
-    int  m_session_id_;
-    int  m_session_flag_;
+private:
+    uint32_t        m_addr_ipv4_;
+    uint16_t        m_addr_port_;
+    KeepConnList    m_list_;
 };
 
 MTHREAD_NAMESPACE_END

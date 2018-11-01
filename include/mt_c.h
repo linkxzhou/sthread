@@ -10,7 +10,7 @@
 #include "mt_utils.h"
 #include "mt_connection.h"
 #include "mt_thread.h"
-#include "mt_session.h"
+#include "mt_ext.h"
 
 #ifdef  __cplusplus
 extern "C" {
@@ -21,7 +21,7 @@ int udp_sendrecv(struct sockaddr_in* dst, void* pkg, int len,
 
 int tcp_sendrecv(struct sockaddr_in* dst, void* pkg, int len, 
         void* recv_buf, int& buf_size, int timeout, 
-        TcpCheckMsgLenFunction check_func, bool is_keep = false);
+        TcpCheckMsgLenCallback check_func, bool is_keep = false);
 
 void mt_sleep(int ms);
 

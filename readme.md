@@ -3,7 +3,7 @@ mthread
 
 # 简介
 
-[mthread]是一个基于协程的高性能网络库，目前提供支持TCP/UDP等协议的非阻塞式的客户端库(服务端正在开发中...)
+[mthread]是一个基于协程的高性能网络库，目前提供支持TCP/UDP等协议的非阻塞式的客户端和服务端库
 
 # 特性
 
@@ -14,7 +14,7 @@ mthread
 4. 提供非阻塞TCP客户端  
 5. 提供非阻塞UDP客户端  
 6. 优秀的跨平台特性和高性能（理论上只要系统内存足够大，句柄没有限制，可以无限创建无限个协程）  
-7. 使用简单，只需要引入一个libmthread.a或者ibmthread.so  
+7. 使用简单，只需要引入一个libmthread.a或者libmthread.so  
   
 除此之外，基于该库之上正在开发各个客户端库：memcache,redis,wrk等  
 
@@ -78,7 +78,7 @@ int main(int argc, char* argv[])
         std::string *s = new std::string(ss.str());
         Frame::CreateThread(func, s);
     }
-    Frame::Run(true);
+    Frame::Loop(true);
     LOG_DEBUG("--- end time : %ld", Utils::system_ms());
 
     return 0;
@@ -111,4 +111,88 @@ int main(int argc, char* argv[])
 
 ...
 
+```
+
+## http server
+
+```cpp
+class TestIMtAction: public IMtAction
+{
+public:
+    virtual int HandleEncode(void* buf, int& len, IMessage* msg)
+    {
+        // ================== 直接发送回包信息 ==================
+        char send_buf[8192] = "HTTP/1.1 200 OK\r\n"
+            "Accept-Ranges: bytes\r\n"
+            "Cache-Control: private, no-cache, no-store, proxy-revalidate, no-transform\r\n"
+            "Connection: Keep-Alive\r\n"
+            "Content-Length: 1\r\n"
+            "Content-Type: text/html\r\n"
+            "Date: Mon, 20 Aug 2018 14:54:06 GMT\r\n"
+            "Etag: 588604eb-94d\r\n"
+            "Last-Modified: Mon, 23 Jan 2017 13:28:11 GMT\r\n"
+            "Pragma: no-cache\r\n\r\n1";
+
+        len = strlen(send_buf);
+        memcpy(buf, send_buf, len);
+        ((char *)buf)[len] = '\0';
+        LOG_DEBUG("[send] buf : %s", send_buf);
+
+        return 0;
+    }
+    virtual int HandleInput(void* buf, int len, IMessage* msg)
+    {
+        LOG_DEBUG("[recv] buf: %s", (char*)buf);
+
+        return len;
+    }
+    virtual int HandleProcess(void* buf, int len, IMessage* msg)
+    {
+        return 0;
+    }
+    virtual int HandleError(int err, IMessage* msg)
+    {
+        return 0;
+    }
+};
+
+// 回调函数
+static IMtAction* construct()
+{
+    IMtAction *action = new TestIMtAction();
+    action->SetConnType(eTCP_SHORT_CONN);
+    return action;
+}
+
+static void destruct(IMtAction *action)
+{
+    if (action)
+    {
+        action->Reset(true);
+        safe_delete(action);
+    }
+}
+
+int main(int argc, char* argv[])
+{
+    //定义sockaddr_in
+    struct sockaddr_in servaddr;
+    memset(&servaddr, 0, sizeof(servaddr));
+    servaddr.sin_family = AF_INET;
+    servaddr.sin_port = htons(4312);  ///服务器端口
+    servaddr.sin_addr.s_addr = inet_addr("127.0.0.1");  ///服务器ip
+
+    int ret = mt_init_frame();
+    mt_set_hook_flag();
+
+    IMtActionServer *server = new IMtActionServer(&servaddr, eTCP_ACCEPT_CONN);
+    server->SetCallBack(construct, destruct);
+    ret = server->Loop(1000);
+    if (ret < 0)
+    {
+        LOG_ERROR("server error");
+    }
+
+    LOG_TRACE("end ...");
+}
 ```

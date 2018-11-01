@@ -8,7 +8,7 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <sys/stat.h>
-#include <fcntl.h>
+#include <fcntl.h>  
 #include <unistd.h>
 
 // g++ server.cpp -g -o server

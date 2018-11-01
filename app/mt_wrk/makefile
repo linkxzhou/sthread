@@ -1,6 +1,6 @@
 INCLUDE = -I../../include -I.
 SRC = .
-FLAGS = -Wno-backslash-newline-escape -Wno-unused-value -Wno-format -Wno-c++11-compat-deprecated-writable-strings -g
+FLAGS = -Wno-backslash-newline-escape -Wno-unused-value -Wno-format -Wno-c++11-compat-deprecated-writable-strings -g #-DTRACE
 LIBS = ../../libmthread.a
 
 all:

@@ -54,7 +54,7 @@ do {                                                                        \
             (var) = (tvar))
 #endif
 
-typedef unsigned long long utime64_t;
+typedef long long time64_t;
 
 // 使用c++封装的linux的TAILQ_ENTRY
 template<class T>
@@ -88,7 +88,8 @@ public:
 #define CPP_TAILQ_FIRST(head)       ((head)->tqh_first)
 #define CPP_TAILQ_NEXT(elm, field)  ((elm)->field.tqe_next)
 #define CPP_TAILQ_EMPTY(head)       ((head)->tqh_first == NULL) // 判断队列是否为空
-#define CPP_TAILQ_INIT(head) do {                   \
+#define CPP_TAILQ_INIT(head)        \
+do {                                                \
     CPP_TAILQ_FIRST((head)) = NULL;                 \
     (head)->tqh_last = &CPP_TAILQ_FIRST((head));    \
 } while (0)
@@ -136,7 +137,7 @@ class Utils
 {
 public:
     // 获取系统时间
-    static utime64_t system_ms()
+    static time64_t system_ms()
     {
         struct timeval tv;
         ::gettimeofday(&tv, NULL);
@@ -151,6 +152,7 @@ public:
         ::usleep(u_seconds);
         return ;
     }
+    // 获取最大的素数
     static int max_prime_num(int num)
     {
         int sqrt_value = (int)sqrt(num);
@@ -165,6 +167,7 @@ public:
                     break;
                 }
             }
+            
             if (flag == 1)
             {
                 return i;
@@ -173,6 +176,7 @@ public:
 
         return 0;
     }
+    // 生成唯一的uniqid
     static uint generate_uniqid()
     {
         static uint id = 1;
@@ -398,10 +402,16 @@ ValueType any_cast(const Any& any)
 
 MTHREAD_NAMESPACE_END
 
-// ============== 不加入命名空间中 ==============
-// 获取协程id
-extern "C" unsigned long mt_get_threadid(void);
-// 设置协程id
-extern "C" void mt_set_threadid(unsigned long threadid);
+#ifdef  __cplusplus
+extern "C" {
+#endif
+
+unsigned long mt_get_threadid(void); // 获取协程id
+
+void mt_set_threadid(unsigned long threadid); // 设置协程id
+
+#ifdef  __cplusplus
+}
+#endif
 
 #endif

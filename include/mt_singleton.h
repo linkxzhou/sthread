@@ -51,7 +51,7 @@ public:
 #endif
     }
 
-    static void InstanceDestroy(void* obj = NULL)
+    static void InstanceDestroy(void* ins = NULL)
     {
         if (m_pInstance != NULL)
         {

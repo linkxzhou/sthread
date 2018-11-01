@@ -150,7 +150,7 @@ void callback(void *data)
     }
     servaddr.sin_addr.s_addr = inet_addr(ipstr);  ///服务器ip
 
-    // TODO : debug
+    // debug选项
     if (wrk::Utils::s_verbose_)
     {
         printf("dst_ip : %s, port : %d\n", ipstr, cg.port);
@@ -197,6 +197,7 @@ void callback(void *data)
     }
 
     ret = actionframe->SendRecv(10000);
+    // debug选项
     if (wrk::Utils::s_verbose_)
     {
         printf("actionframe ret : %d, count : %d\n", ret, count);
@@ -206,7 +207,6 @@ void callback(void *data)
     while (iter != msg_vc.end())
     {
         p->ChildProcessSend(&((*iter)->m_number_), sizeof(wrk::number));
-        // TODO : debug
         if (wrk::Utils::s_verbose_)
         {
             printf("[CHILDREN] send : \n");
@@ -255,7 +255,6 @@ int main(int argc, char **argv)
     cg.path = path;
     cg.query = query;
 
-    // TODO : debug
     if (wrk::Utils::s_verbose_)
     {
         wrk::Utils::print_config_debug(&cg);
@@ -278,8 +277,8 @@ int main(int argc, char **argv)
     wrk::Utils::init_number(numbers);
     do
     {
-        wrk::number num_o;
         unsigned int num_len;
+        wrk::number num_o;
 
         int r = p.ParentProcessRecv(&num_o, num_len);
         if (r < 0)

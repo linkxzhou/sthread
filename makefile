@@ -3,7 +3,8 @@ DEBUG = -g
 BINARY = libmthread.so libmthread.a
 
 # Comment the following line if you are not using the gnu c compiler
-C_ARGS = -fPIC -O1 -Wno-backslash-newline-escape -Wno-format -Wno-deprecated-declarations -g # -DTRACE
+DEBUG = #-g -DTRACE
+C_ARGS = -fPIC -O1 -Wno-backslash-newline-escape -Wno-format -Wno-deprecated-declarations $(DEBUG)
 #.SUFFIXES: .o .cpp
 
 ifeq ($(ARCH),32)
@@ -52,8 +53,8 @@ all: $(BINARY)
 clean:
 	@rm -f $(BINARY) *.o
 
-LIB_O = mt_action.o mt_asm.o mt_buffer.o mt_c.o \
-	mt_connection.o mt_core.o mt_session.o \
+LIB_O = mt_action.o mt_asm.o mt_c.o \
+	mt_connection.o mt_core.o mt_ext.o \
 	mt_sys_hook.o mt_thread.o mt_ucontext.o mt_utils.o
 
 libmthread.a: $(LIB_O)

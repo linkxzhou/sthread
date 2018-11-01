@@ -79,7 +79,6 @@ public:
 
         if (mask & MT_READABLE) 
         {
-            LOG_TRACE("fd : %d, mask : MT_READABLE", fd);
             EV_SET(&ke[0], fd, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
             if (kevent(m_kqfd_, ke, 1, NULL, 0, NULL) == -1) 
             {
@@ -90,14 +89,11 @@ public:
         {
             EV_SET(&ke[0], fd, EVFILT_READ, EV_DELETE, 0, 0, NULL);
             if (kevent(m_kqfd_, ke, 1, NULL, 0, NULL) == -1) 
-            {
-                // LOG_WARN("delete EVFILT_READ error");
-            }
+            { }
         }
 
-        if (mask & MT_WRITABLE) 
+        if (mask & MT_WRITEABLE) 
         {
-            LOG_TRACE("fd : %d, mask : MT_WRITABLE", fd);
             EV_SET(&ke[0], fd, EVFILT_WRITE, EV_ADD | EV_ENABLE, 0, 0, NULL);
             if (kevent(m_kqfd_, ke, 1, NULL, 0, NULL) == -1)
             {
@@ -108,9 +104,7 @@ public:
         {
             EV_SET(&ke[0], fd, EVFILT_WRITE, EV_DELETE, 0, 0, NULL);
             if (kevent(m_kqfd_, ke, 1, NULL, 0, NULL) == -1) 
-            {
-                // LOG_WARN("delete EVFILT_READ error");
-            }
+            { }
         }
 
         return 0;
@@ -129,7 +123,7 @@ public:
             }
         }
 
-        if (mask & MT_WRITABLE) 
+        if (mask & MT_WRITEABLE) 
         {
             EV_SET(&ke[0], fd, EVFILT_WRITE, EV_DELETE, 0, 0, NULL);
             if (kevent(m_kqfd_, ke, 1, NULL, 0, NULL) == -1)
@@ -150,7 +144,6 @@ public:
             struct timespec timeout;
             timeout.tv_sec = tvp->tv_sec;
             timeout.tv_nsec = tvp->tv_usec * 1000;
-            LOG_TRACE("tvp->tv_sec : %ld, tvp->tv_usec : %ld", tvp->tv_sec, tvp->tv_usec);
             retval = kevent(m_kqfd_, NULL, 0, m_events_, m_size_, &timeout);
         } 
         else 
@@ -158,7 +151,7 @@ public:
             retval = kevent(m_kqfd_, NULL, 0, m_events_, m_size_, NULL);
         }
 
-        LOG_TRACE("retval : %d, tvp : %p, m_events_ : %p, m_size_ : %d", 
+        LOG_TRACE("retval: %d, tvp: %p, m_events_: %p, m_size_: %d", 
             retval, tvp, m_events_, m_size_);
 
         if (retval > 0) 
@@ -172,10 +165,10 @@ public:
                 struct kevent *e = m_events_ + j;
 
                 if (e->filter == EVFILT_READ) mask |= MT_READABLE;
-                if (e->filter == EVFILT_WRITE) mask |= MT_WRITABLE;
+                if (e->filter == EVFILT_WRITE) mask |= MT_WRITEABLE;
                 m_fired_[j].fd = e->ident;
                 m_fired_[j].mask = mask;
-                LOG_TRACE("m_fired_[j].fd : %d", m_fired_[j].fd);
+                LOG_TRACE("m_fired_[j].fd : %d, mask : %d", m_fired_[j].fd, mask);
             }
         }
 

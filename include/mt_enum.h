@@ -55,6 +55,7 @@ enum eThreadState
     eRUNNING    = 0x2,
     eSLEEPING   = 0x3,
     ePENDING    = 0x4,
+    eIOWAIT     = 0x5,
 };
 
 enum eActionState
@@ -73,14 +74,15 @@ enum eActionError
     eERR_CONNECT_FAIL    = -2, // 连接失败
     eERR_SEND_FAIL       = -3, // 发送失败
     eERR_RECV_FAIL       = -4, // 接收失败
-    eERR_RECV_TIMEOUT    = -5, // 超时
-    eERR_POLL_FAIL       = -6, // event异常
-    eERR_FRAME_ERROR     = -7, // 框架失败
-    eERR_PEER_CLOSE      = -8, // 对端关闭
-    eERR_PARAM_ERROR     = -9, // 参数错误
-    eERR_MEMORY_ERROR    = -10, // 内存异常
-    eERR_ENCODE_ERROR    = -11, // encode流程错误
-    eERR_DST_ADDR_ERROR  = -12, // 目标ip异常
+    eERR_SEND_TIMEOUT    = -5, // 发送数据超时
+    eERR_RECV_TIMEOUT    = -6, // 超时
+    eERR_POLL_FAIL       = -7, // event异常
+    eERR_FRAME_ERROR     = -8, // 框架失败
+    eERR_PEER_CLOSE      = -9, // 对端关闭
+    eERR_PARAM_ERROR     = -10, // 参数错误
+    eERR_MEMORY_ERROR    = -11, // 内存异常
+    eERR_ENCODE_ERROR    = -12, // encode流程错误
+    eERR_DST_ADDR_ERROR  = -13, // 目标ip异常
 };
 
 enum eSessionFlag
@@ -93,20 +95,19 @@ enum eSessionFlag
 
 enum eConnType
 {
-    eUNDEF_CONN             = 0x0, // 链接错误
-    eUDP_CONN               = 0x1, // udp client链接
-    eTCP_KEEP_CONN          = 0x2, // tcp client长连接
-    eTCP_SHORT_CONN         = 0x3, // tcp client短连接
-    eTCP_SERVER_ACCEPT_CONN = 0x4,
-    eTCP_SERVER             = 0x5,
-    eUDP_SERVER             = 0x6,
-    eTCP_ACCEPT_CONN        = 0x7,
+    eUNDEF_CONN     = 0x0, // 连接错误
+    eUDP_CONN       = 0x1, // udp client连接
+    eTCP_LONG_CONN  = 0x2, // tcp client长连接
+    eTCP_SHORT_CONN = 0x3, // tcp client短连接
+    eTCP_SERVER     = 0x4,
+    eUDP_SERVER     = 0x5,
+    eTCP_ACCEPT_CONN    = 0x6,
 };
 
 enum eKeepFlag
 {
-    eTCP_KEEP_IN_LIST  = 0x1,
-    eTCP_KEEP_IN_POLL  = 0x2,
+    eKEEP_IN_LIST  = 0x1,
+    eKEEP_IN_POLL  = 0x2,
 };
 
 MTHREAD_NAMESPACE_END

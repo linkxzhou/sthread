@@ -9,21 +9,21 @@
 #include "mt_heap_timer.h"
 #include "mt_core.h"
 #include "mt_sys_hook.h"
-#include "mt_session.h"
+#include "mt_ext.h"
 #include "mt_thread.h"
 
 MTHREAD_NAMESPACE_BEGIN
 
-// 主框架（单列模式）
+// 主框架
 class Frame
 {
     friend class Scheduler;
 
 public:
     Frame() : m_daemon_(NULL), m_primo_(NULL), m_cur_thread_(NULL),
-        m_thead_pool_(new ThreadPool()), m_ev_proxyer_(new EventProxyer()), 
+        m_thead_pool_(new ThreadPool()), m_ev_driver_(new EventDriver()), 
         m_timer_(NULL), m_last_clock_(0), m_wait_num_(0), m_timeout_(0), 
-        m_exitflag_(false)
+        m_callback_(NULL), m_args_(NULL)
     { }
 
     // 清理数据
@@ -37,15 +37,16 @@ public:
     	safe_delete(m_primo_);
 	    safe_delete(m_daemon_);
 
-	    CPP_TAILQ_INIT(&m_io_list_);
-	    // 清理sleep线程
+	    // 清理sleep的队列
 	    Thread* thread = dynamic_cast<Thread*>(m_sleep_list_.HeapPop());
 	    while (thread)
 	    {
 	        FreeThread(thread);
 	        thread = dynamic_cast<Thread*>(m_sleep_list_.HeapPop());
 	    }
-
+        // 清除sleep后初始化io等待队列
+        CPP_TAILQ_INIT(&m_io_list_);
+        // 清理run的队列
 	    while (!m_run_list_.empty())
 	    {
 	        thread = m_run_list_.front();
@@ -53,15 +54,16 @@ public:
 	        FreeThread(thread);
 	    }
 
-	    Thread* tmp;
-	    CPP_TAILQ_FOREACH_SAFE(thread, &m_pend_list_, m_entry_, tmp)
+	    Thread* t1;
+	    CPP_TAILQ_FOREACH_SAFE(thread, &m_pend_list_, m_entry_, t1)
 	    {
 	        CPP_TAILQ_REMOVE(&m_pend_list_, thread, m_entry_);
 	        FreeThread(thread);
 	    }
+
 	    safe_delete(m_thead_pool_);
 	    safe_delete(m_timer_);
-        safe_delete(m_ev_proxyer_);
+        safe_delete(m_ev_driver_);
     }
 
     ThreadBase* GetRootThread()
@@ -93,8 +95,8 @@ public:
     int InitFrame(int max_thread_num = 50000)
     {
         int ret = 0;
-    	// 初始化EventerProxyer和线程池
-	    if (m_ev_proxyer_->Init(max_thread_num) < 0)
+    	// 初始化EventerDriver和线程池
+	    if (m_ev_driver_->Init(max_thread_num) < 0)
 	    {
 	        LOG_ERROR("init event failed");
 	        ret = -1;
@@ -133,8 +135,9 @@ public:
 	    }
 	    m_daemon_->SetType(eDAEMON);
 	    m_daemon_->SetState(eRUNABLE);
-	    m_daemon_->SetRunFunction(Frame::DaemonRun, this);
+	    m_daemon_->SetRunCallback(Frame::DaemonRun, this);
 
+        // m_primo_ 为当前运行的线程
 	    m_primo_ = m_thead_pool_->AllocThread();
 	    if (NULL == m_primo_)
 	    {
@@ -155,6 +158,7 @@ Label_Destroy:
         {
             Destroy();
         }
+
 	    return ret;
     }
 
@@ -162,11 +166,6 @@ Label_Destroy:
     {
     	LOG_TRACE("set hook ...");
     	SET_HOOK_FLAG();
-    }
-
-    inline const char* Version(void)
-    {
-    	return "1.0.0";
     }
 
     inline ThreadBase* GetActiveThread(void)
@@ -181,23 +180,18 @@ Label_Destroy:
 
 	    if (m_run_list_.empty())
 	    {
-            if (CPP_TAILQ_SIZE(&m_io_list_) <= 0 && 
-                CPP_TAILQ_SIZE(&m_pend_list_) <= 0 && m_exitflag_)
-            {
-                return -1;
-            }
 	        thread = (Thread *)DaemonThread();
-            LOG_TRACE("run DaemonThread, thread : %p, m_io_list_ size : %d, m_pend_list_ size : %d", 
-                thread, CPP_TAILQ_SIZE(&m_io_list_), CPP_TAILQ_SIZE(&m_pend_list_));
+            LOG_TRACE("DaemonThread");
 	    }
 	    else
 	    {
-	        thread = m_run_list_.front();
-	        RemoveRunable(thread);
-            LOG_TRACE("run front thread, m_run_list_ size: %d", m_run_list_.size());
+	        thread = RemoveRunable();
 	    }
 
-	    LOG_TRACE("SetActiveThread thread : %p", thread);
+        LOG_TRACE("thread: %p, m_run_list_ size: %d, m_io_list_ size: %d, m_pend_list_ size: %d", 
+                thread, m_run_list_.size(), CPP_TAILQ_SIZE(&m_io_list_), CPP_TAILQ_SIZE(&m_pend_list_));
+	    LOG_TRACE("SetActiveThread thread: %p", thread);
+
 	    SetActiveThread(thread);
 	    thread->SetState(eRUNNING);
 	    thread->RestoreContext((ThreadBase *)active_thead);
@@ -205,10 +199,20 @@ Label_Destroy:
         return 0;
     }
 
+    // 进入io等待同时插入sleep
+    inline void InsertIoWait(ThreadBase* thread)
+    {
+    	thread->SetFlag(eIO_LIST);
+        thread->SetState(eIOWAIT);
+	    CPP_TAILQ_INSERT_TAIL(&m_io_list_, ((Thread*)thread), m_entry_);
+	    InsertSleep(thread);
+    }
+
+    // 移除io等待同时移除sleep
     inline void RemoveIoWait(ThreadBase* thread)
     {
     	thread->UnsetFlag(eIO_LIST);
-        LOG_TRACE("[remove]thread : %p, m_io_list_ size : %d", thread, CPP_TAILQ_SIZE(&m_io_list_));
+        LOG_TRACE("remove thread: %p, m_io_list_ size: %d", thread, CPP_TAILQ_SIZE(&m_io_list_));
 	    CPP_TAILQ_REMOVE(&m_io_list_, (Thread*)thread, m_entry_);
 	    RemoveSleep(thread);
     }
@@ -221,11 +225,21 @@ Label_Destroy:
 	    m_wait_num_++;
     }
 
+    inline Thread* RemoveRunable()
+    {
+        Thread* thread = m_run_list_.front();
+	    m_run_list_.pop();
+	    m_wait_num_--;
+        thread->UnsetFlag(eRUN_LIST);
+
+        return thread;
+    }
+
     inline void InsertPend(ThreadBase* thread)
     {
     	thread->SetFlag(ePEND_LIST);
+        thread->SetState(ePENDING);
 	    CPP_TAILQ_INSERT_TAIL(&m_pend_list_, (Thread*)thread, m_entry_);
-	    thread->SetState(ePENDING);
     }
 
     inline void RemovePend(ThreadBase* thread)
@@ -237,14 +251,13 @@ Label_Destroy:
     inline void InsertSleep(ThreadBase* thread)
     {
     	thread->SetFlag(eSLEEP_LIST);
+        thread->SetState(eSLEEPING);
 	    m_sleep_list_.HeapPush(thread);
-	    thread->SetState(eSLEEPING);
     }
 
     inline void RemoveSleep(ThreadBase* thread)
     {
     	thread->UnsetFlag(eSLEEP_LIST);
-
         // 如果HeapSize < 0 则不需要处理
         if (m_sleep_list_.HeapSize() <= 0)
         {
@@ -253,38 +266,22 @@ Label_Destroy:
 	    int rc = m_sleep_list_.HeapDelete(thread);
 	    if (rc < 0)
 	    {
-	        LOG_ERROR("remove heap failed , rc : %d, size : %d", 
+	        LOG_ERROR("remove heap failed, rc: %d, size: %d", 
                 rc, m_sleep_list_.HeapSize());
 	    }
     }
 
-    inline void InsertIoWait(ThreadBase* thread)
-    {
-    	thread->SetFlag(eIO_LIST);
-        LOG_TRACE("[insert]thread : %p, m_io_list_ size : %d", 
-            thread, CPP_TAILQ_SIZE(&m_io_list_));
-	    CPP_TAILQ_INSERT_TAIL(&m_io_list_, ((Thread*)thread), m_entry_);
-	    InsertSleep(thread);
-    }
-
-    inline void RemoveRunable(ThreadBase* thread)
-    {
-    	thread->UnsetFlag(eRUN_LIST);
-	    m_run_list_.pop();
-	    m_wait_num_--;
-    }
-
-    inline void SetLastClock(utime64_t clock)
+    inline void SetLastClock(time64_t clock)
     {
         m_last_clock_ = clock;
     }
 
-    inline utime64_t GetLastClock()
+    inline time64_t GetLastClock()
     {
         return m_last_clock_;
     }
 
-    inline utime64_t GetSystemMS()
+    inline time64_t GetSystemMS()
     {
         return Utils::system_ms();
     }
@@ -294,19 +291,14 @@ Label_Destroy:
         return m_wait_num_;
     }
 
-    inline void SetExitFlag(bool _exit)
-    {
-        m_exitflag_ = _exit;
-    }
-
     inline HeapTimer* GetHeapTimer()
     {
         return m_timer_;
     }
 
-    inline EventProxyer* GetEventProxyer()
+    inline EventDriver* GetEventDriver()
     {
-        return m_ev_proxyer_;
+        return m_ev_driver_;
     }
 
     inline ThreadPool* GetThreadPool()
@@ -333,10 +325,31 @@ Label_Destroy:
 	    }
     }
 
+    inline void SetCallback(FrameCallback callback)
+    {
+        m_callback_ = callback;
+    }
+
+    inline FrameCallback GetCallback()
+    {
+        return m_callback_;
+    }
+
+    inline void SetArgs(void *args)
+    {
+        m_args_ = args;
+    }
+
+    inline void* GetArgs()
+    {
+        return m_args_;
+    }
+
     void WakeupTimeout()
     {
-    	utime64_t now = GetLastClock();
+    	time64_t now = GetLastClock();
 	    Thread* thread = dynamic_cast<Thread*>(m_sleep_list_.HeapTop());
+        LOG_TRACE("thread GetWakeupTime: %ld", thread ? thread->GetWakeupTime() : 0);
 	    while (thread && (thread->GetWakeupTime() <= now))
 	    {
 	        if (thread->HasFlag(eIO_LIST))
@@ -347,12 +360,13 @@ Label_Destroy:
 	        {
 	            RemoveSleep(thread);
 	        }
-	        LOG_TRACE("thread = %p", thread);
+            
 	        InsertRunable(thread);
 	        thread = dynamic_cast<Thread*>(m_sleep_list_.HeapTop());
 	    }
     }
 
+    // 设置当前的active线程
     inline void SetActiveThread(Thread* thread)
     {
         m_cur_thread_ = thread;
@@ -366,17 +380,18 @@ Label_Destroy:
         m_thead_pool_->FreeThread(thread);
     }
 
+    // 设置事件驱动的时间
     inline void SetTimeout(int timeout_ms)
     {
-        if (NULL != m_ev_proxyer_)
+        if (NULL != m_ev_driver_)
         {
-            m_ev_proxyer_->SetTimeout(timeout_ms);
+            m_ev_driver_->SetTimeout(timeout_ms);
         }
     }
 
     virtual int GetTimeout()
     {
-        utime64_t now = GetLastClock();
+        time64_t now = GetLastClock();
 	    Thread* thread = dynamic_cast<Thread*>(m_sleep_list_.HeapTop());
 	    if (!thread)
 	    {
@@ -392,20 +407,40 @@ Label_Destroy:
 	    }
     }
 
+    inline void SetExit(bool exit)
+    {
+        m_exit_ = exit;
+    }
+
+    inline bool GetExit()
+    {
+        return m_exit_;
+    }
+
 public:
     // 对应系统函数
     static int sendto(int fd, const void *msg, int len, int flags, 
         const struct sockaddr *to, int tolen, int timeout)
     {
     	Frame* frame = GetInstance<Frame>();
-	    utime64_t start = frame->GetLastClock();
+	    time64_t start = frame->GetLastClock();
 	    Thread* thread = (Thread *)(frame->GetActiveThread());
-        EventProxyer *proxyer = frame->GetEventProxyer();
-	    utime64_t now = 0;
+        EventDriver *driver = frame->GetEventDriver();
+	    time64_t now = 0;
+
+        timeout = (timeout <= -1) ? 0x7fffffff : timeout;
 
 	    int n = 0;
 	    while ((n = mt_sendto(fd, msg, len, flags, to, tolen)) < 0)
 	    {
+            if (n == 0) // 对端关闭
+            {
+                LOG_ERROR("[n=0]sendto failed, errno: %d, strerr : %s", 
+                    errno, strerror(errno));
+	            return 0;
+            }
+
+            // 判断是否超时
 	        now = frame->GetLastClock();
 	        if ((int)(now - start) > timeout)
 	        {
@@ -413,7 +448,8 @@ public:
 	            return -1;
 	        }
 
-	        if (errno == EINTR) {
+	        if (errno == EINTR) 
+            {
 	            continue;
 	        }
 
@@ -421,41 +457,42 @@ public:
 	        {
 	            LOG_ERROR("sendto failed, errno: %d, strerr : %s", 
                     errno, strerror(errno));
-	            return -2;
+	            return -1;
 	        }
 
-	        Eventer* ev = proxyer->GetEventer(fd);
+	        Eventer* ev = driver->GetEventer(fd);
             if (NULL == ev) 
             {
-                ev = GetInstance<ISessionEventerPool>()->GetEventer(eEVENT_THREAD);
-                ev->SetOwnerProxyer(proxyer);
+                ev = GetInstance<EventerPool>()->GetEventer(eEVENT_THREAD);
+                ev->SetOwnerDriver(driver);
             }
 	        ev->SetOsfd(fd);
 	        ev->EnableOutput();
 	        ev->SetOwnerThread(thread);
-	        int wakeup_timeout = timeout + frame->GetLastClock();
-	        if (!(proxyer->Schedule(thread, NULL, ev, wakeup_timeout)))
+	        time64_t wakeup_timeout = timeout + frame->GetLastClock();
+	        if (!(driver->Schedule(thread, NULL, ev, wakeup_timeout)))
 	        {
-	        	GetInstance<ISessionEventerPool>()->FreeEventer(ev);
-	            return -3;
+                LOG_ERROR("ev schedule failed, errno: %d, strerr: %s", 
+                    errno, strerror(errno));
+	        	GetInstance<EventerPool>()->FreeEventer(ev);
+                errno = 0;
+	            return -1;
 	        }
 	    }
 
 	    return n;
     }
+
     static int recvfrom(int fd, void *buf, int len, int flags, 
         struct sockaddr *from, socklen_t *fromlen, int timeout)
     {
     	Frame* frame = GetInstance<Frame>();
-	    utime64_t start = frame->GetLastClock();
+	    time64_t start = frame->GetLastClock();
 	    Thread* thread = (Thread *)(frame->GetActiveThread());
-        EventProxyer *proxyer = frame->GetEventProxyer();
-	    utime64_t now = 0;
+        EventDriver *driver = frame->GetEventDriver();
+	    time64_t now = 0;
 
-	    if (timeout <= -1)
-	    {
-	        timeout = 0x7fffffff;
-	    }
+	    timeout = (timeout <= -1) ? 0x7fffffff : timeout;
 
 	    while (true)
 	    {
@@ -466,22 +503,23 @@ public:
 	            return -1;
 	        }
 
-	        Eventer* ev = proxyer->GetEventer(fd);
+	        Eventer* ev = driver->GetEventer(fd);
             if (NULL == ev) 
             {
-                ev = GetInstance<ISessionEventerPool>()->GetEventer(eEVENT_THREAD);
-                ev->SetOwnerProxyer(proxyer);
+                ev = GetInstance<EventerPool>()->GetEventer(eEVENT_THREAD);
+                ev->SetOwnerDriver(driver);
             }
 	        ev->SetOsfd(fd);
 	        ev->EnableInput();
 	        ev->SetOwnerThread(thread);
-	        int wakeup_timeout = timeout + frame->GetLastClock();
-	        if (!(proxyer->Schedule(thread, NULL, ev, wakeup_timeout)))
+	        time64_t wakeup_timeout = timeout + frame->GetLastClock();
+	        if (!(driver->Schedule(thread, NULL, ev, wakeup_timeout)))
 	        {
-	            LOG_ERROR("eventer schedule failed, errno: %d, strerr: %s", 
+	            LOG_ERROR("ev schedule failed, errno: %d, strerr: %s", 
                     errno, strerror(errno));
-	            GetInstance<ISessionEventerPool>()->FreeEventer(ev);
-	            return -2;
+	            GetInstance<EventerPool>()->FreeEventer(ev);
+                errno = 0;
+	            return -1;
 	        }
 
 	        int n = mt_recvfrom(fd, buf, len, flags, from, fromlen);
@@ -496,9 +534,14 @@ public:
 	            if ((errno != EAGAIN) && (errno != EWOULDBLOCK))
 	            {
 	                LOG_ERROR("recvfrom failed, errno: %d", errno);
-	                return -3;
+	                return -1;
 	            }
 	        }
+            else if (n == 0) // 对端关闭
+            {
+                LOG_ERROR("[n=0]recvfrom failed, errno: %d", errno);
+	            return 0;
+            }
 	        else
 	        {
 	            return n;
@@ -509,12 +552,13 @@ public:
     static int connect(int fd, const struct sockaddr *addr, int addrlen, int timeout)
     {
     	Frame* frame = GetInstance<Frame>();
-	    utime64_t start = frame->GetLastClock();
+	    time64_t start = frame->GetLastClock();
 	    Thread* thread = (Thread *)(frame->GetActiveThread());
-        EventProxyer *proxyer = frame->GetEventProxyer();
-	    utime64_t now = 0;
+        EventDriver *driver = frame->GetEventDriver();
+	    time64_t now = 0;
 
-	    LOG_TRACE("fd: %d, timeout: %d, thread: %p", fd, timeout, thread);
+	    timeout = (timeout <= -1) ? 0x7fffffff : timeout;
+
 	    int n = 0;
 	    while ((n = mt_connect(fd, addr, addrlen)) < 0)
 	    {
@@ -541,24 +585,26 @@ public:
 	        if (!((errno == EAGAIN) || (errno == EINPROGRESS)))
 	        {
 	            LOG_ERROR("connect failed, errno: %d, strerr: %s", errno, strerror(errno));
-	            return -2;
+	            return -1;
 	        }
 
-	        Eventer* ev = proxyer->GetEventer(fd);
+	        Eventer* ev = driver->GetEventer(fd);
             if (NULL == ev) 
             {
-                ev = GetInstance<ISessionEventerPool>()->GetEventer(eEVENT_THREAD);
-                ev->SetOwnerProxyer(proxyer);
+                ev = GetInstance<EventerPool>()->GetEventer(eEVENT_THREAD);
+                ev->SetOwnerDriver(driver);
             }
 	        ev->SetOsfd(fd);
 	        ev->EnableOutput();
 	        ev->SetOwnerThread(thread);
-            int wakeup_timeout = timeout + frame->GetLastClock();
-	        if (!(proxyer->Schedule(thread, NULL, ev, wakeup_timeout)))
+            time64_t wakeup_timeout = timeout + frame->GetLastClock();
+	        if (!(driver->Schedule(thread, NULL, ev, wakeup_timeout)))
 	        {
-	        	LOG_ERROR("schedule error");
-	        	GetInstance<ISessionEventerPool>()->FreeEventer(ev);
-	            return -3;
+	        	LOG_ERROR("ev schedule failed, errno: %d, strerr: %s", 
+                    errno, strerror(errno));
+	        	GetInstance<EventerPool>()->FreeEventer(ev);
+                errno = 0;
+	            return -1;
 	        }
 	    }
 
@@ -568,14 +614,22 @@ public:
     static ssize_t read(int fd, void *buf, size_t nbyte, int timeout)
     {
     	Frame* frame = GetInstance<Frame>();
-	    utime64_t start = frame->GetLastClock();
+	    time64_t start = frame->GetLastClock();
 	    Thread* thread = (Thread*)(frame->GetActiveThread());
-        EventProxyer *proxyer = frame->GetEventProxyer();
-	    utime64_t now = 0;
+        EventDriver *proxyer = frame->GetEventDriver();
+	    time64_t now = 0;
+
+        timeout = (timeout <= -1) ? 0x7fffffff : timeout;
 
 	    ssize_t n = 0;
 	    while ((n = mt_read(fd, buf, nbyte)) < 0)
 	    {
+            if (n == 0) // 句柄关闭
+            {
+                LOG_ERROR("[n=0]read failed, errno: %d", errno);
+	            return 0;
+            }
+
 	        now = frame->GetLastClock();
 	        if ((int)(now - start) > timeout)
 	        {
@@ -591,23 +645,26 @@ public:
 	        if ((errno != EAGAIN) && (errno != EWOULDBLOCK))
 	        {
 	            LOG_ERROR("read failed, errno: %d", errno);
-	            return -2;
+	            return -1;
 	        }
 
 	        Eventer* ev = proxyer->GetEventer(fd);
             if (NULL == ev) 
             {
-                ev = GetInstance<ISessionEventerPool>()->GetEventer(eEVENT_THREAD);
-                ev->SetOwnerProxyer(proxyer);
+                ev = GetInstance<EventerPool>()->GetEventer(eEVENT_THREAD);
+                ev->SetOwnerDriver(proxyer);
             }
 	        ev->SetOsfd(fd);
 	        ev->EnableInput();
 	        ev->SetOwnerThread(thread);
-	        int wakeup_timeout = timeout + frame->GetLastClock();
+	        time64_t wakeup_timeout = timeout + frame->GetLastClock();
 	        if (!(proxyer->Schedule(thread, NULL, ev, wakeup_timeout)))
 	        {
-	        	GetInstance<ISessionEventerPool>()->FreeEventer(ev);
-	            return -3;
+                LOG_ERROR("ev schedule failed, errno: %d, strerr: %s", 
+                    errno, strerror(errno));
+	        	GetInstance<EventerPool>()->FreeEventer(ev);
+                errno = 0;
+	            return -1;
 	        }
 	    }
 
@@ -617,10 +674,12 @@ public:
     static ssize_t write(int fd, const void *buf, size_t nbyte, int timeout)
     {
     	Frame* frame = GetInstance<Frame>();
-	    utime64_t start = frame->GetLastClock();
+	    time64_t start = frame->GetLastClock();
 	    Thread* thread = (Thread*)(frame->GetActiveThread());
-        EventProxyer *proxyer = frame->GetEventProxyer();
-	    utime64_t now = 0;
+        EventDriver *driver = frame->GetEventDriver();
+	    time64_t now = 0;
+
+        timeout = (timeout <= -1) ? 0x7fffffff : timeout;
 
 	    ssize_t n = 0;
 	    size_t send_len = 0;
@@ -644,9 +703,14 @@ public:
 	            if ((errno != EAGAIN) && (errno != EWOULDBLOCK))
 	            {
 	                LOG_ERROR("write failed, errno: %d", errno);
-	                return -2;
+	                return -1;
 	            }
 	        }
+            else if (n == 0) // 已经关闭句柄
+            {
+                LOG_ERROR("[n=0]write failed, errno: %d", errno);
+	            return 0;
+            }
 	        else
 	        {
 	            send_len += n;
@@ -656,20 +720,23 @@ public:
 	            }
 	        }
 
-	        Eventer* ev = proxyer->GetEventer(fd);
+	        Eventer* ev = driver->GetEventer(fd);
             if (NULL == ev) 
             {
-                ev = GetInstance<ISessionEventerPool>()->GetEventer(eEVENT_THREAD);
-                ev->SetOwnerProxyer(proxyer);
+                ev = GetInstance<EventerPool>()->GetEventer(eEVENT_THREAD);
+                ev->SetOwnerDriver(driver);
             }
 	        ev->SetOsfd(fd);
 	        ev->EnableOutput();
 	        ev->SetOwnerThread(thread);
-	        int wakeup_timeout = timeout + frame->GetLastClock();
-	        if (!(proxyer->Schedule(thread, NULL, ev, wakeup_timeout)))
+	        time64_t wakeup_timeout = timeout + frame->GetLastClock();
+	        if (!(driver->Schedule(thread, NULL, ev, wakeup_timeout)))
 	        {
-	        	GetInstance<ISessionEventerPool>()->FreeEventer(ev);
-	            return -3;
+                LOG_ERROR("ev schedule failed, errno: %d, strerr: %s", 
+                    errno, strerror(errno));
+	        	GetInstance<EventerPool>()->FreeEventer(ev);
+                errno = 0;
+	            return -1;
 	        }
 	    }
 
@@ -679,18 +746,12 @@ public:
     static int recv(int fd, void *buf, int len, int flags, int timeout)
     {
     	Frame* frame = GetInstance<Frame>();
-	    utime64_t start = frame->GetLastClock();
+	    time64_t start = frame->GetLastClock();
 	    Thread* thread = (Thread *)(frame->GetActiveThread());
-        EventProxyer *proxyer = frame->GetEventProxyer();
-	    utime64_t now = 0;
+        EventDriver *driver = frame->GetEventDriver();
+	    time64_t now = 0;
 
-	    LOG_TRACE("thread : %p", thread);
-
-	    LOG_TRACE("timeout %d, now time: %ld, start time: %ld", timeout, now, start);
-	    if (timeout <= -1)
-	    {
-	        timeout = 0x7fffffff;
-	    }
+	    timeout = (timeout <= -1) ? 0x7fffffff : timeout;
 
 	    while (true)
 	    {
@@ -702,20 +763,23 @@ public:
 	            return -1;
 	        }
 
-	        Eventer* ev = proxyer->GetEventer(fd);
+	        Eventer* ev = driver->GetEventer(fd);
             if (NULL == ev) 
             {
-                ev = GetInstance<ISessionEventerPool>()->GetEventer(eEVENT_THREAD);
-                ev->SetOwnerProxyer(proxyer);
+                ev = GetInstance<EventerPool>()->GetEventer(eEVENT_THREAD);
+                ev->SetOwnerDriver(driver);
             }
 	        ev->SetOsfd(fd);
 	        ev->EnableInput();
 	        ev->SetOwnerThread(thread);
-	        int wakeup_timeout = timeout + frame->GetLastClock();
-	        if (!(proxyer->Schedule(thread, NULL, ev, wakeup_timeout)))
+	        time64_t wakeup_timeout = timeout + frame->GetLastClock();
+	        if (!(driver->Schedule(thread, NULL, ev, wakeup_timeout)))
 	        {
-	        	GetInstance<ISessionEventerPool>()->FreeEventer(ev);
-	            return -2;
+                LOG_ERROR("ev schedule failed, errno: %d, strerr: %s", 
+                    errno, strerror(errno));
+	        	GetInstance<EventerPool>()->FreeEventer(ev);
+                errno = 0;
+	            return -1;
 	        }
 
 	        int n = mt_recv(fd, buf, len, flags);
@@ -730,24 +794,30 @@ public:
 	            if ((errno != EAGAIN) && (errno != EWOULDBLOCK))
 	            {
 	                LOG_ERROR("recv failed, errno: %d, strerr: %s", errno, strerror(errno));
-	                return -3;
+	                return -1;
 	            }
 	        }
+            else if (n == 0) // 对端关闭连接
+            {
+                LOG_ERROR("[n=0]recv failed, errno: %d, strerr: %s", errno, strerror(errno));
+                return 0;
+            }
 	        else
 	        {
 	            return n;
 	        }
 	    }
     }
+
     static ssize_t send(int fd, const void *buf, size_t nbyte, int flags, int timeout)
     {
     	Frame* frame = GetInstance<Frame>();
-	    utime64_t start = frame->GetLastClock();
+	    time64_t start = frame->GetLastClock();
 	    Thread* thread = (Thread*)(frame->GetActiveThread());
-        EventProxyer *proxyer = frame->GetEventProxyer();
-	    utime64_t now = 0;
+        EventDriver *driver = frame->GetEventDriver();
+	    time64_t now = 0;
 
-	    LOG_TRACE("thread : %p", thread);
+	    timeout = (timeout <= -1) ? 0x7fffffff : timeout;
 
 	    ssize_t n = 0;
 	    size_t send_len = 0;
@@ -773,9 +843,14 @@ public:
 	            if ((errno != EAGAIN) && (errno != EWOULDBLOCK))
 	            {
 	                LOG_ERROR("write failed, errno: %d, strerr: %s", errno, strerror(errno));
-	                return -2;
+	                return -1;
 	            }
 	        }
+            else if (n == 0) // 对端关闭连接
+            {
+                LOG_ERROR("[n=0]write failed, errno: %d, strerr: %s", errno, strerror(errno));
+	            return 0;
+            }
 	        else
 	        {
 	            send_len += n;
@@ -786,20 +861,23 @@ public:
 	            }
 	        }
 
-	        Eventer* ev = proxyer->GetEventer(fd);
+	        Eventer* ev = driver->GetEventer(fd);
             if (NULL == ev) 
             {
-                ev = GetInstance<ISessionEventerPool>()->GetEventer(eEVENT_THREAD);
-                ev->SetOwnerProxyer(proxyer);
+                ev = GetInstance<EventerPool>()->GetEventer(eEVENT_THREAD);
+                ev->SetOwnerDriver(driver);
             }
 	        ev->SetOsfd(fd);
 	        ev->EnableOutput();
 	        ev->SetOwnerThread(thread);
-	        int wakeup_timeout = timeout + frame->GetLastClock();
-	        if (!(proxyer->Schedule(thread, NULL, ev, wakeup_timeout)))
+	        time64_t wakeup_timeout = timeout + frame->GetLastClock();
+	        if (!(driver->Schedule(thread, NULL, ev, wakeup_timeout)))
 	        {
-	        	GetInstance<ISessionEventerPool>()->FreeEventer(ev);
-	            return -3;
+                LOG_ERROR("ev schedule failed, errno: %d, strerr: %s", 
+                    errno, strerror(errno));
+	        	GetInstance<EventerPool>()->FreeEventer(ev);
+                errno = 0;
+	            return -1;
 	        }
 	    }
 
@@ -819,15 +897,12 @@ public:
     static int WaitEvents(int fd, int events, int timeout)
     {
     	Frame* frame = GetInstance<Frame>();
-	    utime64_t start = frame->GetLastClock();
+	    time64_t start = frame->GetLastClock();
 	    Thread* thread = (Thread*)(frame->GetActiveThread());
-        EventProxyer *proxyer = frame->GetEventProxyer();
-	    utime64_t now = 0;
+        EventDriver *driver = frame->GetEventDriver();
+	    time64_t now = 0;
 
-	    if (timeout <= -1)
-	    {
-	        timeout = 0x7fffffff;
-	    }
+	    timeout = (timeout <= -1) ? 0x7fffffff : timeout;
 
 	    while (true)
 	    {
@@ -838,27 +913,28 @@ public:
 	            return -1;
 	        }
 
-	        Eventer* ev = proxyer->GetEventer(fd);
+	        Eventer* ev = driver->GetEventer(fd);
             if (NULL == ev) 
             {
-                ev = GetInstance<ISessionEventerPool>()->GetEventer(eEVENT_THREAD);
-                ev->SetOwnerProxyer(proxyer);
+                ev = GetInstance<EventerPool>()->GetEventer(eEVENT_THREAD);
+                ev->SetOwnerDriver(driver);
             }
 	        ev->SetOsfd(fd);
+            ev->SetOwnerThread(thread);
 	        if (events & MT_READABLE)
 	        {
 	            ev->EnableInput();
 	        }
-	        if (events & MT_WRITABLE)
+	        if (events & MT_WRITEABLE)
 	        {
 	            ev->EnableOutput();
 	        }
-	        ev->SetOwnerThread(thread);
-	        int wakeup_timeout = timeout + frame->GetLastClock();
-	        if (!(proxyer->Schedule(thread, NULL, ev, wakeup_timeout)))
+	        time64_t wakeup_timeout = timeout + frame->GetLastClock();
+	        if (!(driver->Schedule(thread, NULL, ev, wakeup_timeout)))
 	        {
-	            LOG_TRACE("schedule failed, errno: %d", errno);
-	            GetInstance<ISessionEventerPool>()->FreeEventer(ev);
+	            LOG_ERROR("ev schedule failed, errno: %d, strerr: %s", 
+                    errno, strerror(errno));
+	            GetInstance<EventerPool>()->FreeEventer(ev);
 	            return -2;
 	        }
 
@@ -868,7 +944,8 @@ public:
 	        }
 	    }
     }
-    static ThreadBase* CreateThread(ThreadRunFunction entry, void *args, bool runable = true)
+
+    static ThreadBase* CreateThread(ThreadRunCallback entry, void *args, bool runable = true)
     {
     	Frame* frame = GetInstance<Frame>();
     	Thread* thread = frame->GetThreadPool()->AllocThread();
@@ -878,7 +955,8 @@ public:
 	        LOG_ERROR("create thread failed");
 	        return NULL;
 	    }
-	    thread->SetRunFunction(entry, args);
+
+	    thread->SetRunCallback(entry, args);
 	    if (runable)
 	    {
 	        frame->InsertRunable(thread); // 插入运行线程
@@ -886,60 +964,79 @@ public:
 
 	    return thread;
     }
+
     static void DaemonRun(void *args)
     {
     	Frame* frame = GetInstance<Frame>();
     	Thread* daemon = (Thread *)(frame->DaemonThread());
-        EventProxyer *proxyer = frame->GetEventProxyer();
-        if (NULL == frame|| NULL == daemon || NULL == proxyer)
+        EventDriver *driver = frame->GetEventDriver();
+        if (NULL == frame|| NULL == daemon || NULL == driver)
         {
-            LOG_ERROR("frame NULL or daemon NULL or proxyer NULL");
+            LOG_ERROR("frame NULL or daemon NULL or driver NULL");
             return ;
         }
-    	LOG_TRACE("daemon : %p", daemon);
-	    while (true)
+
+    	LOG_TRACE("daemon: %p", daemon);
+        
+	    do
 	    {
-            daemon->SwitchContext();
-            proxyer->Dispatch();
+            if (frame->GetCallback() != NULL) {
+                (frame->GetCallback())(frame->GetArgs());
+            }
+
+            driver->Dispatch();
+
+            LOG_TRACE("system ms: %ld", frame->GetSystemMS());
+
 	        frame->SetLastClock(frame->GetSystemMS());
-	        LOG_TRACE("system ms :%ld", frame->GetSystemMS());
             // 将超时的转移状态
 	        frame->WakeupTimeout();
             // 检查过期的timer
 	        frame->CheckExpired();
-	    }
+            daemon->SwitchContext();
+
+            // 判断是否需要退出
+            if (frame->GetExit())
+            {
+                LOG_TRACE("iosize: %d, pendsize: %d, runsize: %d, sleepsize: %d", 
+                    CPP_TAILQ_SIZE(&(frame->m_io_list_)), CPP_TAILQ_SIZE(&(frame->m_pend_list_)),
+                    frame->m_run_list_.size(), frame->m_sleep_list_.HeapSize());
+                if (CPP_TAILQ_SIZE(&(frame->m_io_list_)) == 0 && 
+                    CPP_TAILQ_SIZE(&(frame->m_pend_list_)) == 0 && 
+                    frame->m_run_list_.size() == 0)
+                {
+                    // 退出循环
+                    return ;
+                }
+            }
+	    } while(true);
     }
-    // 可以中断运行，非Daemon方式，is_front = true 前端运行，is_front = false Daemon运行
-    static void Run(bool is_front = false)
+    
+    // 可以中断运行，非Daemon方式，exit = true 前端运行，false Daemon运行
+    static void Loop(bool exit = false)
     {
-        if (is_front)
-        {
-            Frame* frame = GetInstance<Frame>();
-            Thread* primo = (Thread *)(frame->PrimoThread());
-            Thread* daemon = (Thread *)(frame->DaemonThread());
-            frame->SetExitFlag(true);
-            frame->SetActiveThread(daemon);
-            daemon->SetState(eRUNNING);
-            daemon->RestoreContext((ThreadBase *)primo);
-        }
-        else
-        {
-            DaemonRun(NULL);
-        }
+        Frame* frame = GetInstance<Frame>();
+        frame->SetExit(exit);
+        frame->SetActiveThread((Thread *)frame->DaemonThread());
+        DaemonRun(NULL);
     }
 
 public:
-    ThreadList          m_run_list_;
-    TailQThreadQueue    m_io_list_, m_pend_list_;
+    ThreadList              m_run_list_;
+    TailQThreadQueue        m_io_list_, m_pend_list_;
     HeapList<ThreadBase>    m_sleep_list_;
-    Thread      	*m_daemon_, *m_primo_, *m_cur_thread_;
+    Thread          *m_daemon_, *m_primo_, *m_cur_thread_;
     ThreadPool      *m_thead_pool_;
-    EventProxyer    *m_ev_proxyer_;
-    utime64_t       m_last_clock_;
+    EventDriver     *m_ev_driver_;
+    HeapTimer       *m_timer_;
+
+    time64_t        m_last_clock_;
     int             m_wait_num_;
-    HeapTimer*      m_timer_;
     int             m_timeout_;
-    bool            m_exitflag_;
+    bool            m_exit_;
+
+    FrameCallback   m_callback_;
+    void            *m_args_;
 };
 
 MTHREAD_NAMESPACE_END

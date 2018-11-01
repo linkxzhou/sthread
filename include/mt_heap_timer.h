@@ -17,16 +17,16 @@ class TimerEntry;
 class TimerEntry : public HeapEntry
 {
 public:
+    TimerEntry() : m_time_expired_(0)
+    { }
     virtual void Notify(eEventType type) 
     { 
         return ;
     }
-    virtual unsigned long long HeapValue()
+    virtual time64_t HeapValue()
     {
-        return (unsigned long long)m_time_expired_;
+        return (time64_t)m_time_expired_;
     }
-    TimerEntry() : m_time_expired_(0)
-    { }
     virtual ~TimerEntry()
     { 
         m_time_expired_ = 0;
@@ -52,10 +52,12 @@ public:
     {
         m_heap_ = new HeapList<TimerEntry>(max_item);
     }
+    
     ~HeapTimer()
     {
         safe_delete(m_heap_);
     }
+
     bool StartTimer(TimerEntry* timerable, uint32_t interval)
     {
         if (!m_heap_ || !timerable)
@@ -63,7 +65,7 @@ public:
             return false;
         }
 
-        utime64_t now_ms = Utils::system_ms();
+        time64_t now_ms = Utils::system_ms();
         LOG_TRACE("now_ms + interval = %llu", now_ms + interval);
         timerable->SetExpiredTime(now_ms + interval);
         int32_t ret = m_heap_->HeapPush(timerable);
@@ -78,6 +80,7 @@ public:
 
         return true;
     }
+
     void StopTimer(TimerEntry* timerable)
     {
         if (!m_heap_ || !timerable)
@@ -88,6 +91,7 @@ public:
         m_heap_->HeapDelete(timerable);
         return;
     }
+
     // 检查是否过期
     void CheckExpired()
     {
@@ -96,8 +100,8 @@ public:
             return ;
         }
 
-        utime64_t now = Utils::system_ms();
-        LOG_TRACE("now_ms = %llu", now);
+        time64_t now = Utils::system_ms();
+        LOG_TRACE("before : now_ms = %llu, size = %d", now, m_heap_->HeapSize());
         TimerEntry* timer = any_cast<TimerEntry>(m_heap_->HeapTop());
         while (timer && (timer->GetExpiredTime() <= now))
         {
@@ -105,8 +109,7 @@ public:
             timer->Notify(eEVENT_TIMEOUT); // 传递超时事件
             timer = any_cast<TimerEntry>(m_heap_->HeapTop());
         }
-
-        LOG_TRACE("size = %d", m_heap_->HeapSize());
+        LOG_TRACE("after : size = %d", m_heap_->HeapSize());
     }
 
 private:

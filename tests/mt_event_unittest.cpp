@@ -1,6 +1,6 @@
 #include "gtest/googletest/include/gtest/gtest.h"
 #include "../include/mt_core.h"
-#include "../include/mt_session.h"
+#include "../include/mt_ext.h"
 #include "../include/mt_thread.h"
 #include "../include/mt_frame.h"
 
@@ -39,16 +39,16 @@ TEST(EventerTest, event)
     LOG_TRACE("m_primo_ : %p", m_primo_);
     m_primo_->SetType(ePRIMORDIAL);
 
-    EventProxyer* proxyer = GetInstance<Frame>()->GetEventProxyer();
+    EventDriver* proxyer = GetInstance<Frame>()->GetEventDriver();
     proxyer->Init(10000);
     // proxyer->SetTimeout(10);
-    // proxyer->AddFd(socket_fd, MT_READABLE|MT_WRITABLE);
-    Eventer* ev = GetInstance<ISessionEventerPool>()->GetEventer(eEVENT_THREAD);
+    // proxyer->AddFd(socket_fd, MT_READABLE|MT_WRITEABLE);
+    Eventer* ev = GetInstance<EventerPool>()->GetEventer(eEVENT_THREAD);
     ev->SetOsfd(socket_fd);
     ev->EnableOutput();
     ev->EnableInput();
     ev->SetOwnerThread(m_primo_);
-    ev->SetOwnerProxyer(proxyer);
+    ev->SetOwnerDriver(proxyer);
     proxyer->AddEventer(ev);
 
     int ret = ::connect(socket_fd, (struct sockaddr *)&servaddr, sizeof(servaddr));

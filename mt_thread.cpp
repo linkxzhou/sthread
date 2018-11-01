@@ -7,62 +7,8 @@
 
 MTHREAD_NAMESPACE_USING;
 
-// Scheduler调度系统
-int Scheduler::ThreadSchedule()
-{
-    return GetInstance<Frame>()->ThreadSchedule();
-}
-utime64_t Scheduler::GetTime()
-{
-    return GetInstance<Frame>()->GetLastClock();
-}
-void Scheduler::Sleep()
-{
-    Thread* thread = (Thread *)(GetInstance<Frame>()->GetActiveThread());
-    if (!thread)
-    {
-        LOG_ERROR("active thread NULL (%p)", thread);
-        return;
-    }
-    GetInstance<Frame>()->InsertSleep(thread);
-
-    Scheduler::ThreadSchedule();
-}
-void Scheduler::Pend()
-{
-    Thread* thread = (Thread *)(GetInstance<Frame>()->GetActiveThread());
-    if (!thread)
-    {
-        LOG_ERROR("active thread NULL (%p)", thread);
-        return;
-    }
-    GetInstance<Frame>()->InsertPend(thread);
-    
-    Scheduler::ThreadSchedule();
-}
-void Scheduler::Unpend(Thread* pthread)
-{
-    Thread* thread = (Thread*)pthread;
-    if (!thread)
-    {
-        LOG_ERROR("pthread NULL (%p)", thread);
-        return;
-    }
-    GetInstance<Frame>()->RemovePend(thread);
-    
-    Scheduler::InsertRunable(thread);
-}
-void Scheduler::Reclaim()
-{
-    Thread* thread = (Thread*)(GetInstance<Frame>()->GetActiveThread());
-    if (!thread)
-    {
-        LOG_ERROR("active thread NULL, (%p)", thread);
-        return;
-    }
-    GetInstance<Frame>()->FreeThread(thread);
-}
-void Scheduler::StartActiveThread(uint ty, uint tx) 
+// 线程启动
+static void StartActiveThread(uint ty, uint tx) 
 {
     Stack *t;
 	ulong z;
@@ -72,50 +18,166 @@ void Scheduler::StartActiveThread(uint ty, uint tx)
 	z |= ty;
 	t = (Stack*)z;
 
-    LOG_TRACE("StartActiveThread : %p, t : %p, id : %d", 
-        GetInstance<Frame>()->GetActiveThread(), t, t->m_id_);
-    Thread* thread = (Thread*)(GetInstance<Frame>()->GetActiveThread());
+// TODO : 复用thread
+AGAIN:
+    LOG_TRACE("StartActiveThread: %p, t: %p, id: %d", t->m_private_, t, t->m_id_);
+    Thread* thread = (Thread*)t->m_private_;
+    if (thread)
+    {
+        thread->Run();
+        LOG_TRACE("StartActiveThread end ...");
+    }
+
+    // 线程退出处理
+    if (thread == GetInstance<Frame>()->DaemonThread()) 
+    {
+        Scheduler::SwitchPrimoThread(thread);
+    }
+    else
+    {
+        // 是否重新复用
+        if (thread->IsReset())
+        {
+            goto AGAIN;
+        }
+        else
+        {
+            Scheduler::SwitchDaemonThread(thread);
+        }
+    }
+}
+
+// 调度系统
+void Scheduler::SwitchDaemonThread(Thread *thread)
+{
+    Thread *daemon = (Thread *)GetInstance<Frame>()->DaemonThread();
+    GetInstance<Frame>()->SetActiveThread(daemon);
+    daemon->RestoreContext(thread);
+}
+
+void Scheduler::SwitchPrimoThread(Thread *thread)
+{
+    Thread *primo = (Thread *)GetInstance<Frame>()->PrimoThread();
+    GetInstance<Frame>()->SetActiveThread(primo);
+    primo->RestoreContext(thread);
+}
+// 线程切换调度
+int Scheduler::ThreadSchedule()
+{
+    return GetInstance<Frame>()->ThreadSchedule();
+}
+
+time64_t Scheduler::GetTime()
+{
+    return GetInstance<Frame>()->GetLastClock();
+}
+
+void Scheduler::Sleep()
+{
+    Thread* thread = (Thread *)(GetInstance<Frame>()->GetActiveThread());
     if (!thread)
     {
         LOG_ERROR("active thread NULL (%p)", thread);
-        goto EXIT;
+        return ;
     }
-    thread->Run();
 
-EXIT:
-    contextexit();
+    GetInstance<Frame>()->InsertSleep(thread);
+    Scheduler::ThreadSchedule();
 }
+
+void Scheduler::Pend()
+{
+    Thread* thread = (Thread *)(GetInstance<Frame>()->GetActiveThread());
+    if (!thread)
+    {
+        LOG_ERROR("active thread NULL (%p)", thread);
+        return ;
+    }
+
+    GetInstance<Frame>()->InsertPend(thread);
+    Scheduler::ThreadSchedule();
+}
+
+void Scheduler::Unpend(Thread* pthread)
+{
+    Thread* thread = (Thread*)pthread;
+    if (!thread)
+    {
+        LOG_ERROR("thread NULL, (%p)", thread);
+        return ;
+    }
+
+    GetInstance<Frame>()->RemovePend(thread);
+    Scheduler::InsertRunable(thread);
+}
+
+void Scheduler::Reclaim()
+{
+    Thread* thread = (Thread*)(GetInstance<Frame>()->GetActiveThread());
+    if (!thread)
+    {
+        LOG_ERROR("active thread NULL, (%p)", thread);
+        return ;
+    }
+
+    GetInstance<Frame>()->FreeThread(thread);
+}
+
 int Scheduler::IoWaitToRunable(Thread* thread)
 {
     if (!thread)
     {
-        LOG_ERROR("active thread NULL (%p)", thread);
+        LOG_ERROR("active thread NULL, (%p)", thread);
         return -1;
     }
+
     Scheduler::RemoveIoWait(thread);
     Scheduler::InsertRunable(thread);
     return 0;
 }
+
 int Scheduler::RemoveEvents(int fd, int events)
 {
-    return GetInstance<Frame>()->GetEventProxyer()->DelFd(fd, events);
+    return GetInstance<Frame>()->GetEventDriver()->DelFd(fd, events);
 }
+
 int Scheduler::InsertEvents(int fd, int events)
 {
-    return GetInstance<Frame>()->GetEventProxyer()->AddFd(fd, events);
+    return GetInstance<Frame>()->GetEventDriver()->AddFd(fd, events);
 }
+
 int Scheduler::RemoveIoWait(Thread* thread)
 {
+    if (NULL == thread)
+    {
+        LOG_ERROR("active thread NULL, (%p)", thread);
+        return -1;
+    }
+
     GetInstance<Frame>()->RemoveIoWait(thread);
     return 0;
 }
+
 int Scheduler::InsertIoWait(Thread* thread)
 {
+    if (NULL == thread)
+    {
+        LOG_ERROR("active thread NULL, (%p)", thread);
+        return -1;
+    }
+
     GetInstance<Frame>()->InsertIoWait(thread);
     return 0;
 }
+
 int Scheduler::InsertRunable(Thread* thread)
 {
+    if (NULL == thread)
+    {
+        LOG_ERROR("active thread NULL, (%p)", thread);
+        return -1;
+    }
+
     GetInstance<Frame>()->InsertRunable(thread);
     return 0;
 }
@@ -147,7 +209,7 @@ bool Thread::InitStack()
         safe_free(m_stack_);
         return false;
     }
-    // LOG_TRACE("vaddr : %p", vaddr);
+
     m_stack_->m_vaddr_ = (uchar*)vaddr;
     m_stack_->m_vaddr_size_ = memsize;
     m_stack_->m_stk_size_ = m_stack_size_;
@@ -158,8 +220,6 @@ bool Thread::InitStack()
     memset(&m_stack_->m_context_.uc, 0, sizeof m_stack_->m_context_.uc);
 	sigemptyset(&zero);
 	sigprocmask(SIG_BLOCK, &zero, &m_stack_->m_context_.uc.uc_sigmask);
-    m_stack_->m_context_.uc.uc_stack.ss_sp = m_stack_->m_vaddr_+8;
-	m_stack_->m_context_.uc.uc_stack.ss_size = m_stack_->m_vaddr_size_-64;
 
     return true;
 }
@@ -171,6 +231,7 @@ void Thread::FreeStack()
         LOG_WARN("m_stack_ == NULL");
         return;
     }
+
     munmap(m_stack_->m_vaddr_, m_stack_->m_vaddr_size_);
     safe_free(m_stack_);
 }
@@ -178,18 +239,24 @@ void Thread::FreeStack()
 void Thread::InitContext()
 {
     uint tx, ty;
-	ulong tz = (ulong)m_stack_;
-	ty = tz;
-	tz >>= 16;
-	tx = tz>>16;
-	if (getcontext(&m_stack_->m_context_.uc) < 0)
+    ulong tz = (ulong)m_stack_;
+    ty = tz;
+    tz >>= 16;
+    tx = tz>>16;
+    m_stack_->m_private_ = this; // 保存私有数据
+    if (getcontext(&m_stack_->m_context_.uc) < 0)
     {
-		LOG_ERROR("getcontext error");
-		return ;
-	}
-	makecontext(&m_stack_->m_context_.uc, (void(*)())Scheduler::StartActiveThread, 2, ty, tx);
+        LOG_ERROR("getcontext error");
+        return ;
+    }
+
+    m_stack_->m_context_.uc.uc_stack.ss_sp = m_stack_->m_vaddr_+8;
+	m_stack_->m_context_.uc.uc_stack.ss_size = m_stack_->m_vaddr_size_-64;
+
+	makecontext(&m_stack_->m_context_.uc, (void(*)())StartActiveThread, 2, ty, tx);
 }
 
+// 参数从switch_thread切换到thread
 void Thread::RestoreContext(ThreadBase* switch_thread)
 {
     LOG_TRACE("this : %p, switch_thread : %p", this, switch_thread);
@@ -198,27 +265,36 @@ void Thread::RestoreContext(ThreadBase* switch_thread)
     {
         return ;
     }
+
     LOG_TRACE("================= run thread =================[%p]", this);
+    LOG_TRACE("contextswitch: (%p,%p) -> (%p,%p)", switch_thread, 
+        &(((Thread*)switch_thread)->GetStack()->m_context_), 
+        this, &(this->GetStack()->m_context_)
+    );
+    
     contextswitch(&(((Thread*)switch_thread)->GetStack()->m_context_), 
         &(this->GetStack()->m_context_));
-    GetInstance<Frame>()->GetEventProxyer()->Dispatch();
     LOG_TRACE("Thread Dispatch ...[%p]", this);
 }
 
 void Thread::Run()
 {
-    LOG_TRACE("Run ......");
+    LOG_TRACE("Run begin......");
     // 启动实际入口
-    if (NULL != m_runfunc_)
+    if (NULL != m_callback_)
     {
-        m_runfunc_(m_args_);
+        m_callback_(m_args_);
     }
+
     if (IsSubThread())
     {
         WakeupParent();
     }
-    // 线程调度
+
+    LOG_TRACE("Run end......");
+    // 系统回收Thread
     Scheduler::Reclaim();
+    // 线程调度
     Scheduler::ThreadSchedule();
 }
 
@@ -233,10 +309,6 @@ void Thread::WakeupParent()
         {
             Scheduler::Unpend(parent);
         }
-    }
-    else
-    {
-        LOG_ERROR("sub thread no parent");
     }
 }
 
@@ -254,10 +326,7 @@ bool ThreadPool::InitialPool(int max_num)
         if ((NULL == thread) || (false == thread->Initial()))
         {
             LOG_ERROR("init pool thread %p init failed", thread);
-            if (thread)
-            {
-                safe_delete(thread);
-            }
+            safe_delete(thread);
             continue;
         }
         thread->SetFlag(eFREE_LIST);
@@ -286,7 +355,6 @@ void ThreadPool::DestroyPool()
     {
         thread = m_free_list_.front();
         m_free_list_.pop();
-        thread->Destroy();
         safe_delete(thread);
     }
     m_total_num_ = 0;
@@ -304,30 +372,28 @@ Thread* ThreadPool::AllocThread()
         m_use_num_++;
         return thread;
     }
+
     if (m_total_num_ > m_max_num_)
     {
-        LOG_ERROR("total_num_ : %d, max_num_ : %d total_num_ > max_num_", 
+        LOG_ERROR("total_num_: %d, max_num_: %d total_num_ > max_num_", 
             m_total_num_, m_max_num_);
         return NULL;
     }
+
     thread = new Thread();
     if ((NULL == thread) || (false == thread->Initial()))
     {
         LOG_ERROR("thread alloc failed, thread: %p", thread);
-        if (thread)
-        {
-            safe_delete(thread);
-        }
-
+        safe_delete(thread);
         return NULL;
     }
-    // TODO : 增加引用
-    // thread->incrref();
+
     m_total_num_++;
     m_use_num_++;
 
     return thread;
 }
+
 void ThreadPool::FreeThread(Thread* thread)
 {
     thread->Reset();
@@ -341,7 +407,6 @@ void ThreadPool::FreeThread(Thread* thread)
     {
         thread = m_free_list_.front();
         m_free_list_.pop();
-        thread->Destroy();
         safe_delete(thread);
         m_total_num_--;
     }

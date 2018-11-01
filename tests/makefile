@@ -1,7 +1,8 @@
 INCLUDE = -I../include -I.
 SRC = ..
-GTEST_LIB = ./gtest/googletest/libgtest.a -lpthread
-FLAGS = -Wno-backslash-newline-escape -Wno-format -g -DTRACE
+GTEST_LIB = ./gtest/googletest/libgtest.a -lpthread -ldl
+DEBUG = #-g -DTRACE
+FLAGS = -Wno-backslash-newline-escape -Wno-format -Wno-deprecated-declarations -O3 $(DEBUG)
 COMM_SRC = $(SRC)/mt_utils.cpp
 
 hash_list:
@@ -14,47 +15,44 @@ heap_timer:
 	g++ mt_heap_timer_unittest.cpp $(COMM_SRC) $(INCLUDE) $(GTEST_LIB) $(FLAGS) -o mt_heap_timer_unittest
 
 buffer:
-	g++ mt_buffer_unittest.cpp $(SRC)/mt_buffer.cpp $(COMM_SRC)  $(INCLUDE) $(GTEST_LIB) $(FLAGS) -o mt_buffer_unittest
+	g++ mt_buffer_unittest.cpp $(COMM_SRC) $(INCLUDE) $(GTEST_LIB) $(FLAGS) -o mt_buffer_unittest
 
 event:
 	g++ mt_event_unittest.cpp $(SRC)/mt_core.cpp \
-	$(SRC)/mt_buffer.cpp $(SRC)/mt_session.cpp $(SRC)/mt_thread.cpp $(SRC)/mt_connection.cpp \
+	$(SRC)/mt_ext.cpp $(SRC)/mt_thread.cpp $(SRC)/mt_connection.cpp \
 	$(SRC)/mt_sys_hook.cpp $(COMM_SRC) $(INCLUDE) $(GTEST_LIB) ./libucontext.a $(FLAGS) -o mt_event_unittest
 
 action:
 	g++ mt_action_unittest.cpp $(SRC)/mt_action.cpp $(SRC)/mt_sys_hook.cpp \
-	$(SRC)/mt_connection.cpp $(SRC)/mt_buffer.cpp $(SRC)/mt_core.cpp \
-	$(SRC)/mt_session.cpp $(SRC)/mt_c.cpp $(SRC)/mt_thread.cpp \
+	$(SRC)/mt_connection.cpp $(SRC)/mt_core.cpp \
+	$(SRC)/mt_ext.cpp $(SRC)/mt_c.cpp $(SRC)/mt_thread.cpp \
 	$(INCLUDE) $(GTEST_LIB) ./libucontext.a $(FLAGS) -o mt_action_unittest
 
 connection:
 	g++ mt_connection_unittest.cpp $(SRC)/mt_connection.cpp \
-	$(SRC)/mt_buffer.cpp $(SRC)/mt_core.cpp \
-	$(SRC)/mt_sys_hook.cpp $(SRC)/mt_session.cpp $(SRC)/mt_thread.cpp \
+	$(SRC)/mt_core.cpp $(SRC)/mt_sys_hook.cpp $(SRC)/mt_ext.cpp $(SRC)/mt_thread.cpp \
 	$(INCLUDE) $(GTEST_LIB) ./libucontext.a $(FLAGS) -o mt_connection_unittest
 
 thread:
 	g++ mt_thread_unittest.cpp $(SRC)/mt_thread.cpp \
-	$(SRC)/mt_core.cpp $(SRC)/mt_buffer.cpp \
-	$(SRC)/mt_session.cpp $(SRC)/mt_sys_hook.cpp $(SRC)/mt_connection.cpp \
+	$(SRC)/mt_core.cpp $(SRC)/mt_ext.cpp $(SRC)/mt_sys_hook.cpp $(SRC)/mt_connection.cpp \
 	$(INCLUDE) $(GTEST_LIB) ./libucontext.a $(FLAGS) -o mt_thread_unittest
 
 c:
 	g++ mt_c_unittest.cpp $(SRC)/mt_c.cpp $(SRC)/mt_thread.cpp \
-	$(SRC)/mt_connection.cpp $(SRC)/mt_core.cpp \
-	$(SRC)/mt_buffer.cpp $(SRC)/mt_session.cpp $(SRC)/mt_sys_hook.cpp \
+	$(SRC)/mt_connection.cpp $(SRC)/mt_core.cpp $(SRC)/mt_ext.cpp $(SRC)/mt_sys_hook.cpp \
 	$(INCLUDE) $(GTEST_LIB) ./libucontext.a $(FLAGS) -o mt_c_unittest
 
 session:
-	g++ mt_session_unittest.cpp $(SRC)/mt_session.cpp \
+	g++ mt_ext_unittest.cpp $(SRC)/mt_ext.cpp \
 	$(SRC)/mt_connection.cpp $(SRC)/mt_thread.cpp $(SRC)/mt_c.cpp \
-	$(SRC)/mt_buffer.cpp $(SRC)/mt_core.cpp $(SRC)/mt_sys_hook.cpp \
-	$(INCLUDE) $(GTEST_LIB) ./libucontext.a $(FLAGS) -o mt_session_unittest
+	$(SRC)/mt_core.cpp $(SRC)/mt_sys_hook.cpp \
+	$(INCLUDE) $(GTEST_LIB) ./libucontext.a $(FLAGS) -o mt_ext_unittest
 
 frame:
 	g++ mt_frame_unittest.cpp $(SRC)/mt_connection.cpp \
-	$(SRC)/mt_buffer.cpp $(SRC)/mt_core.cpp $(SRC)/mt_thread.cpp \
-	$(SRC)/mt_session.cpp $(SRC)/mt_sys_hook.cpp \
+	$(SRC)/mt_core.cpp $(SRC)/mt_thread.cpp \
+	$(SRC)/mt_ext.cpp $(SRC)/mt_sys_hook.cpp \
 	$(INCLUDE) $(GTEST_LIB) ./libucontext.a $(FLAGS) -o mt_frame_unittest
 
 ucontext:
@@ -65,6 +63,12 @@ ucontext:
 	g++ mt_ucontext_unittest.cpp $(INCLUDE) $(GTEST_LIB) ./libucontext.a \
 	$(FLAGS) -o mt_ucontext_unittest
 	rm -rf *.o
+
+mt_server:
+	g++ mt_server_unittest.cpp $(SRC)/mt_action.cpp $(SRC)/mt_sys_hook.cpp \
+	$(SRC)/mt_connection.cpp $(SRC)/mt_core.cpp \
+	$(SRC)/mt_ext.cpp $(SRC)/mt_c.cpp $(SRC)/mt_thread.cpp \
+	$(INCLUDE) $(GTEST_LIB) ./libucontext.a $(FLAGS) -o mt_server_unittest
 
 server:
 	g++ server_unittest.cpp $(FLAGS) -o server_unittest

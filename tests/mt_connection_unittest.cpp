@@ -5,7 +5,7 @@ MTHREAD_NAMESPACE_USING
 
 TEST(ConnectionTest, UdpShort)
 {
-	UdpClientConnection *conn = new UdpClientConnection();
+	UdpIMtConnection *conn = new UdpIMtConnection();
 
 	Eventer* ev = new Eventer();
 
@@ -17,19 +17,19 @@ TEST(ConnectionTest, UdpShort)
 
 	conn->SetIMtActon((IMtActionBase *)0x0001);
 
-	GetInstance<EventProxyer>() -> Init(10000);
+	GetInstance<EventDriver>() -> Init(10000);
 
 	int fd = conn->CreateSocket();
 
 	LOG_TRACE("fd : %d", fd);
 
-	GetInstance<EventProxyer>() -> SetTimeout(5000);
-	GetInstance<EventProxyer>() -> Dispatch();
+	GetInstance<EventDriver>() -> SetTimeout(5000);
+	GetInstance<EventDriver>() -> Dispatch();
 
 	conn->SendData();
 
-	GetInstance<EventProxyer>() -> SetTimeout(5000);
-	GetInstance<EventProxyer>() -> Dispatch();
+	GetInstance<EventDriver>() -> SetTimeout(5000);
+	GetInstance<EventDriver>() -> Dispatch();
 
 	safe_delete(conn);
 }

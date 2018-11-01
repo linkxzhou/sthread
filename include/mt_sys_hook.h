@@ -46,9 +46,10 @@ typedef int (*RENAME_SYS_FUNC(setsockopt))(int socket, int level, int option_nam
 typedef int (*RENAME_SYS_FUNC(fcntl))(int fildes, int cmd, ...);
 typedef int (*RENAME_SYS_FUNC(ioctl))(int fildes, int request, ... );
 typedef unsigned int (*RENAME_SYS_FUNC(sleep))(unsigned int seconds);
-typedef int (*RENAME_SYS_FUNC(accept))(int socket, const struct sockaddr *address, socklen_t *address_len);
+typedef int (*RENAME_SYS_FUNC(accept))(int socket, const struct sockaddr *address, 
+                        socklen_t *address_len);
 
-typedef struct syscall_func_tab
+typedef struct syscall_callback_tab
 {
     RENAME_SYS_FUNC(socket)     real_socket;
     RENAME_SYS_FUNC(close)      real_close;
@@ -64,10 +65,7 @@ typedef struct syscall_func_tab
     RENAME_SYS_FUNC(ioctl)      real_ioctl;
     RENAME_SYS_FUNC(sleep)      real_sleep;
     RENAME_SYS_FUNC(accept)     real_accept;
-
-    // TODO : 暂时不实现
-    // RENAME_SYS_FUNC(poll)       real_poll;
-}SyscallFuncTab;
+}SyscallCallbackTab;
 
 typedef struct hook_fd
 {
@@ -110,9 +108,9 @@ int mt_ioctl(int fd, uint64_t cmd, ...);
 
 int mt_accept(int fd, const struct sockaddr *address, socklen_t *address_len);
 
-extern SyscallFuncTab   g_syscall_tab;
-extern int              g_hook_flag;
-extern unsigned long    g_mt_threadid;
+extern SyscallCallbackTab   g_syscall_tab;
+extern int                  g_hook_flag;
+extern unsigned long        g_mt_threadid;
 
 #ifdef  __cplusplus
 }
