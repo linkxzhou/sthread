@@ -31,7 +31,7 @@
 [TRACE][4603467200][2][../mt_core.cpp][419 ][Dispatch  ]wait poll nfd: 1
 [TRACE][4603467200][2][../mt_core.cpp][14  ][InputNotify]InputNotify ..., thread : 0x7fe168d03530
 [TRACE][4603467200][2][../include/mt_frame.h][215 ][RemoveIoWait]remove thread: 0x7fe168d03530, m_io_list_ size: 1
-[TRACE][4603467200][2][../mt_core.cpp][379 ][DisposeEventerList]MT_READABLE osfd: 4, ret: 0 ev_fdnum: 1
+[TRACE][4603467200][2][../mt_core.cpp][379 ][DisposeEventerList]ST_READABLE osfd: 4, ret: 0 ev_fdnum: 1
 [TRACE][4603467200][2][../include/mt_frame.h][989 ][DaemonRun ]system ms: 1540891581172
 [TRACE][4603467200][2][../include/mt_frame.h][352 ][WakeupTimeout]thread GetWakeupTime: 0
 [TRACE][4603467200][2][../include/mt_frame.h][323 ][CheckExpired]m_timer_ : 0x7fe168d04670
@@ -89,7 +89,7 @@
 [TRACE][4603467200][2][../mt_core.cpp][419 ][Dispatch  ]wait poll nfd: 1
 [TRACE][4603467200][2][../mt_core.cpp][14  ][InputNotify]InputNotify ..., thread : 0x7fe168d03980
 [TRACE][4603467200][2][../include/mt_frame.h][215 ][RemoveIoWait]remove thread: 0x7fe168d03980, m_io_list_ size: 2
-[TRACE][4603467200][2][../mt_core.cpp][379 ][DisposeEventerList]MT_READABLE osfd: 5, ret: 0 ev_fdnum: 1
+[TRACE][4603467200][2][../mt_core.cpp][379 ][DisposeEventerList]ST_READABLE osfd: 5, ret: 0 ev_fdnum: 1
 [TRACE][4603467200][2][../include/mt_frame.h][989 ][DaemonRun ]system ms: 1540891581172
 [TRACE][4603467200][2][../include/mt_frame.h][352 ][WakeupTimeout]thread GetWakeupTime: 100000
 [TRACE][4603467200][2][../include/mt_frame.h][215 ][RemoveIoWait]remove thread: 0x7fe168d03530, m_io_list_ size: 1

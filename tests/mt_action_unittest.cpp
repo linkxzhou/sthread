@@ -1,7 +1,7 @@
 #include "gtest/googletest/include/gtest/gtest.h"
 #include "../include/mt_action.h"
 
-MTHREAD_NAMESPACE_USING
+ST_NAMESPACE_USING
 
 static unsigned int check(void* buf, int len)
 {

@@ -6,7 +6,7 @@
 #include "mt_action.h"
 #include "mt_frame.h"
 
-MTHREAD_NAMESPACE_USING
+ST_NAMESPACE_USING
 using namespace std;
 
 // Udp的短连接

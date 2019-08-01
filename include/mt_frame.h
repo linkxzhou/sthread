@@ -12,7 +12,7 @@
 #include "mt_ext.h"
 #include "mt_thread.h"
 
-MTHREAD_NAMESPACE_BEGIN
+ST_NAMESPACE_BEGIN
 
 // 主框架
 class Frame
@@ -921,11 +921,11 @@ public:
             }
 	        ev->SetOsfd(fd);
             ev->SetOwnerThread(thread);
-	        if (events & MT_READABLE)
+	        if (events & ST_READABLE)
 	        {
 	            ev->EnableInput();
 	        }
-	        if (events & MT_WRITEABLE)
+	        if (events & ST_WRITEABLE)
 	        {
 	            ev->EnableOutput();
 	        }
@@ -1039,6 +1039,6 @@ public:
     void            *m_args_;
 };
 
-MTHREAD_NAMESPACE_END
+ST_NAMESPACE_END
 
 #endif

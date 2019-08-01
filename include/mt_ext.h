@@ -10,7 +10,7 @@
 #include "mt_buffer.h"
 #include "mt_connection.h"
 
-MTHREAD_NAMESPACE_BEGIN
+ST_NAMESPACE_BEGIN
 
 class TcpLongEventer: public Eventer
 {
@@ -72,6 +72,6 @@ private:
     TcpLongEventerPool  m_tcplong_ev_pool_;
 };
 
-MTHREAD_NAMESPACE_END
+ST_NAMESPACE_END
 
 #endif

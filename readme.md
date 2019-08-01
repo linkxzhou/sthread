@@ -3,7 +3,7 @@ mthread
 
 # 简介
 
-[mthread]是一个基于协程的高性能网络库，目前提供支持TCP/UDP等协议的非阻塞式的客户端和服务端库
+[sthread]是一个基于协程的高性能网络库，目前提供支持TCP/UDP等协议的非阻塞式的客户端和服务端库
 
 # 特性
 
@@ -196,3 +196,17 @@ int main(int argc, char* argv[])
     LOG_TRACE("end ...");
 }
 ```
+
+
+====================实现逻辑
+
+TCPServer   UDPServer   
+         |
+         |
+Recv    Error    Send
+
+TCPClient  UDPClient
+         |
+         |
+Recv    Error    Send
+

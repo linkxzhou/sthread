@@ -1,7 +1,7 @@
 #include "gtest/googletest/include/gtest/gtest.h"
 #include "../include/mt_connection.h"
 
-MTHREAD_NAMESPACE_USING
+ST_NAMESPACE_USING
 
 TEST(ConnectionTest, UdpShort)
 {

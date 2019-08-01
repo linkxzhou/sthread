@@ -5,7 +5,7 @@
 #include "mt_c.h"
 #include "mt_frame.h"
 
-MTHREAD_NAMESPACE_USING
+ST_NAMESPACE_USING
 
 // 获取连接的句柄信息
 static IMtConnection* s_get_conn(struct sockaddr_in* dst, int& sock, eConnType type)

@@ -2,7 +2,7 @@
 #include "../include/mt_c.h"
 #include "../include/mt_frame.h"
 
-MTHREAD_NAMESPACE_USING
+ST_NAMESPACE_USING
 
 static unsigned int check(void* buf, int len)
 {

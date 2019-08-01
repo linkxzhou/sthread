@@ -10,7 +10,7 @@
 #include "mt_core.h"
 #include "mt_buffer.h"
 
-MTHREAD_NAMESPACE_BEGIN
+ST_NAMESPACE_BEGIN
 
 class TcpLongIMtConnection;
 class HeapTimer;
@@ -190,6 +190,6 @@ private:
     TcpLongPool     m_tcplong_pool_;
 };
 
-MTHREAD_NAMESPACE_END
+ST_NAMESPACE_END
 
 #endif

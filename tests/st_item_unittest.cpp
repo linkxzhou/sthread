@@ -1,11 +1,14 @@
 #include "gtest/googletest/include/gtest/gtest.h"
-#include "../include/mt_ext.h"
+#include "../include/st_item.h"
 
 ST_NAMESPACE_USING
 
-TEST(SessionTest, session)
+TEST(Item, StEventItem)
 {
-	
+    StEventItem *item = new StEventItem();
+    item->InputNotify();
+    item->OutputNotify();
+    item->HangupNotify();
 }
 
 // 测试所有的功能

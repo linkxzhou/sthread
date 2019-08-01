@@ -6,7 +6,7 @@
 #include "mt_ext.h"
 #include "mt_frame.h"
 
-MTHREAD_NAMESPACE_USING
+ST_NAMESPACE_USING
 using namespace std;
 
 // 重置连接
@@ -191,15 +191,17 @@ int IMtActionRunable::Poll(IMtActionList list, int mask, int timeout)
         {
             ev = action->GetEventer();
         }
+
         if (!action || !ev)
         {
             action->SetErrno(eERR_FRAME_ERROR);
             LOG_ERROR("input action %p or ev null", action);
             return -1;
         }
+        
         // 清空recv事件
         ev->SetRecvEvents(0);
-        if (mask & MT_READABLE)
+        if (mask & ST_READABLE)
         {
             ev->EnableInput();
         }
@@ -208,7 +210,7 @@ int IMtActionRunable::Poll(IMtActionList list, int mask, int timeout)
             ev->DisableInput();
         }
 
-        if (mask & MT_WRITEABLE)
+        if (mask & ST_WRITEABLE)
         {
             ev->EnableOutput();
         }
@@ -318,7 +320,7 @@ int IMtActionRunable::Sendto(IMtActionList list, int timeout)
 
         if (!waitlist.empty())
         {
-            Poll(waitlist, MT_WRITEABLE, end_ms - current_ms);
+            Poll(waitlist, ST_WRITEABLE, end_ms - current_ms);
         }
         else
         {
@@ -395,7 +397,7 @@ int IMtActionRunable::Recvfrom(IMtActionList list, int timeout)
 
         if (!waitlist.empty())
         {
-            Poll(waitlist, MT_READABLE, end_ms - current_ms);
+            Poll(waitlist, ST_READABLE, end_ms - current_ms);
         }
         else
         {
@@ -576,7 +578,7 @@ int IMtActionClient::Open(int timeout)
         }
         if (!waitlist.empty())
         {
-            Poll(waitlist, MT_WRITEABLE, end_ms - current_ms);
+            Poll(waitlist, ST_WRITEABLE, end_ms - current_ms);
         }
         else
         {

@@ -4,7 +4,7 @@
 #include "../include/mt_thread.h"
 #include "../include/mt_frame.h"
 
-MTHREAD_NAMESPACE_USING
+ST_NAMESPACE_USING
 
 TEST(EventerTest, event)
 {
@@ -42,7 +42,7 @@ TEST(EventerTest, event)
     EventDriver* proxyer = GetInstance<Frame>()->GetEventDriver();
     proxyer->Init(10000);
     // proxyer->SetTimeout(10);
-    // proxyer->AddFd(socket_fd, MT_READABLE|MT_WRITEABLE);
+    // proxyer->AddFd(socket_fd, ST_READABLE|ST_WRITEABLE);
     Eventer* ev = GetInstance<EventerPool>()->GetEventer(eEVENT_THREAD);
     ev->SetOsfd(socket_fd);
     ev->EnableOutput();

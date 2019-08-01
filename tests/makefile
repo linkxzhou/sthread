@@ -1,21 +1,24 @@
-INCLUDE = -I../include -I.
+INCLUDE = -I../include -I. -I../include/ucontext
 SRC = ..
 GTEST_LIB = ./gtest/googletest/libgtest.a -lpthread -ldl
 DEBUG = #-g -DTRACE
 FLAGS = -Wno-backslash-newline-escape -Wno-format -Wno-deprecated-declarations -O3 $(DEBUG)
-COMM_SRC = $(SRC)/mt_utils.cpp
+COMM_SRC = $(SRC)/st_util.cpp $(SRC)/st_log.cpp $(SRC)/st_item.cpp
 
 hash_list:
-	g++ mt_hash_list_unittest.cpp $(COMM_SRC) $(INCLUDE) $(GTEST_LIB) $(FLAGS) -o mt_hash_list_unittest
+	g++ st_hash_list_unittest.cpp $(COMM_SRC) $(INCLUDE) $(GTEST_LIB) $(FLAGS) -o st_hash_list_unittest
 
 heap:
-	g++ mt_heap_unittest.cpp $(COMM_SRC) $(INCLUDE) $(GTEST_LIB) $(FLAGS) -o mt_heap_unittest
+	g++ st_heap_unittest.cpp $(COMM_SRC) $(INCLUDE) $(GTEST_LIB) $(FLAGS) -o st_heap_unittest
 
 heap_timer:
-	g++ mt_heap_timer_unittest.cpp $(COMM_SRC) $(INCLUDE) $(GTEST_LIB) $(FLAGS) -o mt_heap_timer_unittest
+	g++ st_heap_timer_unittest.cpp $(COMM_SRC) $(INCLUDE) $(GTEST_LIB) $(FLAGS) -o st_heap_timer_unittest
 
 buffer:
-	g++ mt_buffer_unittest.cpp $(COMM_SRC) $(INCLUDE) $(GTEST_LIB) $(FLAGS) -o mt_buffer_unittest
+	g++ st_buffer_unittest.cpp $(COMM_SRC) $(INCLUDE) $(GTEST_LIB) $(FLAGS) -o st_buffer_unittest
+
+item:
+	g++ st_item_unittest.cpp $(COMM_SRC) $(INCLUDE) $(GTEST_LIB) $(FLAGS) -o st_item_unittest
 
 event:
 	g++ mt_event_unittest.cpp $(SRC)/mt_core.cpp \
@@ -77,7 +80,7 @@ queue:
 	g++ queue_unittest.cpp $(FLAGS) -o queue_unittest
 
 singleton:
-	g++ mt_singleton_unittest.cpp $(GTEST_LIB) $(FLAGS) -o mt_singleton_unittest
+	g++ st_singleton_unittest.cpp $(GTEST_LIB) $(FLAGS) -o st_singleton_unittest
 
 clean:
 	rm -rf *_unittest

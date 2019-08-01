@@ -46,11 +46,11 @@ Google Test, but no 'gtest-config' script could be found at this location.])
    AS_IF([test -x "${GTEST_CONFIG}"],
      [AC_MSG_RESULT([${GTEST_CONFIG}])
       m4_ifval([$1],
-        [_gtest_min_version="--min-version=$1"
+        [_gtestMin_version="--min-version=$1"
          AC_MSG_CHECKING([for Google Test at least version >= $1])],
-        [_gtest_min_version="--min-version=0"
+        [_gtestMin_version="--min-version=0"
          AC_MSG_CHECKING([for Google Test])])
-      AS_IF([${GTEST_CONFIG} ${_gtest_min_version}],
+      AS_IF([${GTEST_CONFIG} ${_gtestMin_version}],
         [AC_MSG_RESULT([yes])
          HAVE_GTEST='yes'],
         [AC_MSG_RESULT([no])])],

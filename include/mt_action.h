@@ -12,7 +12,36 @@
 #include "mt_c.h"
 #include "mt_frame.h"
 
-MTHREAD_NAMESPACE_USING
+ST_NAMESPACE_USING
+
+class IMessage
+{
+public:
+    // 虚函数，子类继承
+    virtual int32_t HandleProcess() 
+    { 
+        return -1; 
+    }
+
+    IMessage() 
+    { }
+
+    virtual ~IMessage() 
+    { }
+
+    inline void SetDataPtr(void *data)
+    {
+        m_data_ = data;
+    }
+
+    inline void* GetDataPtr()
+    {
+        return m_data_;
+    }
+    
+private:
+    void *m_data_;
+};
 
 class IMtAction : public IMtActionBase
 {

@@ -2,7 +2,7 @@
 #include "../include/mt_thread.h"
 #include "../include/mt_frame.h"
 
-MTHREAD_NAMESPACE_USING
+ST_NAMESPACE_USING
 
 Context	gcontext;
 Thread *t1, *t2, *t3;
