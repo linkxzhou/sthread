@@ -286,6 +286,7 @@ public:
             {
                 st_safe_delete(msg_bucket);
             }
+            
             hash_item = m_hash_bucket_->HashGetFirst();
         }
 

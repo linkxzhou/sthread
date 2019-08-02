@@ -23,7 +23,9 @@ ST_NAMESPACE_BEGIN
 class StEventItem;
 class ThreadItem;
 
-typedef CPP_TAILQ_HEAD<StEventItem> StEventItemQueue;
+typedef CPP_TAILQ_HEAD<StEventItem>     StEventItemQueue;
+typedef CPP_TAILQ_ENTRY<ThreadItem>     ThreadItemNext;
+typedef CPP_TAILQ_HEAD<ThreadItem>      ThreadItemQueue;
 
 class StEventItem : public referenceable
 {
@@ -145,8 +147,28 @@ public:
         m_state_(eINITIAL), 
         m_callback_(NULL),
         m_stack_(NULL),
-        m_private_(NULL)
-    { }
+        m_private_(NULL),
+        m_parent_(NULL), 
+        m_stack_size_(STACK)
+    { 
+        CPP_TAILQ_INIT(&m_fdset_);
+        CPP_TAILQ_INIT(&m_sub_threadlist_);
+        memset(m_name_, 0, sizeof(m_name_));
+    }
+
+    inline void Reset()
+    {
+        m_wakeup_time_ = 0;
+        m_flag_ = eNOT_INLIST;
+        m_type_ = eNORMAL;
+        m_state_ = eINITIAL;
+        m_callback_ = NULL;
+        st_safe_free(m_private_);
+
+        CPP_TAILQ_INIT(&m_fdset_);
+        CPP_TAILQ_INIT(&m_sub_threadlist_);
+        m_parent_ = NULL;
+    }
 
     inline void SetFlag(eThreadFlag flag)
     {
@@ -203,7 +225,7 @@ public:
         m_wakeup_time_ = waketime;
     }
 
-    inline uint64_t HeapValue()
+    inline int64_t HeapValue()
     {
         return m_wakeup_time_;
     }
@@ -221,6 +243,17 @@ public:
     inline Stack* GetStack()
     {
         return m_stack_;
+    }
+
+    inline void Clear()
+    {
+        CPP_TAILQ_INIT(&m_fdset_);
+    }
+
+    // 获取fdset的列表
+    inline StEventItemQueue& GetFdSet(void)
+    {
+        return m_fdset_;
     }
 
     // 直接运行
@@ -241,25 +274,7 @@ public:
     // 让出CPU
     virtual int32_t SwitchContext() = 0;
 
-    // 休眠
-    virtual void Sleep() = 0;
-
-    // 阻塞
-    virtual void Pend() = 0;
-
-    // 非阻塞
-    virtual void Unpend() = 0;
-
-    // 回收
-    virtual void Reclaim() = 0;
-
     virtual void RestoreContext(ThreadItem* thread) = 0;
-
-    virtual void Clear() = 0;
-
-    virtual void Add(StEventItem* item) = 0;
-
-    virtual void Add(StEventItemQueue* fdset) = 0;
 
     inline uint64_t GetStThreadid()
     {
@@ -271,6 +286,84 @@ public:
         return m_stack_->m_id_;
     }
 
+    virtual void Add(StEventItem* item)
+    {
+        if (CPP_TAILQ_EMPTY(&m_fdset_))
+        {
+            CPP_TAILQ_INIT(&m_fdset_);
+        }
+        CPP_TAILQ_INSERT_TAIL(&m_fdset_, item, m_next_);
+    }
+
+    virtual void Add(StEventItemQueue* fdset)
+    {
+        if (CPP_TAILQ_EMPTY(&m_fdset_))
+        {
+            CPP_TAILQ_INIT(&m_fdset_);
+        }
+        CPP_TAILQ_CONCAT(&m_fdset_, fdset, m_next_);
+    }
+
+    inline ThreadItem* GetParent()
+    {
+        return m_parent_;
+    }
+
+    inline bool IsDaemon(void)
+    {
+        return (eDAEMON == m_type_);
+    }
+
+    inline bool IsPrimo(void)
+    {
+        return (ePRIMORDIAL == m_type_);
+    }
+
+    inline bool IsSubThread(void)
+    {
+        return (eSUB_THREAD == m_type_);
+    }
+
+    inline void SetParent(ThreadItem* parent)
+    {
+        m_parent_ = parent;
+    }
+
+    inline void AddSubThread(ThreadItem* sub)
+    {
+        if (!sub->HasFlag(eSUB_LIST))
+        {
+            CPP_TAILQ_INSERT_TAIL(&m_sub_threadlist_, sub, m_sub_next_);
+            sub->m_parent_ = this;
+        }
+        sub->SetFlag(eSUB_LIST);
+    }
+
+    inline void RemoveSubThread(ThreadItem* sub)
+    {
+        if (sub->HasFlag(eSUB_LIST))
+        {
+            CPP_TAILQ_REMOVE(&m_sub_threadlist_, sub, m_sub_next_);
+            sub->m_parent_ = NULL;
+        }
+        sub->UnsetFlag(eSUB_LIST);
+    }
+
+    inline bool HasNoSubThread()
+    {
+        return CPP_TAILQ_EMPTY(&m_sub_threadlist_);
+    }
+
+    inline const char* GetName()
+    {
+        return m_name_;
+    }
+
+    inline void SetName(const char *name)
+    {
+        strncpy(m_name_, name, sizeof(m_name_) - 1);
+    }
+
 protected:
     eThreadState    m_state_;
     eThreadType     m_type_;
@@ -279,6 +372,14 @@ protected:
     Stack*          m_stack_;       // 堆栈信息
     void*           m_private_;
     Closure*        m_callback_;    // 启动函数
+    StEventItemQueue    m_fdset_;
+
+public:
+    ThreadItemQueue     m_sub_threadlist_;    // 子线程
+    ThreadItem*         m_parent_;            // 父线程
+    ThreadItemNext      m_next_, m_sub_next_;
+    uint32_t            m_stack_size_;
+    char                m_name_[64];
 };
 
 ST_NAMESPACE_END

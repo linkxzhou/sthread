@@ -140,11 +140,17 @@ do {                                                \
         CPP_TAILQ_INCR(head);                                   \
     } while (0)
 
-class Utils
+#define CPP_TAILQ_POP(head, elm, field) do                  \
+    {                                                       \
+        elm = CPP_TAILQ_FIRST(head);                        \
+        CPP_TAILQ_REMOVE(head, elm, field);                 \
+    } while (0)
+
+class Util
 {
 public:
     // 获取系统时间
-    inline static time64_t SysMs()
+    inline static uint64_t SysMs()
     {
         struct timeval tv;
         ::gettimeofday(&tv, NULL);

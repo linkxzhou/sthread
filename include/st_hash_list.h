@@ -70,7 +70,7 @@ public:
 
     explicit HashList(int32_t max = 4096)
     {
-        m_max_ = Utils::MaxPrimeNum((max > 2) ? max : 4096);
+        m_max_ = Util::MaxPrimeNum((max > 2) ? max : 4096);
         m_buckets_ = (pointer*)calloc(m_max_, sizeof(pointer));
         m_count_ = 0;
     }

@@ -23,10 +23,10 @@ TEST(TimerEntryTest, notify)
 	{
 		c.CheckExpired();
 
-		int64_t now_ms = Utils::SysMs();
+		int64_t now_ms = Util::SysMs();
         LOG_TRACE("now_ms = %llu", now_ms);
 
-		Utils::SysSleep(1);
+		Util::SysSleep(1);
 	}
 }
 

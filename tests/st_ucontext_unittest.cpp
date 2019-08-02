@@ -34,36 +34,38 @@ static void taskstart(uint y, uint x)
 	z |= y;
 	t = (Stack*)z;
 
-    LOG_TRACE("taskstart %p, id : %d, c : %d", t, t->m_id_, c);
+    LOG_TRACE("taskstart %p, id : %ld, c : %d", t, t->m_id_, c);
 
     while (t->m_id_ == 1)
     {
-        contextswitch(&t1->m_context_, &t2->m_context_);
-        LOG_TRACE("id = 1 ... begin : %d", t->m_id_);
+        LOG_TRACE("id = 1 -------------");
+        context_switch(&t1->m_context_, &t2->m_context_);
+        LOG_TRACE("id = 1 ... begin : %ld, c : %d", t->m_id_, c);
         char buf[1024] = {0};
         if (++c >= 10)
         {
             LOG_TRACE("c : %d", c);
-            contextexit();
+            context_exit();
         }
-        LOG_TRACE("id = 1 ... end : %d", t->m_id_);
+        LOG_TRACE("id = 1 ... end : %ld", t->m_id_);
     }
 
     LOG_TRACE("out ...");
 
     while (t->m_id_ == 2)
     {
-        contextswitch(&t2->m_context_, &t1->m_context_);
-        LOG_TRACE("id = 2 ... begin : %d", t->m_id_);
+        LOG_TRACE("id = 2 -------------");
+        context_switch(&t2->m_context_, &t1->m_context_);
+        LOG_TRACE("id = 2 ... begin : %ld, c : %d", t->m_id_, c);
         if (++c >= 10)
         {
             LOG_TRACE("c : %d", c);
-            contextexit();
+            context_exit();
         }
-        LOG_TRACE("id = 2 ... end : %d", t->m_id_);
+        LOG_TRACE("id = 2 ... end : %ld", t->m_id_);
     }
 
-    contextexit();
+    context_exit();
 }
 
 TEST(ucontextTest, ucontext)
@@ -124,7 +126,7 @@ TEST(ucontextTest, ucontext)
 
     LOG_TRACE("t1 : %p, t2 : %p, t : %p, t1 context : %p", 
         t1, t2, &taskschedcontext, &(t1->m_context_));
-    contextswitch(&taskschedcontext, &(t1->m_context_));
+    context_switch(&taskschedcontext, &(t1->m_context_));
     LOG_TRACE("end ...");
 }
 

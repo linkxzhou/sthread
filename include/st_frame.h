@@ -167,11 +167,6 @@ Label_Destroy:
     	LOG_TRACE("set hook ...");
     	SET_HOOK_FLAG();
     }
-
-    inline ThreadBase* GetActiveThread(void)
-    {
-        return (ThreadBase *)m_cur_thread_;
-    }
     
     inline int ThreadSchedule(void)
     {
@@ -283,7 +278,7 @@ Label_Destroy:
 
     inline time64_t GetSystemMS()
     {
-        return Utils::system_ms();
+        return Util::system_ms();
     }
 
     inline int RunWaitNum()
@@ -304,16 +299,6 @@ Label_Destroy:
     inline ThreadPool* GetThreadPool()
     {
         return m_thead_pool_;
-    }
-
-    inline ThreadBase* DaemonThread(void)
-    {
-        return m_daemon_;
-    }
-
-    inline ThreadBase* PrimoThread(void)
-    {
-        return m_primo_;
     }
 
     inline void CheckExpired()
@@ -1042,3 +1027,103 @@ public:
 ST_NAMESPACE_END
 
 #endif
+
+// // 用户态现场池
+// unsigned int ThreadPool::s_default_thread_num_ = DEFAULT_THREAD_NUM;
+// unsigned int ThreadPool::s_default_stack_size_ = DEFAULT_STACK_SIZE;
+
+// // 创建一个线程池
+// bool ThreadPool::InitialPool(int max_num)
+// {
+//     Thread *thread = NULL;
+//     for (unsigned int i = 0; i < s_default_thread_num_; i++)
+//     {
+//         thread = new Thread();
+//         if ((NULL == thread) || (false == thread->Initial()))
+//         {
+//             LOG_ERROR("init pool thread %p init failed", thread);
+//             safe_delete(thread);
+//             continue;
+//         }
+//         thread->SetFlag(eFREE_LIST);
+//         m_free_list_.push(thread);
+//     }
+
+//     LOG_TRACE("max_num : %d, size : %d", max_num, m_free_list_.size());
+
+//     m_total_num_ = m_free_list_.size();
+//     m_max_num_ = max_num;
+//     m_use_num_ = 0;
+//     if (m_total_num_ <= 0)
+//     {
+//         return false;
+//     }
+//     else
+//     {
+//         return true;
+//     }
+// }
+
+// void ThreadPool::DestroyPool()
+// {
+//     Thread* thread = NULL;
+//     while (!m_free_list_.empty())
+//     {
+//         thread = m_free_list_.front();
+//         m_free_list_.pop();
+//         safe_delete(thread);
+//     }
+//     m_total_num_ = 0;
+//     m_use_num_ = 0;
+// }
+
+// Thread* ThreadPool::AllocThread()
+// {
+//     Thread* thread = NULL;
+//     if (!m_free_list_.empty())
+//     {
+//         thread = m_free_list_.front();
+//         m_free_list_.pop();
+//         thread->UnsetFlag(eFREE_LIST);
+//         m_use_num_++;
+//         return thread;
+//     }
+
+//     if (m_total_num_ > m_max_num_)
+//     {
+//         LOG_ERROR("total_num_: %d, max_num_: %d total_num_ > max_num_", 
+//             m_total_num_, m_max_num_);
+//         return NULL;
+//     }
+
+//     thread = new Thread();
+//     if ((NULL == thread) || (false == thread->Initial()))
+//     {
+//         LOG_ERROR("thread alloc failed, thread: %p", thread);
+//         safe_delete(thread);
+//         return NULL;
+//     }
+
+//     m_total_num_++;
+//     m_use_num_++;
+
+//     return thread;
+// }
+
+// void ThreadPool::FreeThread(Thread* thread)
+// {
+//     thread->Reset();
+//     m_use_num_--;
+//     m_free_list_.push(thread);
+//     thread->SetFlag(eFREE_LIST);
+    
+//     // 对于预分配大于的情况下需要删除
+//     unsigned int free_num = m_free_list_.size();
+//     if ((free_num > s_default_thread_num_) && (free_num > 1))
+//     {
+//         thread = m_free_list_.front();
+//         m_free_list_.pop();
+//         safe_delete(thread);
+//         m_total_num_--;
+//     }
+// }

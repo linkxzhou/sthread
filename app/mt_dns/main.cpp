@@ -39,7 +39,7 @@ int main(int argc, char* argv[])
     Frame *frame = GetInstance<Frame>();
 
     // 测试 : 使用协程请求耗时
-    long start = Utils::system_ms(), end = 0;
+    long start = Util::system_ms(), end = 0;
     LOG_DEBUG("--- start time : %ld", start);
     for (int i = 2000; i < 2150; i++)
     {
@@ -49,7 +49,7 @@ int main(int argc, char* argv[])
         Frame::CreateThread(func, s);
     }
     Frame::Loop(true);
-    end = Utils::system_ms();
+    end = Util::system_ms();
     LOG_DEBUG("--- end time : %ld", end);
 
     LOG_DEBUG("cost time : %ld", end - start);

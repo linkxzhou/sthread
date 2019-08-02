@@ -146,7 +146,7 @@ void StLogger::_log(const char *file, int32_t line, int32_t panic, const char *f
     len += ::snprintf(buf + len, size - len, "] [%s:%d] ", filetemp, line);
 
     va_start(args, fmt);
-    len += ::snprintf(buf + len, size - len, fmt, args);
+    len += ::vsnprintf(buf + len, size - len, fmt, args);
     va_end(args);
 
     buf[len++] = '\n';
@@ -183,7 +183,7 @@ void StLogger::_loga(const char *fmt, ...)
     size = LOG_MAX_LEN; /* size of output buffer */
 
     va_start(args, fmt);
-    len += ::snprintf(buf + len, size - len, fmt, args);
+    len += ::vsnprintf(buf + len, size - len, fmt, args);
     va_end(args);
 
     buf[len++] = '\n';

@@ -1,6 +1,7 @@
 #ifndef _ST_LOG_H_INCLUDED_
 #define _ST_LOG_H_INCLUDED_
 
+#include <stdio.h>
 #include <sys/time.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -32,7 +33,7 @@
 #define LLOG_VVVERB  10     /* verbose messages on ganga */
 #define LLOG_PVERB   11     /* periodic verbose messages on crack */
 
-#define LOG_MAX_LEN  2046   /* max length of log message */
+#define LOG_MAX_LEN  4096   /* max length of log message */
 
 class StLogger
 {
@@ -77,42 +78,42 @@ private:
 #define LOG_ERROR(...) do                                                       \
     {                                                                           \
         if (StLogger::GetInstance().LogAble(LLOG_ALERT) != 0) {                 \
-            StLogger::GetInstance()._log(__FILE__, __LINE__, 0, __VA_ARGS__);   \
+            StLogger::GetInstance()._log(__FILE__, __LINE__, 0, ##__VA_ARGS__);   \
         }                                                                       \
     } while (0)
 
 #define LOG_WARN(...) do                                                        \
     {                                                                           \
         if (StLogger::GetInstance().LogAble(LLOG_WARN) != 0) {                  \
-            StLogger::GetInstance()._log(__FILE__, __LINE__, 0, __VA_ARGS__);   \
+            StLogger::GetInstance()._log(__FILE__, __LINE__, 0, ##__VA_ARGS__);   \
         }                                                                       \
     } while (0)
 
 #define LOG_PANIC(...) do                                                       \
     {                                                                           \
         if (StLogger::GetInstance().LogAble(LLOG_EMERG) != 0) {                 \
-            StLogger::GetInstance()._log(__FILE__, __LINE__, 1, __VA_ARGS__);   \
+            StLogger::GetInstance()._log(__FILE__, __LINE__, 1, ##__VA_ARGS__);   \
         }                                                                       \
     } while (0)
 
 #define LOG_DEBUG(...) do                                                       \
     {                                                                           \
         if (StLogger::GetInstance().LogAble(LLOG_VVVERB) != 0) {                \
-            StLogger::GetInstance()._log(__FILE__, __LINE__, 0, __VA_ARGS__);   \
+            StLogger::GetInstance()._log(__FILE__, __LINE__, 0, ##__VA_ARGS__);   \
         }                                                                       \
     } while (0)
 
 #define LOG_TRACE(...) do                                                     \
     {                                                                           \
         if (StLogger::GetInstance().LogAble(LLOG_PVERB) != 0) {                 \
-            StLogger::GetInstance()._log(__FILE__, __LINE__, 0, __VA_ARGS__);   \
+            StLogger::GetInstance()._log(__FILE__, __LINE__, 0, ##__VA_ARGS__);   \
         }                                                                       \
     } while (0)
 
 #define LOGA(...) do                                                        \
     {                                                                       \
         if (StLogger::getInstance().LogAble(LLOG_PVERB) != 0) {             \
-            StLogger::getInstance()._loga(__VA_ARGS__);                     \
+            StLogger::getInstance()._loga(##__VA_ARGS__);                     \
         }                                                                   \
     } while (0)
 

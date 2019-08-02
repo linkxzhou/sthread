@@ -91,7 +91,7 @@ static char *aprintf(char **s, const char *fmt, ...)
     return c;
 }
 
-class Utils
+class Util
 {
 public:
     static void print_stats_header() 
@@ -376,14 +376,14 @@ public:
         memcpy(buf, request_buf, len);
         ((char *)buf)[len] = '\0';
 
-        if (wrk::Utils::s_verbose_)
+        if (wrk::Util::s_verbose_)
         {
             printf("[SEND]len : %d, buf : %s\n", len, buf);
         }
 
         http_parser_init(m->m_parser_, HTTP_REQUEST);
         m->m_number_.requests++;
-        m->m_number_.start = wrk::Utils::time_us();
+        m->m_number_.start = wrk::Util::time_us();
 
         return 0;
     }
@@ -395,7 +395,7 @@ public:
         int http_len = http_parser_execute(m->m_parser_, 
             &settings_null, (const char *)buf, len);
         
-        if (wrk::Utils::s_verbose_)
+        if (wrk::Util::s_verbose_)
         {
             printf("[RECV]http_len : %d, len : %d, buf : %s\n", http_len, len, buf);
         }
@@ -414,7 +414,7 @@ public:
     {
         HttpIMessage *m = ((HttpIMessage *)msg);
         m->m_number_.complete++;
-        m->m_number_.end = wrk::Utils::time_us();
+        m->m_number_.end = wrk::Util::time_us();
 
         return 0;
     }
@@ -427,7 +427,7 @@ public:
         if (m != NULL)
         {
             m->m_number_.errors.connect++;
-            m->m_number_.end = wrk::Utils::time_us();
+            m->m_number_.end = wrk::Util::time_us();
         }
 
         return 0;

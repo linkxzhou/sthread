@@ -43,4 +43,6 @@ int StEventItem::OutputNotify()
 int StEventItem::HangupNotify()
 {
     LOG_TRACE("HangupNotify ###, thread : %p", m_thread_);
+
+    return 0;
 }

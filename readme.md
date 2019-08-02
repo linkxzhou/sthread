@@ -70,7 +70,7 @@ int main(int argc, char* argv[])
     Frame *frame = GetInstance<Frame>();
 
     // 测试 : 使用协程请求耗时
-    LOG_DEBUG("--- start time : %ld", Utils::system_ms());
+    LOG_DEBUG("--- start time : %ld", Util::system_ms());
     for (int i = 2000; i < 2005; i++)
     {
         std::stringstream ss;
@@ -79,7 +79,7 @@ int main(int argc, char* argv[])
         Frame::CreateThread(func, s);
     }
     Frame::Loop(true);
-    LOG_DEBUG("--- end time : %ld", Utils::system_ms());
+    LOG_DEBUG("--- end time : %ld", Util::system_ms());
 
     return 0;
 }

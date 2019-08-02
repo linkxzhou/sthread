@@ -2,11 +2,11 @@
     user : zhoulv2000@163.com
 */
 
-#include "mt_ucontext.h"
+#include "st_ucontext.h"
 
 // 全局的context
-Context* sContextInitial = NULL;
-Context* sContextRuning = NULL;
+Context* g_context_initial = NULL;
+Context* g_context_runing = NULL;
 
 #if defined(__APPLE__)
 #if defined(__i386__)
@@ -148,29 +148,29 @@ int swapcontext(ucontext_t *oucp, const ucontext_t *ucp)
 }
 #endif
 
-int contextswitch(Context *from, Context *to)
+int context_switch(Context *from, Context *to)
 {
     // LOG_TRACE("from : %p, to : %p, runing : %p, init : %p", 
-    //     from, to, sContextRuning, sContextInitial);
-    if (sContextInitial == NULL)
+    //     from, to, g_context_runing, g_context_initial);
+    if (g_context_initial == NULL)
     {
-        sContextInitial = from;
-        // LOG_TRACE("sContextInitial : %p", sContextInitial);
+        g_context_initial = from;
+        // LOG_TRACE("g_context_initial : %p", g_context_initial);
     }
-    if (sContextRuning != to)
+    if (g_context_runing != to)
     {
-        sContextRuning = to;
-        // LOG_TRACE("sContextRuning : %p", sContextRuning);
+        g_context_runing = to;
+        // LOG_TRACE("g_context_runing : %p", g_context_runing);
     }
 
 	return swapcontext(&from->uc, &to->uc);
 }
 
-void contextexit()
+void context_exit()
 {
-    // LOG_TRACE("exit ..., runing : %p, init : %p", sContextRuning, sContextInitial);
-    if (sContextRuning != NULL && sContextInitial != NULL)
+    // LOG_TRACE("exit ..., runing : %p, init : %p", g_context_runing, g_context_initial);
+    if (g_context_runing != NULL && g_context_initial != NULL)
     {
-        contextswitch(sContextRuning, sContextInitial);
+        context_switch(g_context_runing, g_context_initial);
     }
 }

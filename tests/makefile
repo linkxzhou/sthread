@@ -37,9 +37,8 @@ connection:
 	$(INCLUDE) $(GTEST_LIB) ./libucontext.a $(FLAGS) -o mt_connection_unittest
 
 thread:
-	g++ mt_thread_unittest.cpp $(SRC)/mt_thread.cpp \
-	$(SRC)/mt_core.cpp $(SRC)/mt_ext.cpp $(SRC)/mt_sys_hook.cpp $(SRC)/mt_connection.cpp \
-	$(INCLUDE) $(GTEST_LIB) ./libucontext.a $(FLAGS) -o mt_thread_unittest
+	g++ st_thread_unittest.cpp $(COMM_SRC) $(SRC)/st_thread.cpp \
+	$(INCLUDE) $(GTEST_LIB) ./libucontext.a $(FLAGS) -o st_thread_unittest
 
 c:
 	g++ mt_c_unittest.cpp $(SRC)/mt_c.cpp $(SRC)/mt_thread.cpp \
@@ -59,12 +58,12 @@ frame:
 	$(INCLUDE) $(GTEST_LIB) ./libucontext.a $(FLAGS) -o mt_frame_unittest
 
 ucontext:
-	gcc -c $(SRC)/mt_asm.S $(FLAGS) -o ./mt_asm.o
-	gcc -c $(SRC)/mt_ucontext.cpp $(INCLUDE) $(FLAGS) -o ./mt_ucontext.o
-	gcc -c $(SRC)/mt_utils.cpp $(INCLUDE) $(FLAGS) -o ./mt_utils.o
-	ar cr libucontext.a ./mt_asm.o ./mt_ucontext.o ./mt_utils.o
-	g++ mt_ucontext_unittest.cpp $(INCLUDE) $(GTEST_LIB) ./libucontext.a \
-	$(FLAGS) -o mt_ucontext_unittest
+	gcc -c $(SRC)/st_asm.S $(FLAGS) -o ./st_asm.o
+	gcc -c $(SRC)/st_ucontext.cpp $(INCLUDE) $(FLAGS) -o ./st_ucontext.o
+	gcc -c $(SRC)/st_util.cpp $(INCLUDE) $(FLAGS) -o ./st_util.o
+	gcc -c $(SRC)/st_log.cpp $(INCLUDE) $(FLAGS) -o ./st_log.o
+	ar cr libucontext.a ./st_asm.o ./st_ucontext.o ./st_util.o ./st_log.o
+	g++ st_ucontext_unittest.cpp $(INCLUDE) $(GTEST_LIB) ./libucontext.a $(FLAGS) -o st_ucontext_unittest
 	rm -rf *.o
 
 mt_server:

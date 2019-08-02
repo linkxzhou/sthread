@@ -70,7 +70,7 @@ public:
             return false;
         }
 
-        int64_t now_ms = Utils::SysMs();
+        int64_t now_ms = Util::SysMs();
 
         LOG_TRACE("now_ms + interval = %llu", now_ms + interval);
         
@@ -109,7 +109,7 @@ public:
             return ;
         }
 
-        int64_t now = Utils::SysMs();
+        int64_t now = Util::SysMs();
 
         LOG_TRACE("before : now_ms = %llu, size = %d", now, m_heap_->HeapSize());
 

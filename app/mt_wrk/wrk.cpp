@@ -10,7 +10,7 @@
 #include "process.h"
 
 static wrk::config cg;
-int wrk::Utils::s_verbose_ = 0;
+int wrk::Util::s_verbose_ = 0;
 
 static void usage() 
 {
@@ -58,19 +58,19 @@ static int parse_args(wrk::config *_cg, char **url, struct http_parser_url *part
         switch (c) 
         {
             case 'n':
-                if (wrk::Utils::scan_metric(optarg, &_cg->numbers))
+                if (wrk::Util::scan_metric(optarg, &_cg->numbers))
                 {
                     return -1;
                 }
                 break;
             case 'c':
-                if (wrk::Utils::scan_metric(optarg, &_cg->connections)) 
+                if (wrk::Util::scan_metric(optarg, &_cg->connections)) 
                 {
                     return -1;
                 }
                 break;
             case 'd':
-                if (wrk::Utils::scan_time(optarg, &_cg->duration)) 
+                if (wrk::Util::scan_time(optarg, &_cg->duration)) 
                 {
                     return -1;
                 }
@@ -82,14 +82,14 @@ static int parse_args(wrk::config *_cg, char **url, struct http_parser_url *part
                 _cg->latency = true;
                 break;
             case 'T':
-                if (wrk::Utils::scan_time(optarg, &_cg->timeout))
+                if (wrk::Util::scan_time(optarg, &_cg->timeout))
                 {
                     return -1;
                 } 
                 _cg->timeout *= 1000;
                 break;
             case 'v':
-                wrk::Utils::s_verbose_ = 1; // 打印版本和详细信息
+                wrk::Util::s_verbose_ = 1; // 打印版本和详细信息
                 break;
             case 'h':
             case '?':
@@ -101,7 +101,7 @@ static int parse_args(wrk::config *_cg, char **url, struct http_parser_url *part
 
     if (optind == argc || !_cg->numbers || !_cg->duration) return -1;
 
-    if (!wrk::Utils::parse_url(argv[optind], parts)) 
+    if (!wrk::Util::parse_url(argv[optind], parts)) 
     {
         fprintf(stderr, "invalid URL: %s\n", argv[optind]);
         return -1;
@@ -144,14 +144,14 @@ void callback(void *data)
     servaddr.sin_family = AF_INET;
     servaddr.sin_port = htons(cg.port);  ///服务器端口
     char ipstr[32] = {0};
-    if (wrk::Utils::getip_by_domain(cg.host, ipstr) != 0) 
+    if (wrk::Util::getip_by_domain(cg.host, ipstr) != 0) 
     {
         memcpy(ipstr, cg.host, strlen(cg.host));
     }
     servaddr.sin_addr.s_addr = inet_addr(ipstr);  ///服务器ip
 
     // debug选项
-    if (wrk::Utils::s_verbose_)
+    if (wrk::Util::s_verbose_)
     {
         printf("dst_ip : %s, port : %d\n", ipstr, cg.port);
     }
@@ -162,7 +162,7 @@ void callback(void *data)
 
     // -------------- 2.创建action --------------
     int count = (int)(cg.connections / cg.numbers);
-    if (wrk::Utils::s_verbose_)
+    if (wrk::Util::s_verbose_)
     {
         printf("mt_init_frame ret : %d, count : %d\n", ret, count);
     }
@@ -198,7 +198,7 @@ void callback(void *data)
 
     ret = actionframe->SendRecv(10000);
     // debug选项
-    if (wrk::Utils::s_verbose_)
+    if (wrk::Util::s_verbose_)
     {
         printf("actionframe ret : %d, count : %d\n", ret, count);
     }
@@ -207,10 +207,10 @@ void callback(void *data)
     while (iter != msg_vc.end())
     {
         p->ChildProcessSend(&((*iter)->m_number_), sizeof(wrk::number));
-        if (wrk::Utils::s_verbose_)
+        if (wrk::Util::s_verbose_)
         {
             printf("[CHILDREN] send : \n");
-            wrk::Utils::print_number_debug(&((*iter)->m_number_));
+            wrk::Util::print_number_debug(&((*iter)->m_number_));
         }
         iter++;
     }
@@ -255,13 +255,13 @@ int main(int argc, char **argv)
     cg.path = path;
     cg.query = query;
 
-    if (wrk::Utils::s_verbose_)
+    if (wrk::Util::s_verbose_)
     {
-        wrk::Utils::print_config_debug(&cg);
+        wrk::Util::print_config_debug(&cg);
     }
 
     // -------------- 开启进程，然后进行数据统计 ---------------
-    uint64_t start = wrk::Utils::time_us();
+    uint64_t start = wrk::Util::time_us();
     // 创建子进程
     wrk::Process p;
     int ret = p.Create(cg.numbers, callback);
@@ -274,7 +274,7 @@ int main(int argc, char **argv)
 
     wrk::number *numbers = (wrk::number *)malloc(sizeof(wrk::number));
     // 初始化为0
-    wrk::Utils::init_number(numbers);
+    wrk::Util::init_number(numbers);
     do
     {
         unsigned int num_len;
@@ -307,15 +307,15 @@ int main(int argc, char **argv)
         }
 
         // TODO : debug
-        if (wrk::Utils::s_verbose_)
+        if (wrk::Util::s_verbose_)
         {
             printf("[PARENT] recv : \n");
-            wrk::Utils::print_number_debug(numbers);
+            wrk::Util::print_number_debug(numbers);
         }
     } while (true);
     p.Wait();
 
-    char *time = wrk::Utils::format_time_s(cg.duration);
+    char *time = wrk::Util::format_time_s(cg.duration);
     printf("Running %s test @ %s\n", time, url);
     printf("  %ld numbers and %ld connections\n", cg.numbers, cg.connections);
 
@@ -329,7 +329,7 @@ int main(int argc, char **argv)
     errors.timeout += numbers->errors.timeout;
     errors.status  += numbers->errors.status;
 
-    uint64_t runtime_us = wrk::Utils::time_us() - start;
+    uint64_t runtime_us = wrk::Util::time_us() - start;
     long double runtime_s = runtime_us / 1000000.0;
     long double req_per_s = complete   / runtime_s;
     long double bytes_per_s = bytes    / runtime_s;
@@ -340,16 +340,16 @@ int main(int argc, char **argv)
         slatency.correct(interval);
     }
 
-    wrk::Utils::print_stats_header();
-    wrk::Utils::print_stats("Latency", &slatency, wrk::Utils::format_time_us);
-    wrk::Utils::print_stats("Req/Sec", &srequests, wrk::Utils::format_metric);
+    wrk::Util::print_stats_header();
+    wrk::Util::print_stats("Latency", &slatency, wrk::Util::format_time_us);
+    wrk::Util::print_stats("Req/Sec", &srequests, wrk::Util::format_metric);
     if (cg.latency)
     {
-        wrk::Utils::print_stats_latency(&slatency);
+        wrk::Util::print_stats_latency(&slatency);
     }
 
-    char *runtime_msg = wrk::Utils::format_time_us(runtime_us);
-    printf("  %ld requests in %s, %sB read\n", complete, runtime_msg, wrk::Utils::format_binary(bytes));
+    char *runtime_msg = wrk::Util::format_time_us(runtime_us);
+    printf("  %ld requests in %s, %sB read\n", complete, runtime_msg, wrk::Util::format_binary(bytes));
     if (errors.connect || errors.read || errors.write || errors.timeout)
     {
         printf("  Socket errors: connect %d, read %d, write %d, timeout %d\n",
@@ -361,8 +361,8 @@ int main(int argc, char **argv)
     }
 
     printf("Requests/sec: %9.2Lf\n", req_per_s);
-    printf("Transfer/sec: %10sB\n", wrk::Utils::format_binary(bytes_per_s));
-    printf("All Transfer: %10sB\n", wrk::Utils::format_binary(bytes));
+    printf("Transfer/sec: %10sB\n", wrk::Util::format_binary(bytes_per_s));
+    printf("All Transfer: %10sB\n", wrk::Util::format_binary(bytes));
 
     return 0;
 }
