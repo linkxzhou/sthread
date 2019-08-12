@@ -60,8 +60,8 @@ protected:
 class EventerPool
 {
 public:
-	typedef UtilsPtrPool<Eventer>			IEventerPool;
-    typedef UtilsPtrPool<TcpLongEventer>    TcpLongEventerPool;
+	typedef UtilPtrPool<Eventer>			IEventerPool;
+    typedef UtilPtrPool<TcpLongEventer>    TcpLongEventerPool;
 
 	Eventer* GetEventer(int type = eEVENT_THREAD);
 

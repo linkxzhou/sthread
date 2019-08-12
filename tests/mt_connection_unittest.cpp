@@ -11,7 +11,7 @@ TEST(ConnectionTest, UdpShort)
 
 	conn->SetEventer(ev);
 
-	IMtMsgBuffer* msg_buff = GetInstance<IMsgBufferPool>() -> GetMsgBuffer(1024);
+	IMtMsgBuffer* msg_buff = GetInstance<IMsgBufferPool>() -> GetBuffer(1024);
 
 	conn->SetIMtMsgBuffer(msg_buff);
 

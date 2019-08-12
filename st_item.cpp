@@ -15,11 +15,6 @@ int StEventItem::InputNotify()
         return -1;
     }
 
-    if (m_thread_->HasFlag(eIO_LIST))
-    {
-        return m_thread_->IOWaitToRunable();
-    }
-
     return 0;
 }
 
@@ -30,11 +25,6 @@ int StEventItem::OutputNotify()
     {
         LOG_ERROR("m_thread_ is NULL");
         return -1;
-    }
-
-    if (m_thread_->HasFlag(eIO_LIST))
-    {
-        return m_thread_->IOWaitToRunable();
     }
 
     return 0;

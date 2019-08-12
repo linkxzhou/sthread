@@ -78,35 +78,35 @@ private:
 #define LOG_ERROR(...) do                                                       \
     {                                                                           \
         if (StLogger::GetInstance().LogAble(LLOG_ALERT) != 0) {                 \
-            StLogger::GetInstance()._log(__FILE__, __LINE__, 0, ##__VA_ARGS__);   \
+            StLogger::GetInstance()._log(__FILE__, __LINE__, LLOG_ALERT, ##__VA_ARGS__);   \
         }                                                                       \
     } while (0)
 
 #define LOG_WARN(...) do                                                        \
     {                                                                           \
         if (StLogger::GetInstance().LogAble(LLOG_WARN) != 0) {                  \
-            StLogger::GetInstance()._log(__FILE__, __LINE__, 0, ##__VA_ARGS__);   \
+            StLogger::GetInstance()._log(__FILE__, __LINE__, LLOG_WARN, ##__VA_ARGS__);   \
         }                                                                       \
     } while (0)
 
 #define LOG_PANIC(...) do                                                       \
     {                                                                           \
         if (StLogger::GetInstance().LogAble(LLOG_EMERG) != 0) {                 \
-            StLogger::GetInstance()._log(__FILE__, __LINE__, 1, ##__VA_ARGS__);   \
+            StLogger::GetInstance()._log(__FILE__, __LINE__, LLOG_EMERG, ##__VA_ARGS__);   \
         }                                                                       \
     } while (0)
 
 #define LOG_DEBUG(...) do                                                       \
     {                                                                           \
         if (StLogger::GetInstance().LogAble(LLOG_VVVERB) != 0) {                \
-            StLogger::GetInstance()._log(__FILE__, __LINE__, 0, ##__VA_ARGS__);   \
+            StLogger::GetInstance()._log(__FILE__, __LINE__, LLOG_VVVERB, ##__VA_ARGS__);   \
         }                                                                       \
     } while (0)
 
 #define LOG_TRACE(...) do                                                     \
     {                                                                           \
         if (StLogger::GetInstance().LogAble(LLOG_PVERB) != 0) {                 \
-            StLogger::GetInstance()._log(__FILE__, __LINE__, 0, ##__VA_ARGS__);   \
+            StLogger::GetInstance()._log(__FILE__, __LINE__, LLOG_PVERB, ##__VA_ARGS__);   \
         }                                                                       \
     } while (0)
 

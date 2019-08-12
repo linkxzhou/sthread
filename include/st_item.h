@@ -2,8 +2,8 @@
  * Copyright (C) zhoulv2000@163.com
  */
 
-#ifndef _ST_CORE_H_INCLUDED_
-#define _ST_CORE_H_INCLUDED_
+#ifndef _ST_ITEM_H_INCLUDED_
+#define _ST_ITEM_H_INCLUDED_
 
 #include "st_util.h"
 #include "st_ucontext.h"
@@ -24,8 +24,9 @@ class StEventItem;
 class ThreadItem;
 
 typedef CPP_TAILQ_HEAD<StEventItem>     StEventItemQueue;
-typedef CPP_TAILQ_ENTRY<ThreadItem>     ThreadItemNext;
+typedef CPP_TAILQ_ENTRY<StEventItem>    StEventItemNext;
 typedef CPP_TAILQ_HEAD<ThreadItem>      ThreadItemQueue;
+typedef CPP_TAILQ_ENTRY<ThreadItem>     ThreadItemNext;
 
 class StEventItem : public referenceable
 {
@@ -134,7 +135,7 @@ protected:
     ThreadItem* m_thread_;
 
 public:
-    CPP_TAILQ_ENTRY<StEventItem> m_next_;
+    StEventItemNext m_next_;
 };
 
 class ThreadItem : public HeapEntry
@@ -153,7 +154,6 @@ public:
     { 
         CPP_TAILQ_INIT(&m_fdset_);
         CPP_TAILQ_INIT(&m_sub_threadlist_);
-        memset(m_name_, 0, sizeof(m_name_));
     }
 
     inline void Reset()
@@ -195,7 +195,7 @@ public:
         m_type_ = type;
     }
     
-    eThreadType GetType(void)
+    inline eThreadType GetType(void)
     {
         return m_type_;
     }
@@ -220,9 +220,9 @@ public:
         return m_wakeup_time_;
     }
 
-    inline void SetWakeupTime(uint64_t waketime)
+    inline void SetWakeupTime(uint64_t wakeup_time)
     {
-        m_wakeup_time_ = waketime;
+        m_wakeup_time_ = wakeup_time;
     }
 
     inline int64_t HeapValue()
@@ -259,21 +259,6 @@ public:
     // 直接运行
     virtual void Run(void) = 0;
 
-    // IO等待完成切换为可运行
-    virtual int32_t IOWaitToRunable() = 0;
-
-    // 从IO等待中移除
-    virtual void RemoveIOWait() = 0;
-
-    // 插入IO等待
-    virtual void InsertIOWait() = 0;
-
-    // 插入可运行
-    virtual void InsertRunable() = 0;
-
-    // 让出CPU
-    virtual int32_t SwitchContext() = 0;
-
     virtual void RestoreContext(ThreadItem* thread) = 0;
 
     inline uint64_t GetStThreadid()
@@ -288,10 +273,23 @@ public:
 
     virtual void Add(StEventItem* item)
     {
+        FUNCTION_INTO();
+
         if (CPP_TAILQ_EMPTY(&m_fdset_))
         {
             CPP_TAILQ_INIT(&m_fdset_);
         }
+
+        // TODO : 防止重复插入数据
+        StEventItem* _item = NULL;
+        CPP_TAILQ_FOREACH(_item, &m_fdset_, m_next_)
+        {
+            if (item == _item)
+            {
+                return ;
+            }
+        }
+
         CPP_TAILQ_INSERT_TAIL(&m_fdset_, item, m_next_);
     }
 
@@ -300,7 +298,9 @@ public:
         if (CPP_TAILQ_EMPTY(&m_fdset_))
         {
             CPP_TAILQ_INIT(&m_fdset_);
+            LOG_TRACE("m_fdset_ is INIT");
         }
+
         CPP_TAILQ_CONCAT(&m_fdset_, fdset, m_next_);
     }
 
@@ -372,9 +372,9 @@ protected:
     Stack*          m_stack_;       // 堆栈信息
     void*           m_private_;
     Closure*        m_callback_;    // 启动函数
-    StEventItemQueue    m_fdset_;
 
 public:
+    StEventItemQueue    m_fdset_;
     ThreadItemQueue     m_sub_threadlist_;    // 子线程
     ThreadItem*         m_parent_;            // 父线程
     ThreadItemNext      m_next_, m_sub_next_;

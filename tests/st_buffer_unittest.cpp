@@ -3,25 +3,25 @@
 
 ST_NAMESPACE_USING
 
-TEST(MessageTest, StMsgBuffer)
+TEST(MessageTest, StBuffer)
 {
-	StMsgBuffer* buf1 = GetInstance<StMsgBufferPool>()->GetMsgBuffer(100);
-	LOG_DEBUG("buf1 : %p, addr : %p", buf1, GetInstance<StMsgBufferPool>());
+	StBuffer* buf1 = GetInstance<StBufferPool>()->GetBuffer(100);
+	LOG_DEBUG("buf1 : %p, addr : %p", buf1, GetInstance<StBufferPool>());
 
-	StMsgBuffer* buf2 = GetInstance<StMsgBufferPool>()->GetMsgBuffer(1000);
-	LOG_DEBUG("buf2 : %p, addr : %p", buf2, GetInstance<StMsgBufferPool>());
+	StBuffer* buf2 = GetInstance<StBufferPool>()->GetBuffer(1000);
+	LOG_DEBUG("buf2 : %p, addr : %p", buf2, GetInstance<StBufferPool>());
 
-	StMsgBuffer* buf3 = GetInstance<StMsgBufferPool>()->GetMsgBuffer(10000);
-	LOG_DEBUG("buf3 : %p, addr : %p", buf3, GetInstance<StMsgBufferPool>());
+	StBuffer* buf3 = GetInstance<StBufferPool>()->GetBuffer(10000);
+	LOG_DEBUG("buf3 : %p, addr : %p", buf3, GetInstance<StBufferPool>());
 
-	StMsgBuffer* buf4 = GetInstance<StMsgBufferPool>()->GetMsgBuffer(100);
-	LOG_DEBUG("buf4 : %p, addr : %p", buf4, GetInstance<StMsgBufferPool>());
+	StBuffer* buf4 = GetInstance<StBufferPool>()->GetBuffer(100);
+	LOG_DEBUG("buf4 : %p, addr : %p", buf4, GetInstance<StBufferPool>());
 
-	GetInstance<StMsgBufferPool>()->FreeMsgBuffer(buf1);
-	GetInstance<StMsgBufferPool>()->FreeMsgBuffer(buf4);
+	GetInstance<StBufferPool>()->FreeBuffer(buf1);
+	GetInstance<StBufferPool>()->FreeBuffer(buf4);
 
-	StMsgBuffer* buf5 = GetInstance<StMsgBufferPool>()->GetMsgBuffer(100);
-	LOG_DEBUG("buf5 : %p, addr : %p", buf5, GetInstance<StMsgBufferPool>());
+	StBuffer* buf5 = GetInstance<StBufferPool>()->GetBuffer(100);
+	LOG_DEBUG("buf5 : %p, addr : %p", buf5, GetInstance<StBufferPool>());
 }
 
 // 测试所有的功能

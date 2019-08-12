@@ -145,6 +145,14 @@ typedef enum
     eIOWAIT     = 0x5,
 } eThreadState;
 
+typedef enum
+{
+    eUNDEF_CONN     = 0x0, // 连接错误
+    eUDP_CONN       = 0x1,
+    eTCP_LONG_CONN  = 0x2,
+    eTCP_SHORT_CONN = 0x3,
+} eConnType;
+
 // enum eActionState
 // {
 //     eACTION_FLAG_UNDEF   = 0x0,
@@ -178,17 +186,6 @@ typedef enum
 //     eSESSION_INUSE   = 0x1, // session正在使用
 //     eSESSION_SET     = 0x2, // session已经设置
 //     eSESSION_UNSET   = 0x3, // session未设置
-// };
-
-// enum eConnType
-// {
-//     eUNDEF_CONN     = 0x0, // 连接错误
-//     eUDP_CONN       = 0x1, // udp client连接
-//     eTCP_LONG_CONN  = 0x2, // tcp client长连接
-//     eTCP_SHORT_CONN = 0x3, // tcp client短连接
-//     eTCP_SERVER     = 0x4,
-//     eUDP_SERVER     = 0x5,
-//     eTCP_ACCEPT_CONN    = 0x6,
 // };
 
 // enum eKeepFlag

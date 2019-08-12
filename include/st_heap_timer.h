@@ -20,7 +20,7 @@ public:
         m_time_expired_(0)
     { }
 
-    virtual void Notify(eEventType type) 
+    virtual void TimerNotify(eEventType type) 
     { 
         return ;
     }
@@ -102,26 +102,29 @@ public:
     }
 
     // 检查是否过期
-    void CheckExpired()
+    int32_t CheckExpired()
     {
         if (!m_heap_)
         {
-            return ;
+            return 0;
         }
 
         int64_t now = Util::SysMs();
 
         LOG_TRACE("before : now_ms = %llu, size = %d", now, m_heap_->HeapSize());
 
+        int32_t count = 0;
         TimerEntry* timer = any_cast<TimerEntry>(m_heap_->HeapTop());
         while (timer && (timer->GetExpiredTime() <= now))
         {
             m_heap_->HeapDelete(timer);     // 删除对应的过期时间
-            timer->Notify(eEVENT_TIMEOUT);  // 传递超时事件
+            timer->TimerNotify(eEVENT_TIMEOUT);  // 传递超时事件
             timer = any_cast<TimerEntry>(m_heap_->HeapTop());
+            count++;
         }
 
         LOG_TRACE("after : size = %d", m_heap_->HeapSize());
+        return count;
     }
 
 private:

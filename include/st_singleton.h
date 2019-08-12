@@ -112,7 +112,8 @@ private:                                                                  \
 
 #define IMPLEMENT_SINGLETON(ClassName) 
 
-template <typename T> T* GetInstance()
+template <typename T> 
+T* GetInstance()
 {
     return Singleton<T>::GetInstance();
 }

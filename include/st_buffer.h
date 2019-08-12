@@ -12,15 +12,15 @@
 
 ST_NAMESPACE_BEGIN
 
-class StMsgBuffer;
+class StBuffer;
 
-typedef CPP_TAILQ_ENTRY<StMsgBuffer>  StMsgBufferNext;
-typedef CPP_TAILQ_HEAD<StMsgBuffer>   StMsgBufferQueue;
+typedef CPP_TAILQ_ENTRY<StBuffer>  StBufferNext;
+typedef CPP_TAILQ_HEAD<StBuffer>   StBufferQueue;
 
-class StMsgBuffer
+class StBuffer
 {
 public:
-    StMsgBuffer(int32_t max_len) : 
+    StBuffer(int32_t max_len) : 
         m_max_len_(max_len), 
         m_msg_len_(0), 
         m_buf_type_(eBUFF_UNDEF), 
@@ -30,7 +30,7 @@ public:
         m_msg_buff_ = malloc(max_len);
     }
 
-    ~StMsgBuffer()
+    ~StBuffer()
     {
         st_safe_free(m_msg_buff_);
     }
@@ -68,7 +68,7 @@ public:
         return m_max_len_;
     }
 
-    inline void* GetMsgBuffer()
+    inline void* GetBuffer()
     {
         return m_msg_buff_;
     }
@@ -102,13 +102,13 @@ private:
     int32_t     m_send_len_;
     
 public:
-    StMsgBufferNext m_next_;
+    StBufferNext m_next_;
 };
 
-class StMsgBufferBucket : public HashKey
+class StBufferBucket : public HashKey
 {
 public:
-    StMsgBufferBucket(int32_t buff_size, int32_t max_free = 1024) : 
+    StBufferBucket(int32_t buff_size, int32_t max_free = 1024) : 
         m_max_buf_size_(buff_size), 
         m_max_free_(max_free), 
         m_queue_num_(0)
@@ -118,11 +118,11 @@ public:
         CPP_TAILQ_INIT(&m_msg_queue_);
     }
     
-    ~StMsgBufferBucket()
+    ~StBufferBucket()
     {
         // 定义两个指针变量
-        StMsgBuffer* ptr = NULL;
-        StMsgBuffer* temp = NULL;
+        StBuffer* ptr = NULL;
+        StBuffer* temp = NULL;
 
         CPP_TAILQ_FOREACH_SAFE(ptr, &m_msg_queue_, m_next_, temp)
         {
@@ -135,9 +135,9 @@ public:
         CPP_TAILQ_INIT(&m_msg_queue_);
     }
 
-    StMsgBuffer* GetMsgBuffer()
+    StBuffer* GetBuffer()
     {
-        StMsgBuffer* ptr = NULL;
+        StBuffer* ptr = NULL;
 
         if (!CPP_TAILQ_EMPTY(&m_msg_queue_))
         {
@@ -147,13 +147,13 @@ public:
         }
         else
         {
-            ptr = new StMsgBuffer(m_max_buf_size_);
+            ptr = new StBuffer(m_max_buf_size_);
         }
 
         return ptr;
     }
 
-    void FreeMsgBuffer(StMsgBuffer* ptr)
+    void FreeBuffer(StBuffer* ptr)
     {
         if (m_queue_num_ >= m_max_free_)
         {
@@ -181,10 +181,10 @@ private:
     int32_t m_max_free_;
     int32_t m_max_buf_size_;
     int32_t m_queue_num_;
-    StMsgBufferQueue m_msg_queue_;
+    StBufferQueue m_msg_queue_;
 };
 
-class StMsgBufferPool
+class StBufferPool
 {
 public:
     void SetMaxFreeNum(int32_t max_free)
@@ -192,7 +192,7 @@ public:
         m_max_free_ = max_free;
     }
 
-    StMsgBuffer* GetMsgBuffer(int32_t max_size)
+    StBuffer* GetBuffer(int32_t max_size)
     {
         if (!m_hash_bucket_)
         {
@@ -203,20 +203,20 @@ public:
         // 重新字节对齐处理
         max_size = ST_ALGIN(max_size);
 
-        StMsgBufferBucket* msg_bucket = NULL;
-        StMsgBufferBucket msg_key(max_size);
+        StBufferBucket* msg_bucket = NULL;
+        StBufferBucket msg_key(max_size);
         HashKey* hash_item = m_hash_bucket_->HashFind(&msg_key);
 
         if (hash_item)
         {
-            msg_bucket = any_cast<StMsgBufferBucket>(hash_item->GetDataPtr());
+            msg_bucket = any_cast<StBufferBucket>(hash_item->GetDataPtr());
             if (msg_bucket)
             {
-                return msg_bucket->GetMsgBuffer();
+                return msg_bucket->GetBuffer();
             }
             else
             {
-                m_hash_bucket_->HashRemove(any_cast<StMsgBufferBucket>(hash_item));
+                m_hash_bucket_->HashRemove(any_cast<StBufferBucket>(hash_item));
                 st_safe_delete(hash_item);
 
                 LOG_ERROR("hash item: %p, msg_bucket: %p impossible, clean it", 
@@ -226,7 +226,7 @@ public:
         }
         else
         {
-            msg_bucket = new StMsgBufferBucket(max_size, m_max_free_);
+            msg_bucket = new StBufferBucket(max_size, m_max_free_);
             if (!msg_bucket)
             {
                 LOG_ERROR("maybe no more memory failed. size: %d", max_size);
@@ -234,11 +234,11 @@ public:
             }
 
             m_hash_bucket_->HashInsert(msg_bucket);
-            return msg_bucket->GetMsgBuffer();
+            return msg_bucket->GetBuffer();
         }
     }
 
-    void FreeMsgBuffer(StMsgBuffer* msg_buf)
+    void FreeBuffer(StBuffer* msg_buf)
     {
         if (!m_hash_bucket_ || !msg_buf)
         {
@@ -249,13 +249,13 @@ public:
         }
 
         msg_buf->Reset();
-        StMsgBufferBucket* msg_bucket = NULL;
-        StMsgBufferBucket msg_key(msg_buf->GetMaxLen());
+        StBufferBucket* msg_bucket = NULL;
+        StBufferBucket msg_key(msg_buf->GetMaxLen());
         HashKey* hash_item = m_hash_bucket_->HashFind(&msg_key);
         
         if (hash_item)
         {
-            msg_bucket = any_cast<StMsgBufferBucket>(hash_item->GetDataPtr());
+            msg_bucket = any_cast<StBufferBucket>(hash_item->GetDataPtr());
         }
 
         if (!hash_item || !msg_bucket)
@@ -265,23 +265,23 @@ public:
         }
         else
         {
-            msg_bucket->FreeMsgBuffer(msg_buf);
+            msg_bucket->FreeBuffer(msg_buf);
         }
     }
 
-    ~StMsgBufferPool()
+    ~StBufferPool()
     {
         if (!m_hash_bucket_)
         {
             return ;
         }
 
-        StMsgBufferBucket* msg_bucket = NULL;
+        StBufferBucket* msg_bucket = NULL;
         HashKey* hash_item = m_hash_bucket_->HashGetFirst();
         while (hash_item)
         {
-            m_hash_bucket_->HashRemove(any_cast<StMsgBufferBucket>(hash_item));
-            msg_bucket = any_cast<StMsgBufferBucket>(hash_item);
+            m_hash_bucket_->HashRemove(any_cast<StBufferBucket>(hash_item));
+            msg_bucket = any_cast<StBufferBucket>(hash_item);
             if (msg_bucket != NULL)
             {
                 st_safe_delete(msg_bucket);
@@ -293,14 +293,14 @@ public:
         st_safe_delete(m_hash_bucket_);
     }
     
-    explicit StMsgBufferPool(int32_t max_free = 1024) : m_max_free_(max_free)
+    explicit StBufferPool(int32_t max_free = 1024) : m_max_free_(max_free)
     {
-        m_hash_bucket_ = new HashList<StMsgBufferBucket>(ST_BUFFER_BUCKET_SIZE);
+        m_hash_bucket_ = new HashList<StBufferBucket>(ST_BUFFER_BUCKET_SIZE);
     }
 
 private:
     int32_t m_max_free_;
-    HashList<StMsgBufferBucket> *m_hash_bucket_;
+    HashList<StBufferBucket> *m_hash_bucket_;
 };
 
 ST_NAMESPACE_END

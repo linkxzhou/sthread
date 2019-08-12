@@ -1,6 +1,9 @@
 #include "st_log.h"
 #include "st_public.h"
 
+static const char* g_level_cn[12] = {"EMERG", "ALERT", "CRIT", "ERR", 
+    "WARN", "NOTICE", "INFO", "DEBUG", "VERB", "VVERB", "VVVERB", "PVERB"};
+
 StLogger::StLogger()
 {
     m_fd_ = 1;
@@ -61,7 +64,6 @@ void StLogger::Stacktrace(void)
     {
         return ;
     }
-    // TODO : 跟踪数据
 }
 
 int32_t StLogger::LogAble(int32_t level)
@@ -116,7 +118,7 @@ int32_t StLogger::StringLastOf(const char *s, char c)
     return i;
 }
 
-void StLogger::_log(const char *file, int32_t line, int32_t panic, const char *fmt, ...)
+void StLogger::_log(const char *file, int32_t line, int32_t level, const char *fmt, ...)
 {
     static char buf[LOG_MAX_LEN];
     
@@ -143,7 +145,8 @@ void StLogger::_log(const char *file, int32_t line, int32_t panic, const char *f
     int32_t filetemp_len = StringLastOf(file, '/') + 1;
     filetemp_len = (filetemp_len < 0) ? 0 : filetemp_len;
     strncpy(filetemp, file + filetemp_len, strlen(file) - filetemp_len + 1);
-    len += ::snprintf(buf + len, size - len, "] [%s:%d] ", filetemp, line);
+    len += ::snprintf(buf + len, size - len, "] [%s] [%s:%d] ", 
+        (level<0||level>11) ? "None" : g_level_cn[level], filetemp, line);
 
     va_start(args, fmt);
     len += ::vsnprintf(buf + len, size - len, fmt, args);
@@ -159,7 +162,7 @@ void StLogger::_log(const char *file, int32_t line, int32_t panic, const char *f
 
     errno = errno_save;
 
-    if (panic) 
+    if (level == LLOG_EMERG) 
     {
         abort();
     }

@@ -4,6 +4,7 @@
 
 #include <stdarg.h>
 #include "st_sys.h"
+#include "st_manager.h"
 
 ST_NAMESPACE_USING
 
@@ -39,8 +40,8 @@ void st_new_fd(int fd)
 
     HookFd* fd_info = &g_hookfd_tab[fd];
     fd_info->sock_flag = ST_FD_FLG_INUSE;
-    fd_info->read_timeout = 500; // 设置等待的ms，默认500ms
-    fd_info->write_timeout = 500; // 设置等待的ms，默认500ms
+    fd_info->read_timeout = 500; // 设置等待的MS，默认500MS
+    fd_info->write_timeout = 500; // 设置等待的MS，默认500MS
 }
 
 void st_free_fd(int fd)
@@ -98,6 +99,22 @@ int st_close(int fd)
     return REAL_FUNC(close)(fd);
 }
 
+int st_showdown(int fd)
+{
+    HOOK_SYSCALL(shutdown);
+    HookFd* hook_fd = st_find_fd(fd);
+
+    if (!HOOK_ACTIVE() || !hook_fd)
+    {
+        return REAL_FUNC(shutdown)(fd);
+    }
+
+    // 释放FD
+    st_free_fd(fd);
+
+    return REAL_FUNC(shutdown)(fd);
+}
+
 int st_connect(int fd, const struct sockaddr *address, socklen_t address_len)
 {
     HOOK_SYSCALL(connect);
@@ -115,7 +132,7 @@ int st_connect(int fd, const struct sockaddr *address, socklen_t address_len)
     else
     {
         st_new_fd(fd);
-        return _connect(fd, address, (int)address_len, hook_fd->write_timeout);
+        return ::_connect(fd, address, (int)address_len, hook_fd->write_timeout);
     }
 }
 
@@ -136,7 +153,7 @@ ssize_t st_read(int fd, void *buffer, size_t nbyte)
     else
     {
         st_new_fd(fd);
-        return _read(fd, buffer, nbyte, hook_fd->read_timeout);
+        return ::_read(fd, buffer, nbyte, hook_fd->read_timeout);
     }
 }
 
@@ -157,7 +174,7 @@ ssize_t st_write(int fd, const void *buffer, size_t nbyte)
     else
     {
         st_new_fd(fd);
-        return _write(fd, buffer, nbyte, hook_fd->write_timeout);
+        return ::_write(fd, buffer, nbyte, hook_fd->write_timeout);
     }
 }
 
@@ -179,7 +196,7 @@ ssize_t st_sendto(int fd, const void *buffer, size_t length, int flags,
     else
     {
         st_new_fd(fd);
-        return _sendto(fd, buffer, (int)length, flags, dest_addr, 
+        return ::_sendto(fd, buffer, (int)length, flags, dest_addr, 
             dest_len, hook_fd->write_timeout);
     }
 }
@@ -202,7 +219,7 @@ ssize_t st_recvfrom(int fd, void *buffer, size_t length, int flags,
     else
     {
         st_new_fd(fd);
-        return _recvfrom(fd, buffer, length, flags, address, address_len, hook_fd->read_timeout);
+        return ::_recvfrom(fd, buffer, length, flags, address, address_len, hook_fd->read_timeout);
     }
 }
 
@@ -222,7 +239,7 @@ ssize_t st_recv(int fd, void *buffer, size_t length, int flags)
     else
     {
         st_new_fd(fd);
-        return _recv(fd, buffer, length, flags, hook_fd->read_timeout);
+        return ::_recv(fd, buffer, length, flags, hook_fd->read_timeout);
     }
 }
 
@@ -243,7 +260,7 @@ ssize_t st_send(int fd, const void *buffer, size_t nbyte, int flags)
     else
     {
         st_new_fd(fd);
-        return _send(fd, buffer, nbyte, flags, hook_fd->write_timeout);
+        return ::_send(fd, buffer, nbyte, flags, hook_fd->write_timeout);
     }
 }
 
@@ -329,7 +346,7 @@ int st_ioctl(int fd, uint64_t cmd, ...)
     return REAL_FUNC(ioctl)(fd, cmd, arg);
 }
 
-int st_accept(int fd, const struct sockaddr *address, socklen_t *address_len)
+int st_accept(int fd, struct sockaddr *address, socklen_t *address_len)
 {
     HOOK_SYSCALL(accept);
     HookFd* hook_fd = st_find_fd(fd);

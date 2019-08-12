@@ -60,7 +60,7 @@ int UdpIMtConnection::SendData()
         return -100;
     }
 
-    int ret = Frame::sendto(m_osfd_, m_msg_buff_->GetMsgBuffer(), m_msg_buff_->GetMsgLen(), 0,
+    int ret = Frame::sendto(m_osfd_, m_msg_buff_->GetBuffer(), m_msg_buff_->GetMsgLen(), 0,
             (struct sockaddr*)&m_dst_addr_, sizeof(struct sockaddr_in), m_timeout_);
     if (ret == -1)
     {
@@ -91,7 +91,7 @@ int UdpIMtConnection::RecvData()
 
     struct sockaddr_in from;
     socklen_t from_len = sizeof(from);
-    int ret = Frame::recvfrom(m_osfd_, m_msg_buff_->GetMsgBuffer(), m_msg_buff_->GetMaxLen(), 0, 
+    int ret = Frame::recvfrom(m_osfd_, m_msg_buff_->GetBuffer(), m_msg_buff_->GetMaxLen(), 0, 
         (struct sockaddr*)&from, &from_len, m_timeout_);
     if (ret < 0)
     {
@@ -244,7 +244,7 @@ int TcpShortIMtConnection::SendData()
         return -100;
     }
 
-    char* msg_ptr = (char*)m_msg_buff_->GetMsgBuffer();
+    char* msg_ptr = (char*)m_msg_buff_->GetBuffer();
     int msg_len = m_msg_buff_->GetMsgLen();
     // 已经发送的数据长度
     int have_send_len = m_msg_buff_->GetHaveSendLen(); 
@@ -289,7 +289,7 @@ int TcpShortIMtConnection::RecvData()
         return -100;
     }
 
-    char* msg_ptr = (char*)m_msg_buff_->GetMsgBuffer();
+    char* msg_ptr = (char*)m_msg_buff_->GetBuffer();
     int max_len = m_msg_buff_->GetMaxLen();
     int have_recv_len = m_msg_buff_->GetHaveRecvLen();
     int ret = Frame::recv(m_osfd_, (char*)msg_ptr + have_recv_len, max_len - have_recv_len, 0, m_timeout_);

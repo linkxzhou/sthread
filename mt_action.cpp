@@ -72,7 +72,7 @@ int IMtAction::InitConnection()
     m_conn_->SetMsgDstAddr(GetMsgDstAddr());
 
     int max_len = GetMsgBufferSize();
-    IMtMsgBuffer* msg_buff = buf_pool->GetMsgBuffer(max_len);
+    IMtMsgBuffer* msg_buff = buf_pool->GetBuffer(max_len);
     if (!msg_buff)
     {
         LOG_ERROR("memory buff size: %d, get failed", max_len);
@@ -111,7 +111,7 @@ int IMtAction::DoEncode()
 
     int msg_len = msg_buff->GetMaxLen();
     LOG_TRACE("msg_len : %d, m_msg_ : %p", msg_len, m_msg_);
-    int ret = HandleEncode(msg_buff->GetMsgBuffer(), msg_len, m_msg_);
+    int ret = HandleEncode(msg_buff->GetBuffer(), msg_len, m_msg_);
     if (ret < 0)
     {
         LOG_DEBUG("handle encode failed, ret %d", ret);
@@ -136,7 +136,7 @@ int IMtAction::DoInput()
     }
 
     int msg_len = msg_buff->GetHaveRecvLen();
-    int ret = HandleInput(msg_buff->GetMsgBuffer(), msg_len, m_msg_);
+    int ret = HandleInput(msg_buff->GetBuffer(), msg_len, m_msg_);
     if (ret < 0)
     {
         LOG_DEBUG("handle input failed, ret %d", ret);
@@ -159,7 +159,7 @@ int IMtAction::DoProcess()
     }
 
     int msg_len = msg_buff->GetMsgLen();
-    int ret = HandleProcess(msg_buff->GetMsgBuffer(), msg_len, m_msg_);
+    int ret = HandleProcess(msg_buff->GetBuffer(), msg_len, m_msg_);
     if (ret < 0)
     {
         LOG_DEBUG("handle process failed, ret %d", ret);

@@ -9,7 +9,6 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <setjmp.h>
 #include <sys/mman.h> 
 #include <arpa/inet.h>
 #include <typeinfo>
@@ -93,32 +92,21 @@ public:
 #define CPP_TAILQ_FIRST(head)       ((head)->tqh_first)
 #define CPP_TAILQ_NEXT(elm, field)  ((elm)->field.tqe_next)
 #define CPP_TAILQ_EMPTY(head)       ((head)->tqh_first == NULL) // 判断队列是否为空
-#define CPP_TAILQ_INIT(head)        \
-do {                                                \
-    CPP_TAILQ_FIRST((head)) = NULL;                 \
-    (head)->tqh_last = &CPP_TAILQ_FIRST((head));    \
-} while (0)
-
-#define CPP_TAILQ_CONCAT(head1, head2, field)      \
-do {                                                \
-    if (!CPP_TAILQ_EMPTY(head2)) {                  \
-        *(head1)->tqh_last = (head2)->tqh_first;    \
-        (head2)->tqh_first->field.tqe_prev = (head1)->tqh_last; \
-        (head1)->tqh_last = (head2)->tqh_last;      \
-        (head1)->tqh_size = (head1)->tqh_size + (head2)->tqh_size; \
-        CPP_TAILQ_INIT((head2));                    \
-    }                                               \
-} while (0)
+#define CPP_TAILQ_INIT(head)        do                  \
+    {                                                   \
+        CPP_TAILQ_FIRST(head) = NULL;                   \
+        (head)->tqh_last = &CPP_TAILQ_FIRST(head);      \
+    } while (0)
 
 #define CPP_TAILQ_FOREACH(var, head, field)         \
-    for ((var) = CPP_TAILQ_FIRST((head));           \
+    for ((var) = CPP_TAILQ_FIRST(head);             \
         (var);                                      \
         (var) = CPP_TAILQ_NEXT((var), field))
 
-#define CPP_TAILQ_FOREACH_SAFE(var, head, field, tvar)              \
-         for ((var) = CPP_TAILQ_FIRST((head));                      \ 
-             (var) && ((tvar) = CPP_TAILQ_NEXT((var), field), 1);   \ 
-             (var) = (tvar)) 
+#define CPP_TAILQ_FOREACH_SAFE(var, head, field, _var)          \
+    for ((var) = CPP_TAILQ_FIRST((head));                       \ 
+        (var) && ((_var) = CPP_TAILQ_NEXT((var), field), 1);    \ 
+        (var) = (_var)) 
 
 #define CPP_TAILQ_REMOVE(head, elm, field) do                   \
     {                                                           \
@@ -131,6 +119,7 @@ do {                                                \
         *(elm)->field.tqe_prev = CPP_TAILQ_NEXT((elm), field);  \
     } while (0)
 
+// TODO : 存在BUG
 #define CPP_TAILQ_INSERT_TAIL(head, elm, field) do              \
     {                                                           \
         CPP_TAILQ_NEXT((elm), field) = NULL;                    \
@@ -138,6 +127,17 @@ do {                                                \
         *(head)->tqh_last = (elm);                              \
         (head)->tqh_last = &CPP_TAILQ_NEXT((elm), field);       \
         CPP_TAILQ_INCR(head);                                   \
+    } while (0)
+
+#define CPP_TAILQ_CONCAT(head1, head2, field)       do      \
+    {                                                       \
+        if (!CPP_TAILQ_EMPTY(head2)) {                      \
+            *(head1)->tqh_last = (head2)->tqh_first;        \
+            (head2)->tqh_first->field.tqe_prev = (head1)->tqh_last; \
+            (head1)->tqh_last = (head2)->tqh_last;      \
+            (head1)->tqh_size = (head1)->tqh_size + (head2)->tqh_size; \
+            CPP_TAILQ_INIT((head2));                    \
+        }                                               \
     } while (0)
 
 #define CPP_TAILQ_POP(head, elm, field) do                  \
@@ -209,17 +209,17 @@ public:
 
 // 对象池
 template<typename ValueType>
-class UtilsPtrPool
+class UtilPtrPool
 {
 public:
     typedef typename std::queue<ValueType*> PtrQueue;
 
 public:
-    explicit UtilsPtrPool(uint32_t max = 500) : 
+    explicit UtilPtrPool(uint32_t max = 500) : 
         m_max_free_(max), m_total_(0)
     { }
 
-    ~UtilsPtrPool()
+    ~UtilPtrPool()
     {
         ValueType* ptr = NULL;
         while (!m_ptr_list_.empty())
@@ -356,11 +356,12 @@ public:
         }
     }
 
-protected:
+protected: 
     class PlaceHolder 
     {
     public:
         virtual ~PlaceHolder() {}
+
     public:
         virtual const std::type_info& GetType() const = 0;
         virtual PlaceHolder* Clone() const = 0;

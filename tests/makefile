@@ -46,16 +46,19 @@ c:
 	$(INCLUDE) $(GTEST_LIB) ./libucontext.a $(FLAGS) -o mt_c_unittest
 
 session:
-	g++ mt_ext_unittest.cpp $(SRC)/mt_ext.cpp \
-	$(SRC)/mt_connection.cpp $(SRC)/mt_thread.cpp $(SRC)/mt_c.cpp \
-	$(SRC)/mt_core.cpp $(SRC)/mt_sys_hook.cpp \
-	$(INCLUDE) $(GTEST_LIB) ./libucontext.a $(FLAGS) -o mt_ext_unittest
+	g++ st_session_unittest.cpp $(COMM_SRC) \
+	$(SRC)/st_thread.cpp $(SRC)/st_sys.cpp $(SRC)/st_manager.cpp \
+	$(INCLUDE) $(GTEST_LIB) ./libucontext.a $(FLAGS) -o st_session_unittest
 
-frame:
-	g++ mt_frame_unittest.cpp $(SRC)/mt_connection.cpp \
-	$(SRC)/mt_core.cpp $(SRC)/mt_thread.cpp \
-	$(SRC)/mt_ext.cpp $(SRC)/mt_sys_hook.cpp \
-	$(INCLUDE) $(GTEST_LIB) ./libucontext.a $(FLAGS) -o mt_frame_unittest
+manager:
+	g++ st_manager_unittest.cpp $(COMM_SRC) \
+	$(SRC)/st_thread.cpp $(SRC)/st_sys.cpp $(SRC)/st_manager.cpp \
+	$(INCLUDE) $(GTEST_LIB) ./libucontext.a $(FLAGS) -o st_manager_unittest
+
+server:
+	g++ st_server_unittest.cpp $(COMM_SRC) \
+	$(SRC)/st_thread.cpp $(SRC)/st_sys.cpp $(SRC)/st_manager.cpp \
+	$(INCLUDE) $(GTEST_LIB) ./libucontext.a $(FLAGS) -o st_server_unittest
 
 ucontext:
 	gcc -c $(SRC)/st_asm.S $(FLAGS) -o ./st_asm.o
@@ -71,9 +74,6 @@ mt_server:
 	$(SRC)/mt_connection.cpp $(SRC)/mt_core.cpp \
 	$(SRC)/mt_ext.cpp $(SRC)/mt_c.cpp $(SRC)/mt_thread.cpp \
 	$(INCLUDE) $(GTEST_LIB) ./libucontext.a $(FLAGS) -o mt_server_unittest
-
-server:
-	g++ server_unittest.cpp $(FLAGS) -o server_unittest
 
 queue:
 	g++ queue_unittest.cpp $(FLAGS) -o queue_unittest
