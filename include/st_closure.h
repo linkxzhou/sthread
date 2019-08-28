@@ -80,6 +80,32 @@ private:
     Arg2 m_arg2_;
 }; 
 
+template <class Funct, class Arg1, class Arg2, class Arg3>
+class Closure3: public Closure 
+{
+public:
+    Closure3(Funct fun, Arg1 arg1, Arg2 arg2, Arg3 arg3) 
+    {
+        m_fun_ = fun;
+        m_arg1_ = arg1;
+        m_arg2_ = arg2;
+        m_arg3_ = arg3;
+    }
+
+    virtual ~Closure3() { }
+
+    virtual void Run() 
+    {
+        (*m_fun_)(m_arg1_, m_arg2_, m_arg3_);
+    }
+
+private:
+    Funct m_fun_;
+    Arg1 m_arg1_;
+    Arg2 m_arg2_;
+    Arg3 m_arg3_;
+}; 
+
 template <class Object, class Funct> 
 class ObjectClosure0: public Closure 
 {
@@ -106,7 +132,8 @@ template <class Object, class Funct, class Arg1>
 class ObjectClosure1: public Closure 
 {
 public:
-    ObjectClosure1(Object* p, Funct fun, Arg1 arg1) 
+    ObjectClosure1(Object* p, Funct fun, 
+        Arg1 arg1) 
     {
         m_p_ = p;
         m_fun_ = fun;
@@ -119,6 +146,7 @@ public:
     {
         (m_p_->*m_fun_)(m_arg1_);
     }
+
 private:
     Object* m_p_;
     Funct m_fun_;
@@ -129,7 +157,8 @@ template <class Object, class Funct, class Arg1, class Arg2>
 class ObjectClosure2: public Closure 
 {
 public:
-    ObjectClosure2(Object* p, Funct fun, Arg1 arg1, Arg2 arg2) 
+    ObjectClosure2(Object* p, Funct fun, 
+        Arg1 arg1, Arg2 arg2) 
     {
         m_p_ = p;
         m_fun_ = fun;
@@ -143,11 +172,41 @@ public:
     {
         (m_p_->*m_fun_)(m_arg1_, m_arg2_);
     }
+
 private:
     Object* m_p_;
     Funct m_fun_;
     Arg1 m_arg1_;
     Arg2 m_arg2_;
+};
+
+template <class Object, class Funct, class Arg1, class Arg2, class Arg3> 
+class ObjectClosure3: public Closure 
+{
+public:
+    ObjectClosure3(Object* p, Funct fun, 
+        Arg1 arg1, Arg2 arg2, Arg3 arg3) 
+    {
+        m_p_ = p;
+        m_fun_ = fun;
+        m_arg1_ = arg1;
+        m_arg2_ = arg2;
+        m_arg3_ = arg3;
+    }
+
+    virtual ~ObjectClosure3() { }
+    
+    virtual void Run() 
+    {
+        (m_p_->*m_fun_)(m_arg1_, m_arg2_, m_arg3_);
+    }
+
+private:
+    Object* m_p_;
+    Funct m_fun_;
+    Arg1 m_arg1_;
+    Arg2 m_arg2_;
+    Arg3 m_arg3_;
 };
 
 template<class R>
@@ -163,9 +222,19 @@ Closure* NewClosure(R (*fun)(Arg1), Arg1 arg1)
 }
 
 template<class R, class Arg1, class Arg2>
-Closure* NewClosure(R (*fun)(Arg1, Arg2), Arg1 arg1, Arg2 arg2) 
+Closure* NewClosure(R (*fun)(Arg1, Arg2), 
+    Arg1 arg1, Arg2 arg2) 
 {
-    return new Closure2<R (*)(Arg1, Arg2), Arg1, Arg2>(fun, arg1, arg2);
+    return new Closure2<R (*)(Arg1, Arg2), 
+        Arg1, Arg2>(fun, arg1, arg2);
+}
+
+template<class R, class Arg1, class Arg2, class Arg3>
+Closure* NewClosure(R (*fun)(Arg1, Arg2, Arg3), 
+    Arg1 arg1, Arg2 arg2, Arg3 arg3) 
+{
+    return new Closure3<R (*)(Arg1, Arg2, Arg3), 
+        Arg1, Arg2, Arg3>(fun, arg1, arg2, arg3);
 }
 
 template<class R, class Object>
@@ -175,15 +244,31 @@ Closure* NewClosure(Object* object, R (Object::* fun)())
 }
 
 template<class R, class Object, class Arg1>
-Closure* NewClosure(Object* object, R (Object::* fun)(Arg1), Arg1 arg1) 
+Closure* NewClosure(Object* object, 
+    R (Object::* fun)(Arg1), Arg1 arg1) 
 {
-    return new ObjectClosure1<Object, R (Object::* )(Arg1), Arg1>(object, fun, arg1);
+    return new ObjectClosure1<Object, 
+        R (Object::* )(Arg1), Arg1>(object, fun, arg1);
 }
 
 template<class R, class Object, class Arg1, class Arg2>
-Closure* NewClosure(Object* object, R (Object::* fun)(Arg1, Arg2), Arg1 arg1, Arg2 arg2) 
+Closure* NewClosure(Object* object, 
+    R (Object::* fun)(Arg1, Arg2), 
+    Arg1 arg1, Arg2 arg2) 
 {
-    return new ObjectClosure2<Object, R (Object::*)(Arg1, Arg2), Arg1, Arg2>(object, fun, arg1, arg2);
+    return new ObjectClosure2<Object, 
+        R (Object::*)(Arg1, Arg2), 
+        Arg1, Arg2>(object, fun, arg1, arg2);
+}
+
+template<class R, class Object, class Arg1, class Arg2, class Arg3>
+Closure* NewClosure(Object* object, 
+    R (Object::* fun)(Arg1, Arg2, Arg3), 
+    Arg1 arg1, Arg2 arg2, Arg3 arg3) 
+{
+    return new ObjectClosure3<Object, 
+        R (Object::*)(Arg1, Arg2, Arg3), 
+        Arg1, Arg2, Arg3>(object, fun, arg1, arg2, arg3);
 }
 
 #endif // _ST_CLOSURE_H_INCLUDED_

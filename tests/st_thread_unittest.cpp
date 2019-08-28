@@ -13,7 +13,7 @@ TEST(ThreadTest, ThreadScheduler)
     t2->SetName("Daemon");
     t3->SetName("Primo");
 
-    ThreadScheduler *s2 = GetInstance<ThreadScheduler>();
+    ThreadScheduler *s2 = GetThreadScheduler();
     s2->SetDaemonThread(t2);
     s2->SetPrimoThread(t3);
     s2->ResetHeapSize(100);
@@ -38,12 +38,12 @@ TEST(ThreadTest, EventScheduler)
     t2->SetName("Daemon");
     t3->SetName("Primo");
 
-    ThreadScheduler *s2 = GetInstance<ThreadScheduler>();
+    ThreadScheduler *s2 = GetThreadScheduler();
     s2->SetDaemonThread(t2);
     s2->SetPrimoThread(t3);
     s2->ResetHeapSize(100);
 
-    EventScheduler *s3 = GetInstance<EventScheduler>();
+    EventScheduler *s3 = GetEventScheduler();
     s3->Wait(3000);
 }
 

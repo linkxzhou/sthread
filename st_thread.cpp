@@ -138,11 +138,9 @@ int ThreadScheduler::IOWaitToRunable(ThreadItem* thread)
         return -1;
     }
 
-    LOG_TRACE("m_active_thread_, thread : %p, %p", 
-        m_active_thread_, thread);
-
     RemoveIOWait(thread);
     InsertRunable(thread);
+
     return 0;
 }
 
@@ -153,9 +151,6 @@ int ThreadScheduler::RemoveIOWait(ThreadItem* thread)
         LOG_ERROR("active thread NULL, (%p)", thread);
         return -1;
     }
-
-    LOG_TRACE("m_active_thread_, thread : %p, %p", 
-        m_active_thread_, thread);
 
     thread->UnsetFlag(eIO_LIST);
     LOG_TRACE("remove thread: %p, m_io_list_ size: %d", 
@@ -174,9 +169,6 @@ int ThreadScheduler::InsertIOWait(ThreadItem* thread)
         return -1;
     }
 
-    LOG_TRACE("m_active_thread_, thread: %p, %p", 
-        m_active_thread_, thread);
-
     thread->SetFlag(eIO_LIST);
     thread->SetState(eIOWAIT);
     CPP_TAILQ_INSERT_TAIL(&m_io_list_, thread, m_next_);
@@ -193,9 +185,6 @@ int ThreadScheduler::InsertRunable(ThreadItem* thread)
         return -1;
     }
 
-    LOG_TRACE("m_active_thread_, thread: %p, %p", 
-        m_active_thread_, thread);
-
     thread->SetFlag(eRUN_LIST);
     thread->SetState(eRUNABLE);
     CPP_TAILQ_INSERT_TAIL(&m_run_list_, thread, m_next_);
@@ -210,9 +199,6 @@ int ThreadScheduler::RemoveRunable(ThreadItem* thread)
         LOG_ERROR("active thread NULL, (%p)", thread);
         return -1;
     }
-
-    LOG_TRACE("m_active_thread_, thread: %p, %p", 
-        m_active_thread_, thread);
 
     thread->UnsetFlag(eRUN_LIST);
     LOG_TRACE("remove thread: %p, m_io_list_ size: %d", 
@@ -230,9 +216,6 @@ ThreadItem* ThreadScheduler::PopRunable()
     {
         thread->UnsetFlag(eRUN_LIST);
     }
-
-    LOG_TRACE("m_active_thread_, thread: %p, %p", 
-        m_active_thread_, thread);
 
     return thread;
 }
@@ -259,9 +242,6 @@ void ThreadScheduler::InsertSleep(ThreadItem* thread)
     thread->SetFlag(eSLEEP_LIST);
     thread->SetState(eSLEEPING);
     m_sleep_list_.HeapPush(thread);
-
-    LOG_TRACE("m_active_thread_, thread: %p, %p", 
-        m_active_thread_, thread);
 }
 
 void ThreadScheduler::WakeupParent(ThreadItem* thread)
@@ -511,7 +491,7 @@ bool EventScheduler::Delete(StEventItem* item)
             LOG_ERROR("del fd: %d failed", osfd);
             return false;
         }
-
+        
         old_item->SetEvents(new_events);
     }
 
@@ -586,7 +566,9 @@ void EventScheduler::Dispatch(int fdnum)
         {
             LOG_TRACE("ST_EVERR osfd: %d fdnum: %d", osfd, fdnum);
             item->HangupNotify();
+
             Delete(item);
+            
             continue;
         }
 
@@ -711,7 +693,9 @@ bool EventScheduler::Schedule(ThreadItem* thread,
         	recv_num++;
         }
     }
+
     Delete(recv_fdset);
+    
     // 如果没有收到任何recv事件则表示超时或者异常
     if (recv_num == 0)
     {

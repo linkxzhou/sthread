@@ -5,10 +5,8 @@ ST_NAMESPACE_USING
 int _sendto(int fd, const void *msg, int len, int flags, 
     const struct sockaddr *to, int tolen, int timeout)
 {
-    Manager *manager = GetInstance<Manager>();
-    int64_t start = manager->GetLastClock();
-    Thread* thread = (Thread*)(manager->
-        m_thread_scheduler_->GetActiveThread());
+    int64_t start = Util::SysMs();
+    Thread* thread = (Thread*)(GetThreadScheduler()->GetActiveThread());
 
     LOG_TRACE("---------- [name : %s] -----------", thread->GetName());
     int64_t now = 0;
@@ -25,7 +23,7 @@ int _sendto(int fd, const void *msg, int len, int flags,
         }
 
         // 判断是否超时
-        now = manager->GetLastClock();
+        now = Util::SysMs();
         if ((int)(now - start) > timeout)
         {
             errno = ETIME;
@@ -44,21 +42,22 @@ int _sendto(int fd, const void *msg, int len, int flags,
             return -1;
         }
 
-        StEventItem* item = manager->m_event_scheduler_->GetEventItem(fd);
+        StEventItem* item = GetEventScheduler()->GetEventItem(fd);
         if (item == NULL)
         {
             LOG_ERROR("item is NULL");
             return -2;
         }
+        item->DisableInput();
         item->EnableOutput();
         item->SetOwnerThread(thread);
-        int64_t wakeup_timeout = timeout + manager->GetLastClock();
-        if (!(manager->m_event_scheduler_->Schedule(thread, NULL, item, wakeup_timeout)))
+        int64_t wakeup_timeout = timeout + Util::SysMs();
+        if (!(GetEventScheduler()->Schedule(thread, NULL, item, wakeup_timeout)))
         {
             LOG_ERROR("item schedule failed, errno: %d, strerr: %s", 
                     errno, strerror(errno));
             // 释放item数据
-            manager->m_item_pool_.FreePtr(item);
+            FreePtrStEventItem(item);
             return -3;
         }
     }
@@ -69,10 +68,8 @@ int _sendto(int fd, const void *msg, int len, int flags,
 int _recvfrom(int fd, void *buf, int len, int flags, 
     struct sockaddr *from, socklen_t *fromlen, int timeout)
 {
-    Manager *manager = GetInstance<Manager>();
-    int64_t start = manager->GetLastClock();
-    Thread* thread = (Thread*)(manager->
-        m_thread_scheduler_->GetActiveThread());
+    int64_t start = Util::SysMs();
+    Thread* thread = (Thread*)(GetThreadScheduler()->GetActiveThread());
 
     LOG_TRACE("---------- [name : %s] -----------", thread->GetName());
     int64_t now = 0;
@@ -80,28 +77,29 @@ int _recvfrom(int fd, void *buf, int len, int flags,
 
     while (true)
     {
-        now = manager->GetLastClock();
+        now = Util::SysMs();
         if ((int)(now - start) > timeout)
         {
             errno = ETIME;
             return -1;
         }
 
-        StEventItem* item = manager->m_event_scheduler_->GetEventItem(fd);
+        StEventItem* item = GetEventScheduler()->GetEventItem(fd);
         if (item == NULL)
         {
             LOG_ERROR("item is NULL");
             return -2;
         }
+        item->DisableOutput();
         item->EnableInput();
         item->SetOwnerThread(thread);
-        int64_t wakeup_timeout = timeout + manager->GetLastClock();
-        if (!(manager->m_event_scheduler_->Schedule(thread, NULL, item, wakeup_timeout)))
+        int64_t wakeup_timeout = timeout + Util::SysMs();
+        if (!(GetEventScheduler()->Schedule(thread, NULL, item, wakeup_timeout)))
         {
             LOG_ERROR("item schedule failed, errno: %d, strerr: %s", 
                     errno, strerror(errno));
             // 释放item数据
-            manager->m_item_pool_.FreePtr(item);
+            FreePtrStEventItem(item);
             return -3;
         }
 
@@ -135,10 +133,8 @@ int _recvfrom(int fd, void *buf, int len, int flags,
 
 int _connect(int fd, const struct sockaddr *addr, int addrlen, int timeout)
 {
-    Manager *manager = GetInstance<Manager>();
-    int64_t start = manager->GetLastClock();
-    Thread* thread = (Thread*)(manager->
-        m_thread_scheduler_->GetActiveThread());
+    int64_t start = Util::SysMs();
+    Thread* thread = (Thread*)(GetThreadScheduler()->GetActiveThread());
 
     LOG_TRACE("---------- [name : %s] -----------", thread->GetName());
     int64_t now = 0;
@@ -148,7 +144,7 @@ int _connect(int fd, const struct sockaddr *addr, int addrlen, int timeout)
     while ((n = st_connect(fd, addr, addrlen)) < 0)
     {
         LOG_TRACE("connect n : %d, errno : %d, strerror : %s", n, errno, strerror(errno));
-        now = manager->GetLastClock();
+        now = Util::SysMs();
         LOG_TRACE("now : %ld, start : %ld", now, start);
         if ((int)(now - start) > timeout)
         {
@@ -174,21 +170,22 @@ int _connect(int fd, const struct sockaddr *addr, int addrlen, int timeout)
             return -1;
         }
 
-        StEventItem* item = manager->m_event_scheduler_->GetEventItem(fd);
+        StEventItem* item = GetEventScheduler()->GetEventItem(fd);
         if (item == NULL)
         {
             LOG_ERROR("item is NULL");
             return -2;
         }
+        item->DisableInput();
         item->EnableOutput();
         item->SetOwnerThread(thread);
-        int64_t wakeup_timeout = timeout + manager->GetLastClock();
-        if (!(manager->m_event_scheduler_->Schedule(thread, NULL, item, wakeup_timeout)))
+        int64_t wakeup_timeout = timeout + Util::SysMs();
+        if (!(GetEventScheduler()->Schedule(thread, NULL, item, wakeup_timeout)))
         {
             LOG_ERROR("item schedule failed, errno: %d, strerr: %s", 
                     errno, strerror(errno));
             // 释放item数据
-            manager->m_item_pool_.FreePtr(item);
+            FreePtrStEventItem(item);
             return -3;
         }
     }
@@ -198,10 +195,8 @@ int _connect(int fd, const struct sockaddr *addr, int addrlen, int timeout)
 
 ssize_t _read(int fd, void *buf, size_t nbyte, int timeout)
 {
-    Manager *manager = GetInstance<Manager>();
-    int64_t start = manager->GetLastClock();
-    Thread* thread = (Thread*)(manager->
-        m_thread_scheduler_->GetActiveThread());
+    int64_t start = Util::SysMs();
+    Thread* thread = (Thread*)(GetThreadScheduler()->GetActiveThread());
 
     LOG_TRACE("---------- [name : %s] -----------", thread->GetName());
     int64_t now = 0;
@@ -216,7 +211,7 @@ ssize_t _read(int fd, void *buf, size_t nbyte, int timeout)
             return 0;
         }
 
-        now = manager->GetLastClock();
+        now = Util::SysMs();
         if ((int)(now - start) > timeout)
         {
             errno = ETIME;
@@ -234,21 +229,22 @@ ssize_t _read(int fd, void *buf, size_t nbyte, int timeout)
             return -1;
         }
 
-        StEventItem* item = manager->m_event_scheduler_->GetEventItem(fd);
+        StEventItem* item = GetEventScheduler()->GetEventItem(fd);
         if (item == NULL)
         {
             LOG_ERROR("item is NULL");
             return -2;
         }
+        item->DisableOutput();
         item->EnableInput();
         item->SetOwnerThread(thread);
-        int64_t wakeup_timeout = timeout + manager->GetLastClock();
-        if (!(manager->m_event_scheduler_->Schedule(thread, NULL, item, wakeup_timeout)))
+        int64_t wakeup_timeout = timeout + Util::SysMs();
+        if (!(GetEventScheduler()->Schedule(thread, NULL, item, wakeup_timeout)))
         {
             LOG_ERROR("item schedule failed, errno: %d, strerr: %s", 
                     errno, strerror(errno));
             // 释放item数据
-            manager->m_item_pool_.FreePtr(item);
+            FreePtrStEventItem(item);
             return -3;
         }
     }
@@ -258,10 +254,8 @@ ssize_t _read(int fd, void *buf, size_t nbyte, int timeout)
 
 ssize_t _write(int fd, const void *buf, size_t nbyte, int timeout)
 {
-    Manager *manager = GetInstance<Manager>();
-    int64_t start = manager->GetLastClock();
-    Thread* thread = (Thread*)(manager->
-        m_thread_scheduler_->GetActiveThread());
+    int64_t start = Util::SysMs();
+    Thread* thread = (Thread*)(GetThreadScheduler()->GetActiveThread());
 
     LOG_TRACE("---------- [name : %s] -----------", thread->GetName());
     int64_t now = 0;
@@ -271,7 +265,7 @@ ssize_t _write(int fd, const void *buf, size_t nbyte, int timeout)
     size_t send_len = 0;
     while (send_len < nbyte)
     {
-        now = manager->GetLastClock();
+        now = Util::SysMs();
         if ((int)(now - start) > timeout)
         {
             errno = ETIME;
@@ -306,21 +300,22 @@ ssize_t _write(int fd, const void *buf, size_t nbyte, int timeout)
             }
         }
 
-        StEventItem* item = manager->m_event_scheduler_->GetEventItem(fd);
+        StEventItem* item = GetEventScheduler()->GetEventItem(fd);
         if (item == NULL)
         {
             LOG_ERROR("item is NULL");
             return -2;
         }
+        item->DisableInput();
         item->EnableOutput();
         item->SetOwnerThread(thread);
-        int64_t wakeup_timeout = timeout + manager->GetLastClock();
-        if (!(manager->m_event_scheduler_->Schedule(thread, NULL, item, wakeup_timeout)))
+        int64_t wakeup_timeout = timeout + Util::SysMs();
+        if (!(GetEventScheduler()->Schedule(thread, NULL, item, wakeup_timeout)))
         {
             LOG_ERROR("item schedule failed, errno: %d, strerr: %s", 
                     errno, strerror(errno));
             // 释放item数据
-            manager->m_item_pool_.FreePtr(item);
+            FreePtrStEventItem(item);
             return -3;
         }
     }
@@ -330,10 +325,8 @@ ssize_t _write(int fd, const void *buf, size_t nbyte, int timeout)
 
 int _recv(int fd, void *buf, int len, int flags, int timeout)
 {
-    Manager *manager = GetInstance<Manager>();
-    int64_t start = manager->GetLastClock();
-    Thread* thread = (Thread*)(manager->
-        m_thread_scheduler_->GetActiveThread());
+    int64_t start = Util::SysMs();
+    Thread* thread = (Thread*)(GetThreadScheduler()->GetActiveThread());
 
     LOG_TRACE("---------- [name: %s] -----------", thread->GetName());
     int64_t now = 0;
@@ -341,7 +334,7 @@ int _recv(int fd, void *buf, int len, int flags, int timeout)
 
     while (true)
     {
-        now = manager->GetLastClock();
+        now = Util::SysMs();
         LOG_TRACE("now time: %ld, start time: %ld", now, start);
         if ((int)(now - start) > timeout)
         {
@@ -349,21 +342,22 @@ int _recv(int fd, void *buf, int len, int flags, int timeout)
             return -1;
         }
 
-        StEventItem* item = manager->m_event_scheduler_->GetEventItem(fd);
+        StEventItem* item = GetEventScheduler()->GetEventItem(fd);
         if (item == NULL)
         {
             LOG_ERROR("item is NULL");
             return -2;
         }
+        item->DisableOutput();
         item->EnableInput();
         item->SetOwnerThread(thread);
-        int64_t wakeup_timeout = timeout + manager->GetLastClock();
-        if (!(manager->m_event_scheduler_->Schedule(thread, NULL, item, wakeup_timeout)))
+        int64_t wakeup_timeout = timeout + Util::SysMs();
+        if (!(GetEventScheduler()->Schedule(thread, NULL, item, wakeup_timeout)))
         {
             LOG_ERROR("item schedule failed, errno: %d, strerr: %s", 
                     errno, strerror(errno));
             // 释放item数据
-            manager->m_item_pool_.FreePtr(item);
+            FreePtrStEventItem(item);
             return -3;
         }
 
@@ -396,10 +390,8 @@ int _recv(int fd, void *buf, int len, int flags, int timeout)
 
 ssize_t _send(int fd, const void *buf, size_t nbyte, int flags, int timeout)
 {
-    Manager *manager = GetInstance<Manager>();
-    int64_t start = manager->GetLastClock();
-    Thread* thread = (Thread*)(manager->
-        m_thread_scheduler_->GetActiveThread());
+    int64_t start = Util::SysMs();
+    Thread* thread = (Thread*)(GetThreadScheduler()->GetActiveThread());
 
     LOG_TRACE("---------- [name : %s] -----------", thread->GetName());
     int64_t now = 0;
@@ -409,7 +401,7 @@ ssize_t _send(int fd, const void *buf, size_t nbyte, int flags, int timeout)
     size_t send_len = 0;
     while (send_len < nbyte)
     {
-        now = manager->GetLastClock();
+        now = Util::SysMs();
         if ((int)(now - start) > timeout)
         {
             errno = ETIME; // 超时请求
@@ -447,21 +439,22 @@ ssize_t _send(int fd, const void *buf, size_t nbyte, int flags, int timeout)
             }
         }
 
-        StEventItem* item = manager->m_event_scheduler_->GetEventItem(fd);
+        StEventItem* item = GetEventScheduler()->GetEventItem(fd);
         if (item == NULL)
         {
             LOG_ERROR("item is NULL");
             return -2;
         }
+        item->DisableInput();
         item->EnableOutput();
         item->SetOwnerThread(thread);
-        int64_t wakeup_timeout = timeout + manager->GetLastClock();
-        if (!(manager->m_event_scheduler_->Schedule(thread, NULL, item, wakeup_timeout)))
+        int64_t wakeup_timeout = timeout + Util::SysMs();
+        if (!(GetEventScheduler()->Schedule(thread, NULL, item, wakeup_timeout)))
         {
             LOG_ERROR("item schedule failed, errno: %d, strerr: %s", 
                     errno, strerror(errno));
             // 释放item数据
-            manager->m_item_pool_.FreePtr(item);
+            FreePtrStEventItem(item);
             return -3;
         }
     }
@@ -471,20 +464,16 @@ ssize_t _send(int fd, const void *buf, size_t nbyte, int flags, int timeout)
 
 void _sleep(int ms)
 {
-    Manager *manager = GetInstance<Manager>();
-    Thread* thread = (Thread*)(manager->
-        m_thread_scheduler_->GetActiveThread());
+    Thread* thread = (Thread*)(GetThreadScheduler()->GetActiveThread());
     if (thread != NULL)
     {
         thread->Sleep(ms);
     }
 }
 
-int _accept(int fd, struct sockaddr *addr, socklen_t *addrlen, int timeout)
+int _accept(int fd, struct sockaddr *addr, socklen_t *addrlen)
 {
-    Manager *manager = GetInstance<Manager>();
-    Thread* thread = (Thread*)(manager->
-        m_thread_scheduler_->GetActiveThread());
+    Thread* thread = (Thread*)(GetThreadScheduler()->GetActiveThread());
 
     int connfd = -1;
     while ((connfd = st_accept(fd, addr, addrlen)) < 0)
@@ -501,21 +490,21 @@ int _accept(int fd, struct sockaddr *addr, socklen_t *addrlen, int timeout)
             return -1;
         }
 
-        StEventItem* item = manager->m_event_scheduler_->GetEventItem(fd);
+        StEventItem* item = GetEventScheduler()->GetEventItem(fd);
         if (item == NULL)
         {
             LOG_ERROR("item is NULL");
             return -2;
         }
+        item->DisableOutput();
         item->EnableInput();
         item->SetOwnerThread(thread);
-        int64_t wakeup_timeout = timeout + manager->GetLastClock();
-        if (!(manager->m_event_scheduler_->Schedule(thread, NULL, item, wakeup_timeout)))
+        if (!(GetEventScheduler()->Schedule(thread, NULL, item, -1)))
         {
             LOG_ERROR("item schedule failed, errno: %d, strerr: %s", 
                     errno, strerror(errno));
             // 释放item数据
-            manager->m_item_pool_.FreePtr(item);
+            FreePtrStEventItem(item);
             return -3;
         }
     }

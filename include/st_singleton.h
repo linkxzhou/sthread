@@ -23,9 +23,11 @@ template <typename T>
 class Singleton
 {
 protected:
-    Singleton() { }
+    Singleton() 
+    { }
 
-    ~Singleton() { }
+    ~Singleton() 
+    { }
     
 public:
     static T * GetInstance()
@@ -33,7 +35,6 @@ public:
 #if __cplusplus < 201103L
         if (NULL == m_pinstance_)
         {
-            // double check 
             pthread_mutex_lock(&m_mutex_);
    
             if (NULL == m_pinstance_)
@@ -41,6 +42,8 @@ public:
                 m_pinstance_ = new T();
                 m_deleter_.Set(m_pinstance_);
             }
+
+            pthread_mutex_unlock(&m_mutex_);
         }
 
         return m_pinstance_;

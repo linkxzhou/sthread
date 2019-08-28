@@ -90,11 +90,6 @@
 #define ST_VAR(s, s2, n)       (((n) < 2) ? 0.0 : ((s2) - ST_SQUARE(s)/(n)) / ((n) - 1))
 #define ST_STDDEV(s, s2, n)    (((n) < 2) ? 0.0 : sqrt(ST_VAR((s), (s2), (n))))
 
-// 回调函数
-// typedef void (*ThreadRunCallback)(void*);
-// typedef unsigned int (*TcpCheckMsgLenCallback)(void* buf, int len);
-// typedef void (*FrameCallback)(void*);
-
 typedef enum
 {
     eBUFF_UNDEF  =  0x0,

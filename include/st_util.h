@@ -13,6 +13,7 @@
 #include <arpa/inet.h>
 #include <typeinfo>
 #include <sys/resource.h>
+#include <pthread.h>
 
 #include "st_public.h"
 #include "st_singleton.h"
@@ -62,12 +63,16 @@ template<class T>
 class CPP_TAILQ_ENTRY 
 {
 public:
-    CPP_TAILQ_ENTRY() : tqe_next(NULL), tqe_prev(NULL)
+    CPP_TAILQ_ENTRY() : 
+        tqe_next(NULL), 
+        tqe_prev(NULL),
+        remove_tag(true)
     { }
 
 public:
     T *tqe_next;  /* next element */
     T **tqe_prev; /* address of previous next element */
+    bool remove_tag;
 };
 
 template<class T>
@@ -110,23 +115,26 @@ public:
 
 #define CPP_TAILQ_REMOVE(head, elm, field) do                   \
     {                                                           \
+        if ((elm)->field.remove_tag) break;                     \
         if ((CPP_TAILQ_NEXT((elm), field)) != NULL)             \
             CPP_TAILQ_NEXT((elm), field)->field.tqe_prev =      \
                 (elm)->field.tqe_prev;                          \
         else                                                    \
             (head)->tqh_last = (elm)->field.tqe_prev;           \
         CPP_TAILQ_DECR(head);                                   \
+        (elm)->field.remove_tag = true;                        \
         *(elm)->field.tqe_prev = CPP_TAILQ_NEXT((elm), field);  \
     } while (0)
 
-// TODO : 存在BUG
 #define CPP_TAILQ_INSERT_TAIL(head, elm, field) do              \
     {                                                           \
+        CPP_TAILQ_REMOVE(head, elm, field);                     \
         CPP_TAILQ_NEXT((elm), field) = NULL;                    \
         (elm)->field.tqe_prev = (head)->tqh_last;               \
         *(head)->tqh_last = (elm);                              \
         (head)->tqh_last = &CPP_TAILQ_NEXT((elm), field);       \
         CPP_TAILQ_INCR(head);                                   \
+        (elm)->field.remove_tag = false;                        \
     } while (0)
 
 #define CPP_TAILQ_CONCAT(head1, head2, field)       do      \
@@ -165,6 +173,7 @@ public:
     inline static void SysUSleep(uint64_t u_seconds)
     {
         ::usleep(u_seconds);
+
         return ;
     }
     
@@ -172,7 +181,8 @@ public:
     static uint32_t MaxPrimeNum(uint32_t num)
     {
         uint32_t sqrt_value = (uint32_t)sqrt(num);
-        for (uint32_t i = (num % 2 == 0) ? (num - 1) : num; i > 0; i -= 2)
+        for (uint32_t i = ((num % 2 == 0) ? (num - 1) : num); 
+            i > 0; i -= 2)
         {
             uint32_t flag = 1;
             for (uint32_t k = 2; k <= sqrt_value; k++)
@@ -196,14 +206,19 @@ public:
     // 生成唯一的uniqid
     static uint64_t GetUniqid()
     {
-        static uint64_t id = 1;
-        // 重置
+        static uint64_t id = 0;
+        static pthread_mutex_t mutex;
+
+        uint64_t rid = id;
+        pthread_mutex_lock(&mutex);
         if (unlikely(id >= 0xFFFFFFFF))
         {
             id = 1;
         }
+        rid = ++id;
+        pthread_mutex_unlock(&mutex);
 
-        return ++id;
+        return rid;
     }
 };
 
@@ -212,10 +227,10 @@ template<typename ValueType>
 class UtilPtrPool
 {
 public:
-    typedef typename std::queue<ValueType*> PtrQueue;
+    typedef typename std::queue<ValueType*> QueuePtr;
 
 public:
-    explicit UtilPtrPool(uint32_t max = 500) : 
+    explicit UtilPtrPool(uint32_t max = 256) : 
         m_max_free_(max), m_total_(0)
     { }
 
@@ -252,7 +267,7 @@ public:
         return ptr;
     }
     
-    void FreePtr(ValueType* ptr)
+    void FreePtr(ValueType *ptr)
     {
         if ((uint32_t)m_ptr_list_.size() >= m_max_free_)
         {
@@ -266,7 +281,7 @@ public:
     }
 
 protected:
-    PtrQueue    m_ptr_list_;
+    QueuePtr    m_ptr_list_;
     uint32_t    m_max_free_;
     uint32_t    m_total_;
 };
@@ -438,6 +453,7 @@ extern "C"
 #endif
 
 uint64_t get_sthreadid(void);
+
 void set_sthreadid(uint64_t sthreadid);
 
 #ifdef  __cplusplus

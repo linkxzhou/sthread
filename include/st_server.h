@@ -12,22 +12,31 @@
 
 ST_NAMESPACE_BEGIN
 
-class StServer : public referenceable
+class StServerConnection : public StConnectionItem
+{
+}; 
+
+template<typename ManagerT, typename ConnetionT>
+class StServer
 {
 public:
-    StServer(Manager *manager, uint32_t size = 1024) : 
+    StServer(ManagerT *manager) : 
+        m_osfd_(-1), 
         m_manager_(manager),
-        m_osfd_(-1),
-        m_buff_(NULL),
         m_item_(NULL)
     {
-        m_buff_ = GetInstance<StBufferPool>()->GetBuffer(size);
+        m_osfd_ = -1;
     }
 
-    // 默认使用TCP
-    virtual int CreateSocket(const char *ip, uint16_t port, bool is_ipv6 = false)
+    ~StServer()
     {
-        m_addr_.SetAddr(ip, port, is_ipv6);
+        FreePtrStEventItem(m_item_);
+    }
+
+    int32_t CreateSocket(const StNetAddress &addr)
+    {
+        m_addr_ = addr;
+
         m_osfd_ = st_socket(is_ipv6 ? AF_INET6 : AF_INET, SOCK_STREAM, 0);
         LOG_TRACE("m_osfd_: %d", m_osfd_);
         if (m_osfd_ < 0)
@@ -36,11 +45,13 @@ public:
             return -1;
         }
 
-        m_item_ = m_manager_->m_item_pool_.AllocPtr();
+        m_item_ = m_manager_->AllocStEventItem();
         ASSERT(m_item_ != NULL);
+
         m_item_->SetOsfd(m_osfd_);
-        m_item_->EnableInput();
-        m_manager_->m_event_scheduler_->Add(m_item_);
+        m_item_->EnableOutput();
+        m_item_->DisableInput();
+        GetEventScheduler()->Add(m_item_);
 
         struct sockaddr *servaddr;
         m_addr_.GetSockAddr(servaddr);
@@ -68,59 +79,57 @@ public:
         int connfd = -1;
         while (true)
         {
-            if ((connfd = ::_accept(m_osfd_, (struct sockaddr*)NULL, NULL, 3000)) <= 0)
+            if ((connfd = ::_accept(m_osfd_, (struct sockaddr*)NULL, NULL)) <= 0)
             {
                 LOG_TRACE("connfd: %d, errno: %d, errmsg: %s", 
                     connfd, errno, strerror(errno));
                 continue;
             }
 
+            
             LOG_TRACE("connfd: %d", connfd);
-            m_manager_->CreateThread(NewClosure(CallBack, this, connfd));
+            m_manager_->CreateThread(NewClosure(this, CallBack, connfd));
         }
     }
 
-    virtual int32_t RecvData()
+    virtual void CallBack(StServerConnection *conn)
     {
-        return 0;
-    }
+        StEventItem* item = svr->m_manager_->AllocStEventItem();
+        ASSERT(item != NULL);
 
-    virtual int32_t SendData()
-    {
-        return 0;
-    }
+        item->SetOsfd(conn->GetOsfd());
+        item->EnableInput();
+        item->DisableOutput();
+        GetEventScheduler()->Add(item);
 
-    inline void CloseSocket()
-    {
-        if (m_osfd_ > 0)
+        while (true)
         {
-            st_close(m_osfd_);
-            m_osfd_ = -1;
+            conn->RecvData();
+            conn->SendData();
+
+            // LOG_TRACE("svr: %p, fd: %d", svr, fd);
+            // char buf1[10240] = {'\0'};
+            // int n = ::_recv(fd, buf1, sizeof(buf1), 0, 3000);
+
+            // char buf2[10240];
+            // sprintf(buf2, "HTTP/1.1 200 OK\r\n"
+            //     "Content-Length: 1\r\n"
+            //     "Content-Type: text/html\r\n"
+            //     "Date: Mon, 12 Aug 2019 15:48:13 GMT\r\n"
+            //     "Server: sthread/1.0.1\r\n\r\n1");
+            // n = ::_send(fd, buf2, strlen(buf2), 0, 3000);
+            // LOG_TRACE("fd: %d, n: %d, buf: %s", fd, n, buf2);
+            // // st_close(fd);
         }
-    }
 
-    static void CallBack(StServer *svr, int fd)
-    {
-        LOG_TRACE("svr: %p, fd: %d", svr, fd);
-        char buf1[10240] = {'\0'};
-        int ret = ::_recv(fd, buf1, sizeof(buf1), 0, 3000);
-
-        char buf2[10240];
-        sprintf(buf2, "GET / HTTP/1.1\r\n"
-            "Host: www.baidu.com\r\n"
-            "User-Agent: curl/7.54.0\r\n"
-            "Accept: */*\r\n\r\n");
-        ret = ::_send(fd, buf2, strlen(buf2), 0, 3000);
-        LOG_TRACE("fd : %d, ret : %d, buf : %s", fd, ret, buf2);
-        st_showdown(fd);
+        FreePtrStEventItem(item);
     }
 
 private:
-    int                 m_osfd_;
-    StBuffer*           m_buff_;
-    StNetAddress        m_addr_;
-    Manager*            m_manager_;
-    StEventItem*        m_item_;
+    ManagerT*       m_manager_;
+    int             m_osfd_;
+    StNetAddress    m_addr_;
+    StEventItem*    m_item_;
 };
 
 ST_NAMESPACE_END

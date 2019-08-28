@@ -110,7 +110,8 @@ int st_close(int fd);
 
 int st_showdown(int fd);
 
-int st_connect(int fd, const struct sockaddr *address, socklen_t address_len);
+int st_connect(int fd, const struct sockaddr *address, 
+    socklen_t address_len);
 
 ssize_t st_read(int fd, void *buf, size_t nbyte);
 
@@ -127,13 +128,14 @@ ssize_t st_recv(int fd, void *buffer, size_t length, int flags);
 ssize_t st_send(int fd, const void *buf, size_t nbyte, int flags);
 
 int st_setsockopt(int fd, int level, int option_name, 
-                const void *option_value, socklen_t option_len);
+    const void *option_value, socklen_t option_len);
 
 int st_fcntl(int fd, int cmd, ...);
 
 int st_ioctl(int fd, uint64_t cmd, ...);
 
-int st_accept(int fd, struct sockaddr *address, socklen_t *address_len);
+int st_accept(int fd, struct sockaddr *address, 
+    socklen_t *address_len);
 
 #ifdef  __cplusplus
 }

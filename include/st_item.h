@@ -17,6 +17,8 @@
 
 #include "st_heap.h"
 #include "st_buffer.h"
+#include "st_netaddr.h"
+#include "st_sys.h"
 
 ST_NAMESPACE_BEGIN
 
@@ -280,16 +282,6 @@ public:
             CPP_TAILQ_INIT(&m_fdset_);
         }
 
-        // TODO : 防止重复插入数据
-        StEventItem* _item = NULL;
-        CPP_TAILQ_FOREACH(_item, &m_fdset_, m_next_)
-        {
-            if (item == _item)
-            {
-                return ;
-            }
-        }
-
         CPP_TAILQ_INSERT_TAIL(&m_fdset_, item, m_next_);
     }
 
@@ -364,6 +356,27 @@ public:
         strncpy(m_name_, name, sizeof(m_name_) - 1);
     }
 
+    ThreadItem* GetRootThread()
+    {
+	    eThreadType type = GetType();
+        ThreadItem *thread = this;
+	    ThreadItem *parent = thread;
+
+	    while (eSUB_THREAD == type)
+	    {
+	        thread = thread->GetParent();
+	        if (NULL == thread)
+	        {
+	            break;
+	        }
+
+	        type   = thread->GetType();
+	        parent = thread;
+	    }
+
+	    return parent;
+    }
+
 protected:
     eThreadState    m_state_;
     eThreadType     m_type_;
@@ -380,6 +393,116 @@ public:
     ThreadItemNext      m_next_, m_sub_next_;
     uint32_t            m_stack_size_;
     char                m_name_[64];
+};
+
+class StConnectionItem : public referenceable
+{
+public:
+    StConnectionItem() :
+        m_type_(eUNDEF_CONN),
+        m_osfd_(-1),
+        m_item_(NULL),
+        m_timeout_(ST_MAXINT)
+    { }
+
+    virtual int32_t CreateSocket(const StNetAddress &addr)
+    { 
+        return m_osfd_;
+    }
+
+    virtual int SendData();
+
+    virtual int RecvData();
+
+    inline void CloseSocket()
+    {
+        if (m_osfd_ > 0)
+        {
+            st_close(m_osfd_);
+            m_osfd_ = -1;
+        }
+    }
+
+    inline void SetBuffer(StBuffer *buf)
+    {
+        m_buf_ = buf;
+    }
+
+    // 获取message的buffer
+    inline StBuffer* GetBuffer()
+    {
+        return m_buf_;
+    }
+
+    inline void SetOsfd(int fd)
+    {
+        m_osfd_ = fd;
+    }
+
+    inline int GetOsfd()
+    {
+        return m_osfd_;
+    }
+
+    inline eConnType GetConnType()
+    {
+        return m_type_;
+    }
+
+    inline void SetEventItem(StEventItem *item)
+    {
+        m_item_ = item;
+    }
+
+    inline StEventItem* GetEventItem()
+    {
+        return m_item_;
+    }
+
+    // 设置超时时间
+    inline void SetTimeout(int32_t timeout)
+    {
+        m_timeout_ = timeout;
+    }
+
+    inline int32_t GetTimeout()
+    {
+        return m_timeout_;
+    }
+
+protected:
+    int             m_osfd_;
+    StBuffer*       m_buf_;
+    StNetAddress    m_addr_;
+
+    eConnType       m_type_;
+    StEventItem*    m_item_;
+    int32_t         m_timeout_;
+};
+
+class MessageItem
+{
+public:
+    virtual int32_t HandleProcess() 
+    { 
+        return -1; 
+    }
+
+    virtual ~MessageItem() 
+    { }
+
+    inline void SetDataPtr(void *data)
+    {
+        m_data_ = data;
+    }
+
+    inline void* GetDataPtr()
+    {
+        return m_data_;
+    }
+    
+private:
+    void *m_data_;
 };
 
 ST_NAMESPACE_END

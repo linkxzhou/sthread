@@ -27,12 +27,12 @@ public:
         m_recv_len_(0), 
         m_send_len_(0)
     {
-        m_msg_buff_ = malloc(max_len);
+        m_msg_buf_ = malloc(max_len);
     }
 
     ~StBuffer()
     {
-        st_safe_free(m_msg_buff_);
+        st_safe_free(m_msg_buf_);
     }
 
     inline void SetBufferType(eBuffType type)
@@ -70,7 +70,7 @@ public:
 
     inline void* GetBuffer()
     {
-        return m_msg_buff_;
+        return m_msg_buf_;
     }
 
     inline int32_t GetHaveSendLen()
@@ -95,7 +95,7 @@ public:
     
 private:
     int32_t     m_max_len_, m_msg_len_;
-    void*       m_msg_buff_;
+    void*       m_msg_buf_;
 
     eBuffType   m_buf_type_;
     int32_t     m_recv_len_;

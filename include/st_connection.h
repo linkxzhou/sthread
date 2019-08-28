@@ -11,156 +11,48 @@
 
 ST_NAMESPACE_BEGIN
 
-// class StTask
-// {
-// public:
-//     virtual int32_t DoEncode() = 0;
-
-//     virtual int32_t DoInput() = 0;
-
-//     virtual int32_t DoProcess() = 0;
-    
-//     virtual int32_t DoError() = 0;
-
-//     inline void SetDstAddr(struct sockaddr_in* dst)
-//     {
-//         memcpy(&m_addr_, dst, sizeof(m_addr_));
-//     }
-
-//     inline struct sockaddr_in* GetMsgDstAddr()
-//     {
-//         return &m_addr_;
-//     }
-
-// protected:
-//     struct sockaddr_in  m_addr_;
-// };
-
 class StConnection;
 
 typedef CPP_TAILQ_HEAD<StConnection>    StConnectionQueue;
 typedef CPP_TAILQ_ENTRY<StConnection>   StConnectionNext;
 
-class StConnection : public referenceable
+template<typename ManagerT>
+class StConnection : public StConnectionItem
 {
 public:
     StConnection() : 
-        m_type_(eUNDEF_CONN), 
-        m_task_(NULL),
-        m_osfd_(-1), 
-        m_buff_(NULL), 
-        m_item_(NULL), 
-        m_timeout_(ST_MAXINT)
+        StConnectionItem()
     { }
 
     virtual ~StConnection()
     { }
 
-    inline eConnType GetConnType()
-    {
-        return m_type_;
-    }
-
-    inline void SetBuffer(StBuffer *buff)
-    {
-        m_buff_ = buff;
-    }
-
-    // 获取message的buffer
-    inline StBuffer* GetBuffer()
-    {
-        return m_buff_;
-    }
-
-    inline void SetEventItem(StEventItem *item)
-    {
-        m_item_ = item;
-    }
-
-    inline StEventItem* GetEventItem()
-    {
-        return m_item_;
-    }
-
-    inline int32_t CloseSocket()
-    {
-        if (m_osfd_ > 0)
-        {
-            mt_close(m_osfd_);
-            m_osfd_ = -1;
-        }
-
-        return 0;
-    }
-
-    inline int32_t GetOsfd()
-    {
-        return m_osfd_;
-    }
-
-    inline void SetAddr(struct sockaddr_in* dst)
-    {
-        memcpy(&m_dst_addr_, dst, sizeof(m_dst_addr_));
-    }
-
-    inline struct sockaddr_in* GetMsgDstAddr()
-    {
-        return &m_dst_addr_;
-    }
-
-    // 设置超时时间
-    inline void SetTimeout(int32_t timeout)
-    {
-        m_timeout_ = timeout;
-    }
-
-    inline int32_t GetTimeout()
-    {
-        return m_timeout_;
-    }
-
     inline void Reset()
     {
         // 清空buffer
-        if (NULL != m_msg_buff_)
-        {
-            GetInstance<IMsgBufferPool>()->FreeBuffer(m_msg_buff_);
-        }
-        m_action_ = NULL;
-        m_msg_buff_ = NULL;
-        m_keep_flag_ = 0;
+        // if (NULL != m_msg_buff_)
+        // {
+        //     GetInstance<IMsgBufferPool>()->FreeBuffer(m_msg_buff_);
+        // }
+        // m_action_ = NULL;
+        // m_msg_buff_ = NULL;
 
-        memset(&m_dst_addr_, 0, sizeof(m_dst_addr_));
-        CloseSocket();
-        ResetEventer();
+        // memset(&m_dst_addr_, 0, sizeof(m_dst_addr_));
+        // CloseSocket();
+        // ResetEventer();
     }
 
     void ResetEventer();
 
 public:
-    virtual int32_t CreateSocket(int32_t fd = -1) = 0;
+    virtual int32_t CreateSocket(const char *ip, uint16_t port, bool is_ipv6 = false) = 0;
 
     virtual int32_t SendData() = 0;
 
     virtual int32_t RecvData() = 0;
-
-    virtual int32_t OpenConnect()
-    {
-        return 0;
-    }
     
-protected:
-    eConnType           m_type_;
-    StTask*             m_task_;
-    StBuffer*        m_buff_;
-    StEventItem*        m_item_;
-
-    int32_t             m_osfd_;
-    StNetAddress        *m_addr_;
-    int32_t             m_timeout_;
-
 public:
-    StConnectionNext    m_entry_;
+    StConnectionNext    m_next_;
 };
 
 // // 请求链接的标识

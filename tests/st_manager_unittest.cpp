@@ -5,9 +5,9 @@
 
 ST_NAMESPACE_USING
 
-static void socket_callback(Manager *manager, int i)
+static void socket_callback(Manager<> *manager, int i)
 {
-    StEventItem* item = manager->m_item_pool_.AllocPtr();
+    StEventItem* item = manager->AllocStEventItem();
     LOG_TRACE("item node :%p, events :%d", item, item->GetEvents());
     ASSERT(item != NULL);
 
@@ -22,9 +22,8 @@ static void socket_callback(Manager *manager, int i)
 
     int socket_fd = st_socket(AF_INET, SOCK_STREAM, 0);
     item->SetOsfd(socket_fd);
-    item->EnableOutput();
     LOG_TRACE("item node :%p, events :%d", item, item->GetEvents());
-    manager->m_event_scheduler_->Add(item);
+    GetEventScheduler()->Add(item);
 
     // int nSendBuf = 20; // 设置为20字节
     // int ret = st_setsockopt(socket_fd, SOL_SOCKET, SO_SNDBUF,(const char*)&nSendBuf, sizeof(int));
@@ -38,7 +37,7 @@ static void socket_callback(Manager *manager, int i)
     }
 
     int ret = ::_connect(socket_fd, (struct sockaddr *)&servaddr, sizeof(servaddr), 3000);
-    LOG_TRACE("connect socket_fd : %d, ret : %d", socket_fd, ret);
+    LOG_TRACE("connect socket_fd: %d, ret: %d", socket_fd, ret);
 
     char buf1[10240];
     sprintf(buf1, "GET / HTTP/1.1\r\n"
@@ -46,27 +45,32 @@ static void socket_callback(Manager *manager, int i)
         "User-Agent: curl/7.54.0\r\n"
         "Accept: */*\r\n\r\n%d", i);
     char buf2[10240] = {'\0'};
+    LOG_TRACE("############# -1- ##############");
+    ret = ::_send(socket_fd, buf1, strlen(buf1), 0, 3000);
+    LOG_TRACE("socket_fd : %d, ret : %d, buf : %s", socket_fd, ret, buf1); 	
+    ret = ::_recv(socket_fd, buf2, sizeof(buf2), 0, 3000);
+    LOG_TRACE("############# -2- ##############");
     ret = ::_send(socket_fd, buf1, strlen(buf1), 0, 3000);
     LOG_TRACE("socket_fd : %d, ret : %d, buf : %s", socket_fd, ret, buf1); 	
     ret = ::_recv(socket_fd, buf2, sizeof(buf2), 0, 3000);
 
-    manager->CreateThread(NewClosure(socket_callback, manager, 99));
-
-    context_exit();
+    // 测试重新发送请求
+    // manager->CreateThread(NewClosure(socket_callback, manager, 99));
+    // context_exit();
 }
 
 TEST(ManagerTest, socket)
 {
-	Manager* manager = GetInstance<Manager>();
+	Manager<>* manager = GetInstance< Manager<> >();
     manager->SetHookFlag();
     for (int i = 0; i < 10; i++)
     {
         manager->CreateThread(NewClosure(socket_callback, manager, i));
     }
 
-    socket_callback(manager, 10);
-    ::_sleep(3000);
-    // Manager::StartDaemonThread(manager);
+    // socket_callback(manager, 10);
+    // ::_sleep(3000);
+    Manager<>::StartDaemonThread(manager);
     StNetAddress addr;
     addr.SetAddr("www.baidu.com");
     LOG_TRACE("addr: %s", addr.IP());

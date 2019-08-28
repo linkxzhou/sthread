@@ -201,6 +201,7 @@ int IMtActionRunable::Poll(IMtActionList list, int mask, int timeout)
         
         // 清空recv事件
         ev->SetRecvEvents(0);
+        
         if (mask & ST_READABLE)
         {
             ev->EnableInput();

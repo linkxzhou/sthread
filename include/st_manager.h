@@ -10,15 +10,26 @@
 #include "st_thread.h"
 #include "st_sys.h"
 
+#define GetEventScheduler()     (GetInstance<EventScheduler>())
+#define GetThreadScheduler()    (GetInstance<ThreadScheduler>())
+
 ST_NAMESPACE_BEGIN
 
-// 主框架
+template<typename T>
+void FreePtrThread(T *thread)
+{
+    GetInstance< UtilPtrPool<T> >()->FreePtr(thread);
+}
+
+template<typename T>
+void FreePtrStEventItem(T *item)
+{
+    GetInstance< UtilPtrPool<T> >()->FreePtr(item);
+}
+
+template<typename ThreadT = Thread, typename StEventItemT = StEventItem>
 class Manager
 {
-
-    friend class EventScheduler;
-    friend class ThreadScheduler;
-
 public:
     Manager() : 
         m_daemon_(NULL), 
@@ -36,39 +47,9 @@ public:
 	    st_safe_delete(m_heap_timer_);
     }
 
-    // ThreadBase* GetRootThread()
-    // {
-    // 	if (NULL == m_cur_thread_)
-	//     {
-	//         return NULL;
-	//     }
-
-	//     eThreadType type = m_cur_thread_->GetType();
-	//     Thread* thread = m_cur_thread_;
-	//     Thread* parent = thread;
-
-	//     while (eSUB_THREAD == type)
-	//     {
-	//         thread = thread->GetParent();
-	//         if (NULL == thread)
-	//         {
-	//             break;
-	//         }
-
-	//         type   = thread->GetType();
-	//         parent = thread;
-	//     }
-
-	//     return parent;
-    // }
-
     void Init(int max_num = 50000)
     {
-        m_event_scheduler_ = new EventScheduler(max_num);
-    	ASSERT(m_event_scheduler_ != NULL);
-
-        m_thread_scheduler_ = GetInstance<ThreadScheduler>();
-	    int r = m_thread_scheduler_->m_sleep_list_.
+	    int r = GetThreadScheduler()->m_sleep_list_.
             HeapResize(max_num * 2);
 	    ASSERT(r >= 0);
 
@@ -76,22 +57,22 @@ public:
         ASSERT(m_heap_timer_ != NULL);
 	    
 	    // 获取一个daemon线程(从线程池中分配)
-	    m_daemon_ = m_thead_pool_.AllocPtr();
+	    m_daemon_ = new Thread();
 	    ASSERT(m_daemon_ != NULL);
 	    m_daemon_->SetType(eDAEMON);
 	    m_daemon_->SetState(eRUNABLE);
 	    m_daemon_->SetCallback(NewClosure(StartDaemonThread, this));
         m_daemon_->SetName("daemon");
 
-	    m_primo_ = m_thead_pool_.AllocPtr();
+	    m_primo_ = new Thread();
 	    ASSERT(m_daemon_ != NULL);
         m_primo_->SetType(ePRIMORDIAL);
 	    m_primo_->SetState(eRUNNING);
         m_primo_->SetName("primo");
 
-        m_thread_scheduler_->SetDaemonThread(m_daemon_);
-        m_thread_scheduler_->SetPrimoThread(m_primo_);
-	    m_thread_scheduler_->SetActiveThread(m_primo_); // 设置当前的活动线程
+        GetThreadScheduler()->SetDaemonThread(m_daemon_);
+        GetThreadScheduler()->SetPrimoThread(m_primo_);
+	    GetThreadScheduler()->SetActiveThread(m_primo_); // 设置当前的活动线程
 
 	    m_last_clock_ = Util::SysMs();
     }
@@ -127,19 +108,9 @@ public:
         LOG_TRACE("count : %d", count);
     }
 
-    inline void FreeThread(Thread* thread)
-    {
-        m_thead_pool_.FreePtr(thread);
-    }
-
-    inline Thread* AllocThread()
-    {
-        return m_thead_pool_.AllocPtr();
-    }
-
     inline int64_t GetTimeout()
     {
-	    Thread* thread = dynamic_cast<Thread*>(m_thread_scheduler_->
+	    Thread* thread = dynamic_cast<Thread*>(GetThreadScheduler()->
             m_sleep_list_.HeapTop());
         int64_t now = GetLastClock();
 	    if (!thread)
@@ -159,7 +130,7 @@ public:
     int WaitEvents(int fd, int events, int timeout)
     {
 	    int64_t start = GetLastClock();
-	    Thread* thread = (Thread*)(m_thread_scheduler_->GetActiveThread());
+	    Thread* thread = (Thread*)(GetThreadScheduler()->GetActiveThread());
 
 	    int64_t now = 0;
 	    timeout = (timeout <= -1) ? 0x7fffffff : timeout;
@@ -174,7 +145,7 @@ public:
 	            return -1;
 	        }
 
-	        StEventItem* item = m_event_scheduler_->GetEventItem(fd);
+	        StEventItem* item = GetEventScheduler()->GetEventItem(fd);
             if (NULL == item)
             {
                 LOG_TRACE("item is NULL");
@@ -194,13 +165,13 @@ public:
 	        }
 
 	        int64_t wakeup_timeout = timeout + GetLastClock();
-            bool r = m_event_scheduler_->Schedule(thread, NULL, item, wakeup_timeout);
+            bool r = GetEventScheduler()->Schedule(thread, NULL, item, wakeup_timeout);
 	        if (!r)
 	        {
 	            LOG_ERROR("item schedule failed, errno: %d, strerr: %s", 
                     errno, strerror(errno));
                 // 释放item数据
-	            m_item_pool_.FreePtr(item);
+	            FreePtrStEventItem(item);
 	            return -3;
 	        }
 
@@ -213,7 +184,7 @@ public:
 
     Thread* CreateThread(Closure *closure, bool runable = true)
     {
-    	Thread* thread = m_thead_pool_.AllocPtr();
+    	Thread* thread = AllocThread();
 	    if (NULL == thread)
 	    {
 	        LOG_ERROR("alloc thread failed");
@@ -223,19 +194,29 @@ public:
 	    thread->SetCallback(closure);
 	    if (runable)
 	    {
-	        m_thread_scheduler_->InsertRunable(thread); // 插入运行线程
+	        GetThreadScheduler()->InsertRunable(thread); // 插入运行线程
 	    }
 
 	    return thread;
     }
 
-    static void StartDaemonThread(Manager *manager)
+    inline Thread* AllocThread()
+    {
+        return (Thread*)(GetInstance< UtilPtrPool<ThreadT> >()->AllocPtr());
+    }
+
+    inline StEventItem* AllocStEventItem()
+    {
+        return (StEventItem*)(GetInstance< UtilPtrPool<StEventItemT> >()->AllocPtr());
+    }
+
+    static void StartDaemonThread(Manager<ThreadT, StEventItemT> *manager)
     {
         ASSERT(manager != NULL);
 
     	Thread* daemon = manager->m_daemon_;
-        EventScheduler *event_scheduler = manager->m_event_scheduler_;
-        ThreadScheduler *thread_scheduler = manager->m_thread_scheduler_;
+        EventScheduler *event_scheduler = GetEventScheduler();
+        ThreadScheduler *thread_scheduler = GetThreadScheduler();
         if (NULL == daemon || 
             NULL == event_scheduler ||
             NULL == thread_scheduler)
@@ -251,7 +232,7 @@ public:
             event_scheduler->Wait(manager->GetTimeout());
             int64_t now = Util::SysMs();
             LOG_TRACE("system ms: %ld, --------[name:%s]---------", now, 
-                manager->m_thread_scheduler_->GetActiveThread()->GetName());
+                GetThreadScheduler()->GetActiveThread()->GetName());
 	        manager->SetLastClock(now);
 	        thread_scheduler->Wakeup(now);
 	        manager->CheckExpired();
@@ -260,13 +241,9 @@ public:
     }
 
 public:
-    Thread                      *m_daemon_, *m_primo_;
-    UtilPtrPool<Thread>         m_thead_pool_;
-    UtilPtrPool<StEventItem>    m_item_pool_;
-    EventScheduler  *m_event_scheduler_;
-    ThreadScheduler *m_thread_scheduler_;
-    HeapTimer       *m_heap_timer_;
-    int64_t         m_last_clock_, m_timeout_;
+    Thread      *m_daemon_, *m_primo_;
+    HeapTimer   *m_heap_timer_;
+    int64_t     m_last_clock_, m_timeout_;
 };
 
 ST_NAMESPACE_END
@@ -294,7 +271,7 @@ ssize_t _send(int fd, const void *buf, size_t nbyte, int flags, int timeout);
 
 void _sleep(int ms);
 
-int _accept(int fd, struct sockaddr *addr, socklen_t *addrlen, int timeout);
+int _accept(int fd, struct sockaddr *addr, socklen_t *addrlen);
 
 #ifdef  __cplusplus
 }

@@ -6,7 +6,7 @@
 
 ST_NAMESPACE_USING
 
-uint64_t g_st_threadid;
+__thread uint64_t g_st_threadid;
 
 uint64_t get_sthreadid(void)
 {

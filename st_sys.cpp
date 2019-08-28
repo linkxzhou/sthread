@@ -179,7 +179,7 @@ ssize_t st_write(int fd, const void *buffer, size_t nbyte)
 }
 
 ssize_t st_sendto(int fd, const void *buffer, size_t length, int flags,
-            const struct sockaddr *dest_addr, socklen_t dest_len)
+    const struct sockaddr *dest_addr, socklen_t dest_len)
 {
     HOOK_SYSCALL(sendto);
     HookFd* hook_fd = st_find_fd(fd);
@@ -265,7 +265,7 @@ ssize_t st_send(int fd, const void *buffer, size_t nbyte, int flags)
 }
 
 int st_setsockopt(int fd, int level, int option_name, 
-        const void *option_value, socklen_t option_len)
+    const void *option_value, socklen_t option_len)
 {
     HOOK_SYSCALL(setsockopt);
     HookFd* hook_fd = st_find_fd(fd);

@@ -5,10 +5,10 @@ ST_NAMESPACE_USING
 
 TEST(ServerTest, accept)
 {
-	Manager* manager = GetInstance<Manager>();
+	Manager<>* manager = GetInstance< Manager<> >();
     manager->SetHookFlag();
     
-    StServer *server = new StServer(manager);
+    StServer< Manager<> > *server = new StServer< Manager<> >(manager);
     int fd = server->CreateSocket("127.0.0.1", 8001);
     if (!server->Listen())
     {

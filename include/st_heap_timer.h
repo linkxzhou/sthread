@@ -111,7 +111,7 @@ public:
 
         int64_t now = Util::SysMs();
 
-        LOG_TRACE("before : now_ms = %llu, size = %d", now, m_heap_->HeapSize());
+        LOG_TRACE("before: now_ms = %llu, size = %d", now, m_heap_->HeapSize());
 
         int32_t count = 0;
         TimerEntry* timer = any_cast<TimerEntry>(m_heap_->HeapTop());
@@ -123,7 +123,7 @@ public:
             count++;
         }
 
-        LOG_TRACE("after : size = %d", m_heap_->HeapSize());
+        LOG_TRACE("after: size = %d", m_heap_->HeapSize());
         return count;
     }
 

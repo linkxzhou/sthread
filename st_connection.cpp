@@ -2,15 +2,12 @@
  * Copyright (C) zhoulv2000@163.com
  */
 
-#include "mt_connection.h"
-#include "mt_action.h"
-#include "mt_frame.h"
+#include "st_connection.h"
+#include "st_manager.h"
 
 ST_NAMESPACE_USING
-using namespace std;
 
-// Udp的短连接
-int UdpIMtConnection::CreateSocket(int fd)
+int32_t StConnection::CreateSocket(const char *ip, uint16_t port, bool is_ipv6 = false) = 0;
 {
     if (fd > 0)
     {

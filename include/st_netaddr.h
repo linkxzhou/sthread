@@ -155,6 +155,11 @@ public:
         return m_addr_.sin_port; 
     }
 
+    inline bool IsError()
+    {
+        return m_errno_ == 0 ? false : true;
+    }
+
 private:
     union
     {

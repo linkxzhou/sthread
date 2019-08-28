@@ -14,35 +14,6 @@
 
 ST_NAMESPACE_USING
 
-class IMessage
-{
-public:
-    // 虚函数，子类继承
-    virtual int32_t HandleProcess() 
-    { 
-        return -1; 
-    }
-
-    IMessage() 
-    { }
-
-    virtual ~IMessage() 
-    { }
-
-    inline void SetDataPtr(void *data)
-    {
-        m_data_ = data;
-    }
-
-    inline void* GetDataPtr()
-    {
-        return m_data_;
-    }
-    
-private:
-    void *m_data_;
-};
-
 class IMtAction : public IMtActionBase
 {
 public:
@@ -336,7 +307,7 @@ private:
     struct sockaddr_in m_addr_;
 
     static _IMtAction_construct m_construct_callback_;
-    static _IMtAction_destruct m_destruct_callback_;
+    static _IMtAction_destruct  m_destruct_callback_;
 };
 
 #endif

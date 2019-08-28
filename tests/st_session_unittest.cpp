@@ -13,7 +13,7 @@ class TestA
 public:
     void print()
     {
-        LOG_TRACE("print TestA");
+        LOG_TRACE("print TestA:%p", this);
     }
 
 public:
@@ -22,23 +22,24 @@ public:
 
 TEST(SessionTest, session)
 {
-	// TestAQueue queue;
-    // CPP_TAILQ_INIT(&queue);
+	TestAQueue queue;
+    CPP_TAILQ_INIT(&queue);
 
-    // TestA *a1 = new TestA();
-    // CPP_TAILQ_INSERT_TAIL(&queue, a1, m_next_);
-    // TestA *a2 = new TestA();
-    // CPP_TAILQ_INSERT_TAIL(&queue, a1, m_next_);
-    // // TestA *a3 = new TestA();
-    // // CPP_TAILQ_INSERT_TAIL(&queue, a3, m_next_);
-    // // TestA *a4 = new TestA();
-    // // CPP_TAILQ_INSERT_TAIL(&queue, a4, m_next_);
+    TestA *a1 = new TestA();
+    CPP_TAILQ_INSERT_TAIL(&queue, a1, m_next_);
+    TestA *a2 = new TestA();
+    CPP_TAILQ_REMOVE(&queue, a1, m_next_);
+    CPP_TAILQ_INSERT_TAIL(&queue, a1, m_next_);
+    TestA *a3 = new TestA();
+    CPP_TAILQ_INSERT_TAIL(&queue, a3, m_next_);
+    TestA *a4 = new TestA();
+    CPP_TAILQ_INSERT_TAIL(&queue, a4, m_next_);
 
-    // TestA *item = NULL; 
-    // CPP_TAILQ_FOREACH(item, &queue, m_next_)
-    // {
-    //     item->print();
-    // }
+    TestA *item = NULL; 
+    CPP_TAILQ_FOREACH(item, &queue, m_next_)
+    {
+        item->print();
+    }
 
     int m_stack_size_ = MEM_PAGE_SIZE + 128;
     int memsize = MEM_PAGE_SIZE * 2 + (m_stack_size_ / MEM_PAGE_SIZE + 1) * MEM_PAGE_SIZE;
