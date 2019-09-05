@@ -5,8 +5,8 @@
 #include "st_ucontext.h"
 
 // 全局的context
-Context* g_context_initial = NULL;
-Context* g_context_runing = NULL;
+__THREAD Context* g_context_initial = NULL;
+__THREAD Context* g_context_runing = NULL;
 
 #if defined(__APPLE__)
 #if defined(__i386__)
@@ -148,19 +148,21 @@ int swapcontext(ucontext_t *oucp, const ucontext_t *ucp)
 }
 #endif
 
+void context_init(Context *c)
+{
+    g_context_initial = c;
+}
+
 int context_switch(Context *from, Context *to)
 {
-    // LOG_TRACE("from : %p, to : %p, runing : %p, init : %p", 
-    //     from, to, g_context_runing, g_context_initial);
-    if (g_context_initial == NULL)
+    if (NULL == g_context_initial)
     {
         g_context_initial = from;
-        // LOG_TRACE("g_context_initial : %p", g_context_initial);
     }
+
     if (g_context_runing != to)
     {
         g_context_runing = to;
-        // LOG_TRACE("g_context_runing : %p", g_context_runing);
     }
 
 	return swapcontext(&from->uc, &to->uc);
@@ -168,9 +170,22 @@ int context_switch(Context *from, Context *to)
 
 void context_exit()
 {
-    // LOG_TRACE("exit ..., runing : %p, init : %p", g_context_runing, g_context_initial);
-    if (g_context_runing != NULL && g_context_initial != NULL)
+    if (g_context_runing != NULL && 
+        g_context_initial != NULL &&
+        g_context_initial != g_context_runing)
     {
         context_switch(g_context_runing, g_context_initial);
     }
+}
+
+__THREAD uint64_t g_st_threadid;
+
+uint64_t get_sthreadid(void)
+{
+    return g_st_threadid;
+}
+
+void set_sthreadid(uint64_t id)
+{
+    g_st_threadid = id;
 }

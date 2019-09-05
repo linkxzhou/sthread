@@ -10,6 +10,7 @@
 ST_NAMESPACE_BEGIN
 
 class HeapEntry;
+
 typedef HeapEntry* HeapEntryNode;
 
 enum eOrderType
@@ -21,9 +22,12 @@ enum eOrderType
 class HeapEntry : public Any, public referenceable
 {
 public:
-    HeapEntry() : m_index_(0) { }
+    HeapEntry() : 
+        m_index_(0) 
+    { }
 
-    virtual ~HeapEntry() { }
+    virtual ~HeapEntry() 
+    { }
 
     virtual int64_t HeapValue() = 0;
 
@@ -38,7 +42,12 @@ public:
         return m_index_;
     }
 
-    inline int32_t HeapValueCmp(HeapEntry* rhs)
+    inline void SetIndex(int32_t index)
+    {
+        m_index_ = index;
+    }
+
+    inline int32_t HeapValueCmp(HeapEntry *rhs)
     {
         if (this->HeapValue() == rhs->HeapValue())
         {
@@ -52,11 +61,6 @@ public:
         {
             return -1;
         }
-    }
-
-    inline void SetIndex(int32_t index)
-    {
-        m_index_ = index;
     }
 
 private:
@@ -78,9 +82,9 @@ private:
     int32_t        m_count_;
 
 public:
-    explicit HeapList(int32_t max = 100000)
+    explicit HeapList(int32_t max = 10240)
     {
-        m_max_ = ST_MAX(max, 100000);
+        m_max_ = ST_MAX(max, 10240);
         m_list_ = (pointer_pointer)calloc(m_max_ + 1, sizeof(pointer));
         memset(m_list_, 0, (m_max_ + 1) * sizeof(pointer));
         m_count_ = 0;
@@ -98,13 +102,15 @@ public:
                     st_safe_delete(m_list_[i]);
                 }
             }
+
             st_safe_free(m_list_);
         }
+
         m_max_ = 0;
         m_count_ = 0;
     }
 
-    int32_t HeapResize(int32_t size)
+    inline int32_t HeapResize(int32_t size)
     {
         if (m_max_ >= size)
         {
@@ -121,7 +127,7 @@ public:
         return 0;
     }
 
-    int32_t HeapPush(pointer entry)
+    inline int32_t HeapPush(pointer entry)
     {
         if (this->HeapFull())
         {
@@ -140,14 +146,14 @@ public:
         return 0;
     }
     
-    pointer HeapPop()
+    inline pointer HeapPop()
     {
         if (this->HeapEmpty())
         {
             return NULL;
         }
 
-        HeapEntry* top = (HeapEntry *)(m_list_[1]);
+        HeapEntry *top = (HeapEntry *)(m_list_[1]);
         this->Swap(1, m_count_);
         m_count_--;
         this->HeapDown();
@@ -156,7 +162,7 @@ public:
         return (pointer)top;
     }
 
-    int32_t HeapDelete(pointer entry)
+    inline int32_t HeapDelete(pointer entry)
     {
         if (this->HeapEmpty())
         {
@@ -169,13 +175,13 @@ public:
             return -2;
         }
 
-        pointer del = m_list_[pos];
+        pointer ptr = m_list_[pos];
         m_list_[pos] = m_list_[m_count_];
         m_list_[pos]->SetIndex(pos);
         m_list_[m_count_] = 0;
         m_count_--;
         this->HeapDown();
-        del->SetIndex(0);
+        ptr->SetIndex(0);
 
         return 0;
     }
@@ -188,26 +194,27 @@ public:
         }
     }
 
-    int32_t HeapSize()
+    inline int32_t HeapSize()
     {
         return m_count_;
     }
 
-    pointer HeapTop()
+    inline pointer HeapTop()
     {
         return (m_count_ > 0) ? m_list_[1] : NULL;
     }
 
-private:
-    bool HeapFull()
+    inline bool HeapFull()
     {
         return (m_count_ >= m_max_);
     }
 
-    bool HeapEmpty()
+    inline bool HeapEmpty()
     {
         return (m_count_ == 0);
     }
+
+private:
 
     void HeapUp()
     {
@@ -222,6 +229,7 @@ private:
             this->ReBuildHeap(1, pos - 1, eOrderAsc);
         }
     }
+
     void HeapDown()
     {
         for (int32_t pos = m_count_; pos > 0; pos--)

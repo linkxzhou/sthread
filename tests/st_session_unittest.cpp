@@ -1,4 +1,3 @@
-#include "gtest/googletest/include/gtest/gtest.h"
 #include "../include/st_manager.h"
 
 ST_NAMESPACE_USING
@@ -20,7 +19,7 @@ public:
     TestANext m_next_;
 };
 
-TEST(SessionTest, session)
+TEST(StStatus, session)
 {
 	TestAQueue queue;
     CPP_TAILQ_INIT(&queue);
@@ -52,6 +51,5 @@ TEST(SessionTest, session)
 // 测试所有的功能
 int main(int argc, char* argv[])
 {
-    testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }

@@ -128,11 +128,15 @@ typedef struct ustack
     uint m_id_;
 } Stack;
 
-// context切换
+void context_init(Context *c);
+
 int context_switch(Context *from, Context *to);
 
-// context退出
 void context_exit();
+
+uint64_t get_sthreadid(void);
+
+void set_sthreadid(uint64_t sthreadid);
 
 #ifdef  __cplusplus
 }

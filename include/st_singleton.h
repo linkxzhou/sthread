@@ -30,7 +30,7 @@ protected:
     { }
     
 public:
-    static T * GetInstance()
+    static T* GetInstance()
     {
 #if __cplusplus < 201103L
         if (NULL == m_pinstance_)
@@ -49,7 +49,7 @@ public:
         return m_pinstance_;
 #else
         // Use C++ 11 style to implement singleton
-        static __thread T t;
+        static __THREAD T t;
         return &t;
 #endif
     }
@@ -88,12 +88,12 @@ public:
     };
     
 private:
-    static __thread T *m_pinstance_;
+    static __THREAD T *m_pinstance_;
     static pthread_mutex_t m_mutex_;
     static Deleter m_deleter_;
 };
 
-template<typename T> __thread T * Singleton<T>::m_pinstance_ = NULL;
+template<typename T> __THREAD T * Singleton<T>::m_pinstance_ = NULL;
 template<typename T> pthread_mutex_t Singleton<T>::m_mutex_ = PTHREAD_MUTEX_INITIALIZER;
 template<typename T> typename Singleton<T>::Deleter Singleton<T>::m_deleter_;
 

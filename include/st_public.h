@@ -22,6 +22,16 @@
 #include <errno.h>
 #include <unistd.h>
 
+#include "st_test.h"
+
+#define ST_THREAD 1
+
+#ifdef ST_THREAD
+    #define __THREAD        __thread // 判断是否要支持多线程
+#else
+    #define __THREAD    
+#endif
+
 #define ST_NAMESPACE_BEGIN  namespace sthread {
 #define ST_NAMESPACE_END    }
 #define ST_NAMESPACE_USING  using namespace sthread;
@@ -90,6 +100,9 @@
 #define ST_VAR(s, s2, n)       (((n) < 2) ? 0.0 : ((s2) - ST_SQUARE(s)/(n)) / ((n) - 1))
 #define ST_STDDEV(s, s2, n)    (((n) < 2) ? 0.0 : sqrt(ST_VAR((s), (s2), (n))))
 
+/***
+ * eBuffType : 数据包的BUFF类型
+ * ***/
 typedef enum
 {
     eBUFF_UNDEF  =  0x0,
@@ -97,55 +110,62 @@ typedef enum
     eBUFF_SEND   =  0x2, // 发包
 } eBuffType;
 
-// events事件
+/***
+ * eEventType : 触发的事件类型
+ * ***/
 typedef enum
 {
     eEVENT_UNDEF     = 0x0,
-    eEVENT_THREAD    = 0x1,
-    eEVENT_KEEPALIVE = 0x2,
-    eEVENT_SESSION   = 0x3,
-    eEVENT_TIMEOUT   = 0x4,
-    eEVENT_USER1     = 0x5,
-    eEVENT_USER2     = 0x6,
-    eEVENT_USER3     = 0x7,
-    eEVENT_USER4     = 0x8,
+    eEVENT_TIMEOUT   = 0x1,
 } eEventType;
 
+/***
+ * eThreadType : thread的类型
+ * ***/
 typedef enum
 {
-    eNORMAL          = 0x1,
-    ePRIMORDIAL      = 0x2,
-    eDAEMON          = 0x3,
-    eSUB_THREAD      = 0x4,
+    eNORMAL          = 0x1, // 通用的
+    ePRIMORDIAL      = 0x2, // 主thread
+    eDAEMON          = 0x3, // 调度thread
+    eSUB_THREAD      = 0x4, // 孩子thread
 } eThreadType;
 
+/***
+ * eThreadFlag : 所在线程的列表类型
+ * ***/
 typedef enum
 {
     eNOT_INLIST  = 0x0,
-    eFREE_LIST   = 0x1,
-    eIO_LIST     = 0x2,
-    eSLEEP_LIST  = 0x4,
-    eRUN_LIST    = 0x8,
-    ePEND_LIST   = 0x10,
-    eSUB_LIST    = 0x20,
+    eFREE_LIST   = 0x1, // 空闲线程
+    eIO_LIST     = 0x2, // IO线程
+    eSLEEP_LIST  = 0x4, // sleep线程
+    eRUN_LIST    = 0x8, // 运行线程
+    ePEND_LIST   = 0x10, // 阻塞线程
+    eSUB_LIST    = 0x20, // 子线程
 } eThreadFlag;
 
+/***
+ * eThreadState : 线程状态
+ * ***/
 typedef enum
 {
-    eINITIAL    = 0x0,
-    eRUNABLE    = 0x1,
-    eRUNNING    = 0x2,
-    eSLEEPING   = 0x3,
-    ePENDING    = 0x4,
-    eIOWAIT     = 0x5,
+    eINITIAL    = 0x0, // 初始化
+    eRUNABLE    = 0x1, // 可运行
+    eRUNNING    = 0x2, // 正在运行
+    eSLEEPING   = 0x3, // 正在休眠
+    ePENDING    = 0x4, // 阻塞中
+    eIOWAIT     = 0x5, // IO等待
 } eThreadState;
+
+const int TCP_SERVER    = 0x1; // tcp server
+const int UDP_SERVER    = 0x2; // udp server
 
 typedef enum
 {
     eUNDEF_CONN     = 0x0, // 连接错误
-    eUDP_CONN       = 0x1,
-    eTCP_LONG_CONN  = 0x2,
-    eTCP_SHORT_CONN = 0x3,
+    eUDP_CONN       = 0x10, // udp 连接
+    eTCP_CONN       = 0x11, // tcp 短连接
+    eTCP_LONG_CONN  = 0x12,
 } eConnType;
 
 // enum eActionState

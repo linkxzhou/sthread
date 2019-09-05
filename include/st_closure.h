@@ -8,7 +8,8 @@
 class Closure 
 {
 public:
-    virtual ~Closure() { }
+    virtual ~Closure() 
+    { }
 
     virtual void Run() = 0;
 };
@@ -23,7 +24,8 @@ public:
         m_fun_ = fun;
     }
 
-    virtual ~Closure0() { }
+    virtual ~Closure0() 
+    { }
 
     virtual void Run() 
     {
@@ -44,7 +46,8 @@ public:
         m_arg1_ = arg1;
     }
 
-    virtual ~Closure1() { }
+    virtual ~Closure1() 
+    { }
 
     virtual void Run() 
     {
@@ -67,7 +70,8 @@ public:
         m_arg2_ = arg2;
     }
 
-    virtual ~Closure2() { }
+    virtual ~Closure2() 
+    { }
 
     virtual void Run() 
     {
@@ -92,7 +96,8 @@ public:
         m_arg3_ = arg3;
     }
 
-    virtual ~Closure3() { }
+    virtual ~Closure3() 
+    { }
 
     virtual void Run() 
     {
@@ -116,7 +121,8 @@ public:
         m_fun_ = fun;
     }
 
-    virtual ~ObjectClosure0() { }
+    virtual ~ObjectClosure0() 
+    { }
 
     virtual void Run() 
     {
@@ -140,7 +146,8 @@ public:
         m_arg1_ = arg1;
     }
 
-    virtual ~ObjectClosure1() { }
+    virtual ~ObjectClosure1() 
+    { }
 
     virtual void Run() 
     {
@@ -166,7 +173,8 @@ public:
         m_arg2_ = arg2;
     }
 
-    virtual ~ObjectClosure2() { }
+    virtual ~ObjectClosure2() 
+    { }
     
     virtual void Run() 
     {
@@ -194,7 +202,8 @@ public:
         m_arg3_ = arg3;
     }
 
-    virtual ~ObjectClosure3() { }
+    virtual ~ObjectClosure3() 
+    { }
     
     virtual void Run() 
     {
@@ -238,13 +247,13 @@ Closure* NewClosure(R (*fun)(Arg1, Arg2, Arg3),
 }
 
 template<class R, class Object>
-Closure* NewClosure(Object* object, R (Object::* fun)()) 
+Closure* NewClosure(Object *object, R (Object::* fun)()) 
 {
     return new ObjectClosure0<Object, R (Object::* )()>(object, fun);
 }
 
 template<class R, class Object, class Arg1>
-Closure* NewClosure(Object* object, 
+Closure* NewClosure(Object *object, 
     R (Object::* fun)(Arg1), Arg1 arg1) 
 {
     return new ObjectClosure1<Object, 
@@ -252,7 +261,7 @@ Closure* NewClosure(Object* object,
 }
 
 template<class R, class Object, class Arg1, class Arg2>
-Closure* NewClosure(Object* object, 
+Closure* NewClosure(Object *object, 
     R (Object::* fun)(Arg1, Arg2), 
     Arg1 arg1, Arg2 arg2) 
 {
@@ -262,7 +271,7 @@ Closure* NewClosure(Object* object,
 }
 
 template<class R, class Object, class Arg1, class Arg2, class Arg3>
-Closure* NewClosure(Object* object, 
+Closure* NewClosure(Object *object, 
     R (Object::* fun)(Arg1, Arg2, Arg3), 
     Arg1 arg1, Arg2 arg2, Arg3 arg3) 
 {

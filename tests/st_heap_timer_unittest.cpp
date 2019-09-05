@@ -1,9 +1,8 @@
-#include "gtest/googletest/include/gtest/gtest.h"
 #include "../include/st_heap_timer.h"
 
 ST_NAMESPACE_USING
 
-TEST(TimerEntryTest, notify)
+TEST(StStatus, notify)
 {
 	HeapTimer c;
 
@@ -33,6 +32,5 @@ TEST(TimerEntryTest, notify)
 // 测试所有的功能
 int main(int argc, char* argv[])
 {
-    testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }

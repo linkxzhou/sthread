@@ -16,7 +16,10 @@ ST_NAMESPACE_BEGIN
 class ThreadScheduler
 {
 public:
-    ThreadScheduler()
+    ThreadScheduler() : 
+        m_active_thread_(NULL),
+        m_daemon_(NULL),
+        m_primo_(NULL)
     { 
         CPP_TAILQ_INIT(&m_run_list_);
         CPP_TAILQ_INIT(&m_io_list_);
@@ -48,7 +51,7 @@ public:
         m_sleep_list_.HeapResize(max_num);
     }
 
-    inline ThreadItem* GetActiveThread(void)
+    inline ThreadItem* GetActiveThread()
     {
         return m_active_thread_;
     }
@@ -66,13 +69,13 @@ public:
     void SwitchThread(ThreadItem *rthread, ThreadItem *sthread);
 
     // 让出当前线程
-    int Yield(ThreadItem *item);
+    int Yield(ThreadItem *thread);
 
-    void Sleep(ThreadItem *item);
+    void Sleep(ThreadItem *thread);
 
-    void Pend(ThreadItem *item);
+    void Pend(ThreadItem *thread);
 
-    void Unpend(ThreadItem *item);
+    void Unpend(ThreadItem *thread);
 
     int IOWaitToRunable(ThreadItem *thread);
 
@@ -106,7 +109,7 @@ class EventScheduler
 
 public:
     EventScheduler(int32_t max_num = 1024) : 
-        m_maxfd_(1000000), 
+        m_maxfd_(65535), 
         m_state_(new StApiState()), 
         m_container_(NULL), 
         m_timeout_(30000), // 默认超时30s
@@ -133,13 +136,13 @@ public:
 
     void Close();
 
-    bool Add(StEventItemQueue& fdset);
+    bool Add(StEventItemQueue &fdset);
 
-    bool Add(StEventItem* item);
+    bool Add(StEventItem *item);
 
-    bool Delete(StEventItemQueue& fdset);
+    bool Delete(StEventItemQueue &fdset);
 
-    bool Delete(StEventItem* item);
+    bool Delete(StEventItem *item);
 
     bool AddFd(int32_t fd, int32_t new_events);
 
@@ -150,7 +153,7 @@ public:
         return ((fd >= m_maxfd_) || (fd < 0)) ? false : true;
     }
 
-    inline bool SetEventItem(int32_t fd, StEventItem* item)
+    inline bool SetEventItem(int32_t fd, StEventItem *item)
     {
         if (unlikely(IsValidFd(fd)))
         {
@@ -175,12 +178,26 @@ public:
 
     void Wait(int32_t timeout);
 
+    inline void Reset(StEventItem *item)
+    {
+        Delete(item);
+        
+        int osfd = item->GetOsfd();
+        if (unlikely(!IsValidFd(osfd)))
+        {
+            LOG_ERROR("IsValidFd osfd, %d", osfd);
+            return ;
+        }
+
+        m_container_[osfd] = NULL;
+    }
+
 protected:
     int32_t             m_maxfd_;
-    StApiState*         m_state_;
-    StEventItemPtr*     m_container_;
+    StApiState          *m_state_;
+    StEventItemPtr      *m_container_;
     int32_t             m_timeout_;
-    ThreadScheduler*    m_thread_scheduler_;
+    ThreadScheduler     *m_thread_scheduler_;
 };
 
 class Thread : public ThreadItem
@@ -188,7 +205,7 @@ class Thread : public ThreadItem
 public:
     Thread();
 
-    ~Thread();
+    virtual ~Thread();
 
     virtual void Run(void);
 

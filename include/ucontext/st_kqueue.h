@@ -10,7 +10,6 @@
 #include <sys/time.h>
 #include "st_util.h"
 
-/* A fired event */
 typedef struct  
 {
     int32_t fd;
@@ -32,7 +31,9 @@ public:
         m_file_events_ = (StFileEvent *)malloc(sizeof(StFileEvent) * size);
         m_fired_ = (StFiredEvent *)malloc(sizeof(StFiredEvent) * size);
 
-        if (NULL == m_events_ || NULL == m_file_events_ ||NULL == m_fired_) 
+        if (NULL == m_events_ || 
+            NULL == m_file_events_ || 
+            NULL == m_fired_) 
         {
             return -1;
         }
@@ -179,7 +180,7 @@ public:
         return m_fired_;
     }
 
-    const char *ApiName(void) 
+    const char* ApiName(void) 
     {
         return "kqueue";
     }

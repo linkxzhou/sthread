@@ -1,9 +1,9 @@
-#include "gtest/googletest/include/gtest/gtest.h"
 #include "../include/st_buffer.h"
+#include "../include/st_util.h"
 
 ST_NAMESPACE_USING
 
-TEST(MessageTest, StBuffer)
+TEST(StStatus, StBuffer)
 {
 	StBuffer* buf1 = GetInstance<StBufferPool>()->GetBuffer(100);
 	LOG_DEBUG("buf1 : %p, addr : %p", buf1, GetInstance<StBufferPool>());
@@ -27,6 +27,5 @@ TEST(MessageTest, StBuffer)
 // 测试所有的功能
 int main(int argc, char* argv[])
 {
-    testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }

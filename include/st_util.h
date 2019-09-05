@@ -24,7 +24,7 @@ ST_NAMESPACE_BEGIN
 
 /**
 * @brief add more detail for linux <sys/queue.h>, freebsd and University of California
-* @info  queue.h version 8.3 (suse)  diff version 8.5 (tlinux)
+* @info  queue.h version 8.3 (suse) diff version 8.5 (tlinux)
 */
 #ifndef TAILQ_CONCAT
 
@@ -34,25 +34,25 @@ ST_NAMESPACE_BEGIN
 
 #define TAILQ_FOREACH(var, head, field)                                     \
         for ((var) = TAILQ_FIRST((head));                                   \
-            (var);                                                         \
+            (var);                                                          \
             (var) = TAILQ_NEXT((var), field))
 
 #define TAILQ_CONCAT(head1, head2, field)                                   \
-do {                                                                        \
-    if (!TAILQ_EMPTY(head2)) {                                              \
-        *(head1)->tqh_last = (head2)->tqh_first;                            \
-        (head2)->tqh_first->field.tqe_prev = (head1)->tqh_last;             \
-        (head1)->tqh_last = (head2)->tqh_last;                              \
-        TAILQ_INIT((head2));                                                \
-    }                                                                       \
-} while (0)
+    do {                                                                    \
+        if (!TAILQ_EMPTY(head2)) {                                          \
+            *(head1)->tqh_last = (head2)->tqh_first;                        \
+            (head2)->tqh_first->field.tqe_prev = (head1)->tqh_last;         \
+            (head1)->tqh_last = (head2)->tqh_last;                          \
+            TAILQ_INIT((head2));                                            \
+        }                                                                   \
+    } while (0)
 
 #endif
 
-#ifndef TAILQ_FOREACH_SAFE      // tlinux no this define
+#ifndef TAILQ_FOREACH_SAFE
 #define TAILQ_FOREACH_SAFE(var, head, field, tvar)                          \
         for ((var) = TAILQ_FIRST((head));                                   \
-            (var) && ((tvar) = TAILQ_NEXT((var), field), 1);               \
+            (var) && ((tvar) = TAILQ_NEXT((var), field), 1);                \
             (var) = (tvar))
 #endif
 
@@ -92,7 +92,7 @@ public:
 };
 
 #define CPP_TAILQ_INCR(head)        ((head)->tqh_size++)
-#define CPP_TAILQ_DECR(head)        (((head)->tqh_size<=0)?0:((head)->tqh_size--))
+#define CPP_TAILQ_DECR(head)        (((head)->tqh_size <= 0) ? 0 : ((head)->tqh_size--))
 #define CPP_TAILQ_SIZE(head)        ((head)->tqh_size)
 #define CPP_TAILQ_FIRST(head)       ((head)->tqh_first)
 #define CPP_TAILQ_NEXT(elm, field)  ((elm)->field.tqe_next)
@@ -113,7 +113,7 @@ public:
         (var) && ((_var) = CPP_TAILQ_NEXT((var), field), 1);    \ 
         (var) = (_var)) 
 
-#define CPP_TAILQ_REMOVE(head, elm, field) do                   \
+#define CPP_TAILQ_REMOVE(head, elm, field)          do          \
     {                                                           \
         if ((elm)->field.remove_tag) break;                     \
         if ((CPP_TAILQ_NEXT((elm), field)) != NULL)             \
@@ -122,11 +122,11 @@ public:
         else                                                    \
             (head)->tqh_last = (elm)->field.tqe_prev;           \
         CPP_TAILQ_DECR(head);                                   \
-        (elm)->field.remove_tag = true;                        \
+        (elm)->field.remove_tag = true;                         \
         *(elm)->field.tqe_prev = CPP_TAILQ_NEXT((elm), field);  \
     } while (0)
 
-#define CPP_TAILQ_INSERT_TAIL(head, elm, field) do              \
+#define CPP_TAILQ_INSERT_TAIL(head, elm, field)     do          \
     {                                                           \
         CPP_TAILQ_REMOVE(head, elm, field);                     \
         CPP_TAILQ_NEXT((elm), field) = NULL;                    \
@@ -141,14 +141,14 @@ public:
     {                                                       \
         if (!CPP_TAILQ_EMPTY(head2)) {                      \
             *(head1)->tqh_last = (head2)->tqh_first;        \
-            (head2)->tqh_first->field.tqe_prev = (head1)->tqh_last; \
-            (head1)->tqh_last = (head2)->tqh_last;      \
-            (head1)->tqh_size = (head1)->tqh_size + (head2)->tqh_size; \
+            (head2)->tqh_first->field.tqe_prev = (head1)->tqh_last;     \
+            (head1)->tqh_last = (head2)->tqh_last;                      \
+            (head1)->tqh_size = (head1)->tqh_size + (head2)->tqh_size;  \
             CPP_TAILQ_INIT((head2));                    \
         }                                               \
     } while (0)
 
-#define CPP_TAILQ_POP(head, elm, field) do                  \
+#define CPP_TAILQ_POP(head, elm, field)             do      \
     {                                                       \
         elm = CPP_TAILQ_FIRST(head);                        \
         CPP_TAILQ_REMOVE(head, elm, field);                 \
@@ -173,7 +173,6 @@ public:
     inline static void SysUSleep(uint64_t u_seconds)
     {
         ::usleep(u_seconds);
-
         return ;
     }
     
@@ -228,10 +227,12 @@ class UtilPtrPool
 {
 public:
     typedef typename std::queue<ValueType*> QueuePtr;
+    typedef ValueType* ValueTypePtr;
 
 public:
     explicit UtilPtrPool(uint32_t max = 256) : 
-        m_max_free_(max), m_total_(0)
+        m_max_free_(max), 
+        m_total_(0)
     { }
 
     ~UtilPtrPool()
@@ -285,6 +286,12 @@ protected:
     uint32_t    m_max_free_;
     uint32_t    m_total_;
 };
+
+template<typename T>
+void UtilPtrPoolFree(T *ptr)
+{
+    GetInstance< UtilPtrPool<T> >()->FreePtr(ptr);
+}
 
 class referenceable
 {
@@ -375,7 +382,8 @@ protected:
     class PlaceHolder 
     {
     public:
-        virtual ~PlaceHolder() {}
+        virtual ~PlaceHolder() 
+        { }
 
     public:
         virtual const std::type_info& GetType() const = 0;
@@ -446,18 +454,5 @@ ValueType any_cast(const Any& any)
 }
 
 ST_NAMESPACE_END
-
-#ifdef  __cplusplus
-extern "C" 
-{
-#endif
-
-uint64_t get_sthreadid(void);
-
-void set_sthreadid(uint64_t sthreadid);
-
-#ifdef  __cplusplus
-}
-#endif
 
 #endif

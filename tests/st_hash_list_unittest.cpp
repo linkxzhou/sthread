@@ -1,11 +1,10 @@
-#include "gtest/googletest/include/gtest/gtest.h"
 #include "../include/st_hash_list.h"
 
 ST_NAMESPACE_USING
 
 typedef HashList<> HT;
 
-TEST(HashListTest, hash_list)
+TEST(StStatus, hash_list)
 {
 	HashList<> *h = new HashList<>();
 
@@ -35,6 +34,5 @@ TEST(HashListTest, hash_list)
 // 测试所有的功能
 int main(int argc, char* argv[])
 {
-    testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }

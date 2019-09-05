@@ -1,10 +1,9 @@
-#include "gtest/googletest/include/gtest/gtest.h"
 #include "../include/st_thread.h"
 #include "../include/st_manager.h"
 
 ST_NAMESPACE_USING
 
-TEST(ThreadTest, ThreadScheduler)
+TEST(StStatus, ThreadScheduler)
 {
     Thread *t1 = new Thread(), *t2 = new Thread(), *t3 = new Thread();
     LOG_TRACE("(t1, t2, t3 : %p, %p, %p)", t1, t2, t3);
@@ -29,7 +28,7 @@ TEST(ThreadTest, ThreadScheduler)
     s2->Pend(t1);
 }
 
-TEST(ThreadTest, EventScheduler)
+TEST(StStatus, EventScheduler)
 {
     Thread *t1 = new Thread(), *t2 = new Thread(), *t3 = new Thread();
     LOG_TRACE("(t1, t2, t3 : %p, %p, %p)", t1, t2, t3);
@@ -50,6 +49,5 @@ TEST(ThreadTest, EventScheduler)
 // 测试所有的功能
 int main(int argc, char* argv[])
 {
-    testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }

@@ -1,4 +1,3 @@
-#include "gtest/googletest/include/gtest/gtest.h"
 #include "../include/ucontext/st_ucontext.h"
 
 ST_NAMESPACE_USING
@@ -68,7 +67,7 @@ static void taskstart(uint y, uint x)
     context_exit();
 }
 
-TEST(ucontextTest, ucontext)
+TEST(StStatus, ucontext)
 {
     int size = 8192;
     uint x, y;
@@ -133,6 +132,5 @@ TEST(ucontextTest, ucontext)
 // 测试所有的功能
 int main(int argc, char* argv[])
 {
-    testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }

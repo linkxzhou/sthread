@@ -134,8 +134,7 @@ int st_fcntl(int fd, int cmd, ...);
 
 int st_ioctl(int fd, uint64_t cmd, ...);
 
-int st_accept(int fd, struct sockaddr *address, 
-    socklen_t *address_len);
+int st_accept(int fd, struct sockaddr *address, socklen_t *address_len);
 
 #ifdef  __cplusplus
 }

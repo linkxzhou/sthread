@@ -13,31 +13,72 @@
 ST_NAMESPACE_BEGIN
 
 class StServerConnection : public StConnectionItem
-{
+{ 
+public:
+    virtual int Process()
+    {
+        int ret = RecvData();
+        LOG_TRACE("ret: %d", ret);
+        if (ret < 0)
+        {
+            return -1;
+        }
+
+        char buf[1024];
+        sprintf(buf, "HTTP/1.1 200 OK\r\n"
+            "Content-Length: 1\r\n"
+            "Content-Type: text/html\r\n"
+            "Date: Mon, 12 Aug 2019 15:48:13 GMT\r\n"
+            "Server: sthread/1.0.1\r\n\r\n1");
+
+        m_sendbuf_->SetBuffer(buf, strlen(buf) + 1);
+        ret = SendData();
+        LOG_TRACE("ret: %d", ret);
+
+        if (ret < 0)
+        {
+            return -2;
+        }
+
+        return 0;
+    }
 }; 
 
-template<typename ManagerT, typename ConnetionT>
+template<typename ThreadT, 
+    typename StEventItemT, 
+    typename ConnetionT,
+    int ServerT = TCP_SERVER>
 class StServer
 {
 public:
-    StServer(ManagerT *manager) : 
+    StServer() : 
         m_osfd_(-1), 
-        m_manager_(manager),
         m_item_(NULL)
     {
         m_osfd_ = -1;
+        m_manager_ = GetInstance< Manager<ThreadT, StEventItemT> >();
     }
 
     ~StServer()
     {
-        FreePtrStEventItem(m_item_);
+        UtilPtrPoolFree(m_item_);
+    }
+
+    inline void SetHookFlag()
+    {
+        m_manager_->SetHookFlag();
     }
 
     int32_t CreateSocket(const StNetAddress &addr)
     {
         m_addr_ = addr;
 
-        m_osfd_ = st_socket(is_ipv6 ? AF_INET6 : AF_INET, SOCK_STREAM, 0);
+        int protocol = SOCK_STREAM;
+        if (ServerT == UDP_SERVER)
+        {
+            protocol = SOCK_DGRAM;
+        }
+        m_osfd_ = st_socket(addr.IsIPV6() ? AF_INET6 : AF_INET, protocol, 0);
         LOG_TRACE("m_osfd_: %d", m_osfd_);
         if (m_osfd_ < 0)
         {
@@ -66,7 +107,7 @@ public:
         return m_osfd_;
     }
 
-    bool Listen(int backlog = 100)
+    bool Listen(int backlog = 128)
     {
         int r = ::listen(m_osfd_, backlog);
         return (r < 0) ? false : true;
@@ -79,57 +120,62 @@ public:
         int connfd = -1;
         while (true)
         {
-            if ((connfd = ::_accept(m_osfd_, (struct sockaddr*)NULL, NULL)) <= 0)
+            struct sockaddr clientaddr;
+            socklen_t addrlen = sizeof(struct sockaddr);
+            if ((connfd = ::_accept(m_osfd_, (struct sockaddr*)&clientaddr, &addrlen)) <= 0)
             {
                 LOG_TRACE("connfd: %d, errno: %d, errmsg: %s", 
                     connfd, errno, strerror(errno));
                 continue;
             }
 
+            StNetAddress addr(*((struct sockaddr_in*)&clientaddr));
+            StServerConnection *conn = (StServerConnection*)(
+                GetInstance< UtilPtrPool<ConnetionT> >()->AllocPtr()
+            );
+            conn->SetOsfd(connfd);
+            conn->SetDestAddr(addr);
             
             LOG_TRACE("connfd: %d", connfd);
-            m_manager_->CreateThread(NewClosure(this, CallBack, connfd));
+            m_manager_->CreateThread(NewClosure(CallBack, conn, this));
         }
     }
 
-    virtual void CallBack(StServerConnection *conn)
+    static void CallBack(StServerConnection *conn,
+        StServer<ThreadT, 
+            StEventItemT, 
+            ConnetionT, 
+            ServerT> *server)
     {
-        StEventItem* item = svr->m_manager_->AllocStEventItem();
+        // get manager
+        Manager<ThreadT, StEventItemT> *manager = server->m_manager_;
+        ASSERT(manager != NULL);
+        // new item
+        StEventItem *item = manager->AllocStEventItem();
         ASSERT(item != NULL);
 
         item->SetOsfd(conn->GetOsfd());
-        item->EnableInput();
-        item->DisableOutput();
-        GetEventScheduler()->Add(item);
 
-        while (true)
+        do
         {
-            conn->RecvData();
-            conn->SendData();
+            item->EnableInput();
+            item->DisableOutput();
+            GetEventScheduler()->Add(item);
+            LOG_TRACE(" ========== %p", item);
+        } while (conn->Process() > 0);
 
-            // LOG_TRACE("svr: %p, fd: %d", svr, fd);
-            // char buf1[10240] = {'\0'};
-            // int n = ::_recv(fd, buf1, sizeof(buf1), 0, 3000);
-
-            // char buf2[10240];
-            // sprintf(buf2, "HTTP/1.1 200 OK\r\n"
-            //     "Content-Length: 1\r\n"
-            //     "Content-Type: text/html\r\n"
-            //     "Date: Mon, 12 Aug 2019 15:48:13 GMT\r\n"
-            //     "Server: sthread/1.0.1\r\n\r\n1");
-            // n = ::_send(fd, buf2, strlen(buf2), 0, 3000);
-            // LOG_TRACE("fd: %d, n: %d, buf: %s", fd, n, buf2);
-            // // st_close(fd);
-        }
-
-        FreePtrStEventItem(item);
+        // 清理句柄数据
+        GetEventScheduler()->Reset(item);
+        st_close(conn->GetOsfd());
+        item->Reset();
+        UtilPtrPoolFree(item);
     }
 
 private:
-    ManagerT*       m_manager_;
+    Manager<ThreadT, StEventItemT>  *m_manager_;
     int             m_osfd_;
     StNetAddress    m_addr_;
-    StEventItem*    m_item_;
+    StEventItem     *m_item_;
 };
 
 ST_NAMESPACE_END

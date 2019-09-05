@@ -15,19 +15,8 @@
 
 ST_NAMESPACE_BEGIN
 
-template<typename T>
-void FreePtrThread(T *thread)
-{
-    GetInstance< UtilPtrPool<T> >()->FreePtr(thread);
-}
-
-template<typename T>
-void FreePtrStEventItem(T *item)
-{
-    GetInstance< UtilPtrPool<T> >()->FreePtr(item);
-}
-
-template<typename ThreadT = Thread, typename StEventItemT = StEventItem>
+template<typename ThreadT, 
+    typename StEventItemT>
 class Manager
 {
 public:
@@ -47,7 +36,7 @@ public:
 	    st_safe_delete(m_heap_timer_);
     }
 
-    void Init(int max_num = 50000)
+    void Init(int max_num = 1024)
     {
 	    int r = GetThreadScheduler()->m_sleep_list_.
             HeapResize(max_num * 2);
@@ -57,22 +46,25 @@ public:
         ASSERT(m_heap_timer_ != NULL);
 	    
 	    // 获取一个daemon线程(从线程池中分配)
-	    m_daemon_ = new Thread();
+	    m_daemon_ = new ThreadT();
 	    ASSERT(m_daemon_ != NULL);
+
 	    m_daemon_->SetType(eDAEMON);
 	    m_daemon_->SetState(eRUNABLE);
 	    m_daemon_->SetCallback(NewClosure(StartDaemonThread, this));
         m_daemon_->SetName("daemon");
 
-	    m_primo_ = new Thread();
+	    m_primo_ = new ThreadT();
 	    ASSERT(m_daemon_ != NULL);
+
         m_primo_->SetType(ePRIMORDIAL);
 	    m_primo_->SetState(eRUNNING);
         m_primo_->SetName("primo");
 
         GetThreadScheduler()->SetDaemonThread(m_daemon_);
         GetThreadScheduler()->SetPrimoThread(m_primo_);
-	    GetThreadScheduler()->SetActiveThread(m_primo_); // 设置当前的活动线程
+        // 设置当前的活动线程
+	    GetThreadScheduler()->SetActiveThread(m_primo_);
 
 	    m_last_clock_ = Util::SysMs();
     }
@@ -105,13 +97,15 @@ public:
 	        count = m_heap_timer_->CheckExpired();
 	    }
 
-        LOG_TRACE("count : %d", count);
+        LOG_TRACE("count: %d", count);
     }
 
     inline int64_t GetTimeout()
     {
-	    Thread* thread = dynamic_cast<Thread*>(GetThreadScheduler()->
-            m_sleep_list_.HeapTop());
+	    Thread* thread = dynamic_cast<Thread*>(
+            GetThreadScheduler()->m_sleep_list_.HeapTop()
+        );
+
         int64_t now = GetLastClock();
 	    if (!thread)
 	    {
@@ -145,7 +139,7 @@ public:
 	            return -1;
 	        }
 
-	        StEventItem* item = GetEventScheduler()->GetEventItem(fd);
+	        StEventItem *item = GetEventScheduler()->GetEventItem(fd);
             if (NULL == item)
             {
                 LOG_TRACE("item is NULL");
@@ -169,9 +163,9 @@ public:
 	        if (!r)
 	        {
 	            LOG_ERROR("item schedule failed, errno: %d, strerr: %s", 
-                    errno, strerror(errno));
+                    errno, strerror(errno)); 
                 // 释放item数据
-	            FreePtrStEventItem(item);
+	            UtilPtrPoolFree(item);
 	            return -3;
 	        }
 
@@ -184,13 +178,15 @@ public:
 
     Thread* CreateThread(Closure *closure, bool runable = true)
     {
-    	Thread* thread = AllocThread();
+    	Thread *thread = AllocThread();
 	    if (NULL == thread)
 	    {
 	        LOG_ERROR("alloc thread failed");
 	        return NULL;
 	    }
 
+        TODO_INTO("CreateThread run ...");
+        
 	    thread->SetCallback(closure);
 	    if (runable)
 	    {
@@ -214,7 +210,7 @@ public:
     {
         ASSERT(manager != NULL);
 
-    	Thread* daemon = manager->m_daemon_;
+    	Thread *daemon = manager->m_daemon_;
         EventScheduler *event_scheduler = GetEventScheduler();
         ThreadScheduler *thread_scheduler = GetThreadScheduler();
         if (NULL == daemon || 

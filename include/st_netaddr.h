@@ -17,18 +17,18 @@ ST_NAMESPACE_BEGIN
 class StNetAddress
 {
 public:
-    StNetAddress() : 
+    explicit StNetAddress() : 
         m_errno_(0), 
         m_isipv6_(false)
     { }
 
-    explicit StNetAddress(const struct sockaddr_in& addr) : 
+    explicit StNetAddress(const struct sockaddr_in &addr) : 
         m_addr_(addr), 
         m_errno_(0),
         m_isipv6_(false)
     { }
 
-    explicit StNetAddress(const struct sockaddr_in6& addr) : 
+    explicit StNetAddress(const struct sockaddr_in6 &addr) : 
         m_addr6_(addr), 
         m_errno_(0),
         m_isipv6_(false)
@@ -36,12 +36,12 @@ public:
 
     inline void SetAddr(const char *hostname)
     {
-        struct hostent* he = NULL;
+        struct hostent *he = NULL;
 
         he = ::gethostbyname(hostname);
         if (he != NULL)
         {
-            assert(he->h_addrtype == AF_INET && he->h_length == sizeof(uint32_t));
+            ASSERT(he->h_addrtype == AF_INET && he->h_length == sizeof(uint32_t));
             m_addr_.sin_addr = *reinterpret_cast<struct in_addr*>(he->h_addr);
         }
         else
@@ -57,7 +57,7 @@ public:
         if (is_ipv6)
         {
             m_isipv6_ = true;
-            bzero(&m_addr6_, sizeof m_addr6_);
+            bzero(&m_addr6_, sizeof(m_addr6_));
             m_addr6_.sin6_family = AF_INET6;
             in6_addr ip = loopback_only ? in6addr_loopback : in6addr_any;
             m_addr6_.sin6_addr = ip;
@@ -65,7 +65,7 @@ public:
         }
         else
         {
-            bzero(&m_addr_, sizeof m_addr_);
+            bzero(&m_addr_, sizeof(m_addr_));
             m_addr_.sin_family = AF_INET;
             in_addr_t ip = loopback_only ? INADDR_LOOPBACK : INADDR_ANY;
             m_addr_.sin_addr.s_addr = htonl(ip);
@@ -80,7 +80,7 @@ public:
         if (is_ipv6)
         {
             m_isipv6_ = true;
-            bzero(&m_addr6_, sizeof m_addr6_);
+            bzero(&m_addr6_, sizeof(m_addr6_));
             m_addr6_.sin6_family = AF_INET;
             m_addr6_.sin6_port = htons(port);
             if (::inet_pton(AF_INET, ip, &m_addr6_.sin6_addr) <= 0)
@@ -90,7 +90,7 @@ public:
         }
         else
         {
-            bzero(&m_addr_, sizeof m_addr_);
+            bzero(&m_addr_, sizeof(m_addr_));
             m_addr_.sin_family = AF_INET;
             m_addr_.sin_port = htons(port);
             if (::inet_pton(AF_INET, ip, &m_addr_.sin_addr) <= 0)
@@ -140,12 +140,12 @@ public:
         return ntohs(PortNetEndian());
     }
 
-    inline void GetSockAddr(struct sockaddr* &addr) const 
+    inline void GetSockAddr(struct sockaddr * &addr) const 
     { 
         addr = (struct sockaddr*)(&m_addr_);
     }
 
-    inline void GetSockAddr(struct sockaddr_in6* &addr) const 
+    inline void GetSockAddr(struct sockaddr_in6 * &addr) const 
     { 
         addr = (struct sockaddr_in6*)(&m_addr6_);
     }
@@ -155,9 +155,14 @@ public:
         return m_addr_.sin_port; 
     }
 
-    inline bool IsError()
+    inline bool IsError() const
     {
-        return m_errno_ == 0 ? false : true;
+        return (m_errno_ == 0) ? false : true;
+    }
+
+    inline bool IsIPV6() const
+    {
+        return m_isipv6_;
     }
 
 private:

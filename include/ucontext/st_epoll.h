@@ -156,7 +156,7 @@ public:
         return m_fired_;
     }
 
-    const char *ApiName(void) 
+    const char* ApiName(void) 
     {
         return "epoll";
     }

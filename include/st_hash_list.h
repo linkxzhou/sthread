@@ -11,25 +11,25 @@ ST_NAMESPACE_BEGIN
 
 template <class T> class HashList;
 
-class HashKey : public Any
+class HashKey : public Any, public referenceable
 {
     template <typename T> friend class HashList;
 
 private:
-    HashKey*  m_next_entry_;
+    HashKey*  m_next_ptr_;
     uint32_t  m_hash_value_;
     void*     m_data_ptr_;
 
 public:
     HashKey() : 
-        m_next_entry_(NULL), 
+        m_next_ptr_(NULL), 
         m_hash_value_(0), 
         m_data_ptr_(NULL) 
     { }
 
     virtual ~HashKey()
     { 
-        m_next_entry_ = NULL;
+        m_next_ptr_ = NULL;
         m_hash_value_ = 0;
     }
 
@@ -48,12 +48,12 @@ public:
         return ;
     }
 
-    void* GetDataPtr()
+    inline void* GetDataPtr()
     {
         return m_data_ptr_;
     }
 
-    void SetDataPtr(void* data)
+    inline void SetDataPtr(void* data)
     {
         m_data_ptr_ = data;
     }
@@ -97,7 +97,7 @@ public:
             return ST_ERROR;
         }
 
-        if ((key->m_hash_value_ != 0) || (key->m_next_entry_ != NULL))
+        if ((key->m_hash_value_ != 0) || (key->m_next_ptr_ != NULL))
         {
             return ST_ERROR;
         }
@@ -109,28 +109,29 @@ public:
         if (NULL == m_buckets_[idx])
         {
             m_buckets_[idx] = any_cast<value_type>(malloc(sizeof(value_type)));
-            m_buckets_[idx]->m_next_entry_ = NULL;
+            m_buckets_[idx]->m_next_ptr_ = NULL;
             m_buckets_[idx]->m_hash_value_ = 0;
         }
 
-        pointer next_item = any_cast<value_type>(m_buckets_[idx]->m_next_entry_);
+        pointer next_item = any_cast<value_type>(m_buckets_[idx]->m_next_ptr_);
         LOG_TRACE("m_buckets_ : %p, next_item : %p, idx : %d", m_buckets_, next_item, idx);
 
         // 第一个元素不存储任何对象，只存储当前开链列表中的list的个数到hash_value_中
-        m_buckets_[idx]->m_next_entry_ = key;
-        key->m_next_entry_ = next_item;
+        m_buckets_[idx]->m_next_ptr_ = key;
+        key->m_next_ptr_ = next_item;
         (m_buckets_[idx]->m_hash_value_)++;
         m_count_++;
 
         if (ST_DEBUG)
         {
-            for (pointer item = any_cast<value_type>(m_buckets_[idx]->m_next_entry_); 
-                item != NULL; item = any_cast<value_type>(item->m_next_entry_))
+            for (pointer item = any_cast<value_type>(m_buckets_[idx]->m_next_ptr_); 
+                item != NULL; item = any_cast<value_type>(item->m_next_ptr_))
             {
                 LOG_TRACE("item : %p", item);
             }
 
-            LOG_TRACE("item : %p, key : %p", any_cast<value_type>(m_buckets_[idx]->m_next_entry_), key);
+            LOG_TRACE("item : %p, key : %p", 
+                any_cast<value_type>(m_buckets_[idx]->m_next_ptr_), key);
         }
 
         return 0;
@@ -150,9 +151,9 @@ public:
             return NULL;
         }
 
-        pointer item = any_cast<value_type>(m_buckets_[idx]->m_next_entry_);
+        pointer item = any_cast<value_type>(m_buckets_[idx]->m_next_ptr_);
 
-        for (; item != NULL; item = any_cast<value_type>(item->m_next_entry_))
+        for (; item != NULL; item = any_cast<value_type>(item->m_next_ptr_))
         {
             if (item->m_hash_value_ != hash)
             {
@@ -195,15 +196,15 @@ public:
             return ;
         }
         pointer prev = m_buckets_[idx];
-        pointer item = any_cast<value_type>(prev->m_next_entry_);
+        pointer item = any_cast<value_type>(prev->m_next_ptr_);
         
         while (item != NULL)
         {
             if ((item->m_hash_value_ == hash) && (item->HashCmp(key) == 0))
             {
-                prev->m_next_entry_ = item->m_next_entry_;
+                prev->m_next_ptr_ = item->m_next_ptr_;
                 pointer tmp = item;
-                item = any_cast<value_type>(item->m_next_entry_);
+                item = any_cast<value_type>(item->m_next_ptr_);
                 m_count_--;
                 (m_buckets_[idx]->m_hash_value_)--;
                 st_safe_delete(tmp); // 释放指针
@@ -211,7 +212,7 @@ public:
             else
             {
                 prev = item;
-                item = any_cast<value_type>(item->m_next_entry_);
+                item = any_cast<value_type>(item->m_next_ptr_);
             }
         }
     }
@@ -226,7 +227,7 @@ public:
         for (int32_t i = 0; i < m_max_; i++)
         {
             pointer item = m_buckets_[i];
-            for (; item != NULL; item = item->m_next_entry_)
+            for (; item != NULL; item = item->m_next_ptr_)
             {
                 item->HashIterate();
             }
@@ -253,7 +254,7 @@ public:
 
 private:
     pointer_pointer m_buckets_;
-    int32_t     m_count_, m_max_;
+    int32_t         m_count_, m_max_;
 };
 
 ST_NAMESPACE_END

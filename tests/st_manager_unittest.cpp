@@ -1,4 +1,3 @@
-#include "gtest/googletest/include/gtest/gtest.h"
 #include "../include/st_manager.h"
 #include "../include/st_sys.h"
 #include "../include/st_netaddr.h"
@@ -59,7 +58,7 @@ static void socket_callback(Manager<> *manager, int i)
     // context_exit();
 }
 
-TEST(ManagerTest, socket)
+TEST(StStatus, socket)
 {
 	Manager<>* manager = GetInstance< Manager<> >();
     manager->SetHookFlag();
@@ -80,6 +79,5 @@ TEST(ManagerTest, socket)
 // 测试所有的功能
 int main(int argc, char* argv[])
 {
-    testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }

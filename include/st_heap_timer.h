@@ -17,8 +17,13 @@ class TimerEntry : public HeapEntry
 {
 public:
     TimerEntry() : 
-        m_time_expired_(0)
+        m_time_expired_(-1)
     { }
+
+    virtual ~TimerEntry()
+    { 
+        m_time_expired_ = -1;
+    }
 
     virtual void TimerNotify(eEventType type) 
     { 
@@ -30,30 +35,25 @@ public:
         return m_time_expired_;
     }
 
-    virtual ~TimerEntry()
-    { 
-        m_time_expired_ = 0;
-    }
-
-    void SetExpiredTime(int64_t expired)
+    inline void SetExpiredTime(int64_t expired)
     {
         m_time_expired_ = expired;
     }
 
-    uint64_t GetExpiredTime()
+    inline uint64_t GetExpiredTime()
     {
         return m_time_expired_;
     }
 
 private:
-    int64_t m_time_expired_;
+    uint64_t m_time_expired_;
 };
 
 // 时间控制器
 class HeapTimer
 {
 public:
-    explicit HeapTimer(uint32_t max_item = 100000)
+    explicit HeapTimer(uint32_t max_item = 1024)
     {
         m_heap_ = new HeapList<TimerEntry>(max_item);
     }
@@ -63,7 +63,7 @@ public:
         st_safe_delete(m_heap_);
     }
 
-    bool Start(TimerEntry* timerable, int32_t interval)
+    bool Start(TimerEntry *timerable, int32_t interval)
     {
         if (!m_heap_ || !timerable)
         {
@@ -114,10 +114,10 @@ public:
         LOG_TRACE("before: now_ms = %llu, size = %d", now, m_heap_->HeapSize());
 
         int32_t count = 0;
-        TimerEntry* timer = any_cast<TimerEntry>(m_heap_->HeapTop());
+        TimerEntry *timer = any_cast<TimerEntry>(m_heap_->HeapTop());
         while (timer && (timer->GetExpiredTime() <= now))
         {
-            m_heap_->HeapDelete(timer);     // 删除对应的过期时间
+            m_heap_->HeapDelete(timer);          // 删除对应的过期时间
             timer->TimerNotify(eEVENT_TIMEOUT);  // 传递超时事件
             timer = any_cast<TimerEntry>(m_heap_->HeapTop());
             count++;
@@ -128,7 +128,7 @@ public:
     }
 
 private:
-    HeapList<TimerEntry>* m_heap_;
+    HeapList<TimerEntry> *m_heap_;
 };
 
 ST_NAMESPACE_END

@@ -1,4 +1,3 @@
-#include "gtest/googletest/include/gtest/gtest.h"
 #include "../include/st_singleton.h"
 
 ST_NAMESPACE_USING
@@ -18,7 +17,7 @@ static void * thread_func(void *object)
     return NULL;
 } 
 
-TEST(SingletonTest, s1)
+TEST(StStatus, s1)
 {
     pthread_t tid;
     int err = pthread_create(&tid, NULL, thread_func, NULL);  
@@ -39,6 +38,5 @@ TEST(SingletonTest, s1)
 // 测试所有的功能
 int main(int argc, char* argv[])
 {
-    testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }

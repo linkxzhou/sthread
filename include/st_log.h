@@ -117,9 +117,9 @@ private:
         }                                                                   \
     } while (0)
 
-#define FUNCTION_INTO(cls)  LOG_DEBUG("\033[32mrun into %s:%s \033[0m", #cls, __FUNCTION__)
+#define TODO_INTO(cls)  LOG_DEBUG("\033[32mrun into %s:%s \033[0m", #cls, __FUNCTION__)
 
-#define FUNCTION_OUT(cls)   LOG_DEBUG("\033[34mrun out %s:%s \033[0m", #cls, __FUNCTION__)
+#define TODO_OUT(cls)   LOG_DEBUG("\033[34mrun out %s:%s \033[0m", #cls, __FUNCTION__)
 
 #define ASSERT(exp)         assert((exp))
 

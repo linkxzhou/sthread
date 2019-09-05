@@ -51,8 +51,11 @@ struct ucontext
 };
 
 void makecontext(ucontext_t*, void(*)(void), int, ...);
+
 int swapcontext(ucontext_t*, const ucontext_t*);
+
 int _getmcontext(mcontext_t*);
+
 void _setmcontext(const mcontext_t*);
 
 #endif
