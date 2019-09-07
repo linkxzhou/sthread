@@ -13,7 +13,7 @@ ST_NAMESPACE_BEGIN
 
 #define MEM_PAGE_SIZE       2048
 
-class ThreadScheduler
+class ThreadScheduler : public referenceable
 {
 public:
     ThreadScheduler() : 
@@ -61,41 +61,47 @@ public:
         m_active_thread_ = thread;
     }
 
-    inline ThreadItem* GetActiveThread(ThreadItem *thread)
-    {
-        return m_active_thread_;
-    }
-
     void SwitchThread(ThreadItem *rthread, ThreadItem *sthread);
 
     // 让出当前线程
     int Yield(ThreadItem *thread);
 
-    void Sleep(ThreadItem *thread);
+    int Sleep(ThreadItem *thread);
 
-    void Pend(ThreadItem *thread);
+    int Pend(ThreadItem *thread);
 
-    void Unpend(ThreadItem *thread);
+    int Unpend(ThreadItem *thread);
 
     int IOWaitToRunable(ThreadItem *thread);
 
-    int RemoveIOWait(ThreadItem *thread);
-
     int InsertIOWait(ThreadItem *thread);
+
+    int RemoveIOWait(ThreadItem *thread);
 
     int InsertRunable(ThreadItem *thread);
 
     int RemoveRunable(ThreadItem *thread);
 
-    void RemoveSleep(ThreadItem *thread);
+    int InsertSleep(ThreadItem *thread);
 
-    void InsertSleep(ThreadItem *thread);
+    int RemoveSleep(ThreadItem *thread);
 
-    void WakeupParent(ThreadItem *thread); // 唤醒父亲线程
+    // 唤醒父亲线程
+    void WakeupParent(ThreadItem *thread);
 
-    void Wakeup(int64_t now); // 唤醒sleep的列表中的线程
+    // 唤醒sleep的列表中的线程
+    void Wakeup(int64_t now);
 
-    ThreadItem* PopRunable(); // pop最新一个运行的线程
+    // pop最新一个运行的线程
+    ThreadItem* PopRunable(); 
+
+    void ForeachPrint()
+    {
+        LOG_TRACE("m_run_list_ size: %d, m_io_list_ size: %d, m_pend_list_ size: %d", 
+            CPP_TAILQ_SIZE(&m_run_list_), 
+            CPP_TAILQ_SIZE(&m_io_list_), 
+            CPP_TAILQ_SIZE(&m_pend_list_));
+    }
 
 public:
     ThreadItemQueue         m_run_list_, m_io_list_, m_pend_list_;
@@ -103,7 +109,7 @@ public:
     ThreadItem              *m_active_thread_, *m_daemon_, *m_primo_;
 };
 
-class EventScheduler
+class EventScheduler : public referenceable
 {
     typedef StEventItem* StEventItemPtr;
 
@@ -129,12 +135,10 @@ public:
 
     int32_t Init(int32_t max_num);
 
-    bool Schedule(ThreadItem* thread, 
-        StEventItemQueue* fdset,
-        StEventItem* item,
+    bool Schedule(ThreadItem *thread, 
+        StEventItemQueue *fdset,
+        StEventItem *item,
         uint64_t wakeup_timeout);
-
-    void Close();
 
     bool Add(StEventItemQueue &fdset);
 
@@ -178,7 +182,13 @@ public:
 
     void Wait(int32_t timeout);
 
-    inline void Reset(StEventItem *item)
+    inline void Close()
+    {
+        st_safe_delete_array(m_container_);
+        m_state_->ApiFree(); // 释放链接
+    }
+
+    inline void Close(StEventItem *item)
     {
         Delete(item);
         
@@ -203,12 +213,21 @@ protected:
 class Thread : public ThreadItem
 {
 public:
-    Thread();
+    Thread() : ThreadItem()
+    {
+        bool r = InitStack();
+        ASSERT(r == true);
+        InitContext();
+    }
 
-    virtual ~Thread();
+    virtual ~Thread()
+    {
+        FreeStack();
+    }
 
     virtual void Run(void);
 
+    // 设置休眠时间
     virtual void Sleep(int32_t ms)
     {
         uint64_t now = Util::SysMs();

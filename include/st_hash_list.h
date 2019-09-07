@@ -14,12 +14,7 @@ template <class T> class HashList;
 class HashKey : public Any, public referenceable
 {
     template <typename T> friend class HashList;
-
-private:
-    HashKey*  m_next_ptr_;
-    uint32_t  m_hash_value_;
-    void*     m_data_ptr_;
-
+    
 public:
     HashKey() : 
         m_next_ptr_(NULL), 
@@ -38,7 +33,7 @@ public:
         return m_hash_value_;
     }
 
-    virtual int32_t HashCmp(HashKey* rhs)
+    virtual int32_t HashCmp(HashKey *rhs)
     {
         return 0;
     }
@@ -53,10 +48,15 @@ public:
         return m_data_ptr_;
     }
 
-    inline void SetDataPtr(void* data)
+    inline void SetDataPtr(void *data)
     {
         m_data_ptr_ = data;
     }
+
+private:
+    HashKey     *m_next_ptr_;
+    uint32_t    m_hash_value_;
+    void        *m_data_ptr_;
 };
 
 // 实现hashlist
@@ -68,9 +68,9 @@ public:
     typedef value_type* pointer;
     typedef pointer* pointer_pointer;
 
-    explicit HashList(int32_t max = 4096)
+    explicit HashList(int32_t max = 1024)
     {
-        m_max_ = Util::MaxPrimeNum((max > 2) ? max : 4096);
+        m_max_ = Util::MaxPrimeNum((max > 2) ? max : 1024);
         m_buckets_ = (pointer*)calloc(m_max_, sizeof(pointer));
         m_count_ = 0;
     }

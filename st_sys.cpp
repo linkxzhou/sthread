@@ -339,11 +339,7 @@ int st_accept(int fd, struct sockaddr *address, socklen_t *address_len)
     HookFd *hook_fd = st_find_fd(fd);
     if (!hook_fd)
     {
-        return REAL_FUNC(accept)(fd, address, address_len);
-    }
-
-    if (hook_fd->sock_flag & ST_FD_FLG_UNBLOCK)
-    {
+        TODO_INTO("[1]accept ...");
         return REAL_FUNC(accept)(fd, address, address_len);
     }
 
@@ -358,6 +354,7 @@ int st_accept(int fd, struct sockaddr *address, socklen_t *address_len)
         flags |= O_NONBLOCK;
         st_fcntl(accept_fd, F_SETFL, flags);
     }
+    TODO_INTO("[2]accept ...");
     
     return accept_fd;
 }

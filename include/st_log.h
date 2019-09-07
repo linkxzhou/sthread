@@ -70,9 +70,7 @@ public:
 
 private:
     char *m_name_;
-    int m_level_;
-    int m_fd_;
-    int m_nerror_;
+    int m_level_, m_fd_, m_nerror_;
 };
 
 #define LOG_ERROR(...) do                                                       \
@@ -117,10 +115,10 @@ private:
         }                                                                   \
     } while (0)
 
-#define TODO_INTO(cls)  LOG_DEBUG("\033[32mrun into %s:%s \033[0m", #cls, __FUNCTION__)
+#define TODO_INTO(cls)  LOG_DEBUG("\033[32mrun into %s: %s \033[0m", #cls, __FUNCTION__)
 
-#define TODO_OUT(cls)   LOG_DEBUG("\033[34mrun out %s:%s \033[0m", #cls, __FUNCTION__)
+#define TODO_OUT(cls)   LOG_DEBUG("\033[34mrun out %s: %s \033[0m", #cls, __FUNCTION__)
 
-#define ASSERT(exp)         assert((exp))
+#define ASSERT(exp)     assert((exp))
 
 #endif

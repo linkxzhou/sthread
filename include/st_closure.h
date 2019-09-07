@@ -16,7 +16,7 @@ public:
 
 // 无参数
 template <class Funct>
-class Closure0: public Closure 
+class Closure0 : public Closure 
 {
 public:
     Closure0(Funct fun) 
@@ -37,7 +37,7 @@ private:
 }; 
 
 template <class Funct, class Arg1>
-class Closure1: public Closure 
+class Closure1 : public Closure 
 {
 public:
     Closure1(Funct fun, Arg1 arg1) 
@@ -60,7 +60,7 @@ private:
 }; 
 
 template <class Funct, class Arg1, class Arg2>
-class Closure2: public Closure 
+class Closure2 : public Closure 
 {
 public:
     Closure2(Funct fun, Arg1 arg1, Arg2 arg2) 
@@ -112,7 +112,7 @@ private:
 }; 
 
 template <class Object, class Funct> 
-class ObjectClosure0: public Closure 
+class ObjectClosure0 : public Closure 
 {
 public:
     ObjectClosure0(Object* p, Funct fun) 
@@ -130,12 +130,12 @@ public:
     }
 
 private:
-    Object* m_p_;
+    Object *m_p_;
     Funct m_fun_;
 }; 
 
 template <class Object, class Funct, class Arg1> 
-class ObjectClosure1: public Closure 
+class ObjectClosure1 : public Closure 
 {
 public:
     ObjectClosure1(Object* p, Funct fun, 
@@ -155,13 +155,13 @@ public:
     }
 
 private:
-    Object* m_p_;
+    Object *m_p_;
     Funct m_fun_;
     Arg1 m_arg1_;
 }; 
 
 template <class Object, class Funct, class Arg1, class Arg2> 
-class ObjectClosure2: public Closure 
+class ObjectClosure2 : public Closure 
 {
 public:
     ObjectClosure2(Object* p, Funct fun, 
@@ -182,14 +182,14 @@ public:
     }
 
 private:
-    Object* m_p_;
+    Object *m_p_;
     Funct m_fun_;
     Arg1 m_arg1_;
     Arg2 m_arg2_;
 };
 
 template <class Object, class Funct, class Arg1, class Arg2, class Arg3> 
-class ObjectClosure3: public Closure 
+class ObjectClosure3 : public Closure 
 {
 public:
     ObjectClosure3(Object* p, Funct fun, 
@@ -211,7 +211,7 @@ public:
     }
 
 private:
-    Object* m_p_;
+    Object *m_p_;
     Funct m_fun_;
     Arg1 m_arg1_;
     Arg2 m_arg2_;

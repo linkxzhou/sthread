@@ -6,6 +6,7 @@ static const char* g_level_cn[12] = {"EMERG", "ALERT", "CRIT", "ERR",
 
 StLogger::StLogger()
 {
+    // 默认输出/dev/stdout
     m_fd_ = 1;
     m_level_ = LLOG_PVERB;
 }

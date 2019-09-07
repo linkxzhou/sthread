@@ -1,8 +1,8 @@
 import socket
 import time
 
-host = '117.185.16.31'
-port = 80
+host = '127.0.0.1'
+port = 8001
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 client.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
 client.connect((host, port))

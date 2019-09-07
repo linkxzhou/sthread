@@ -147,10 +147,9 @@ public:
             ConnetionT, 
             ServerT> *server)
     {
-        // get manager
         Manager<ThreadT, StEventItemT> *manager = server->m_manager_;
         ASSERT(manager != NULL);
-        // new item
+
         StEventItem *item = manager->AllocStEventItem();
         ASSERT(item != NULL);
 
@@ -165,10 +164,9 @@ public:
         } while (conn->Process() > 0);
 
         // 清理句柄数据
-        GetEventScheduler()->Reset(item);
+        GetEventScheduler()->Close(item);
         st_close(conn->GetOsfd());
-        item->Reset();
-        UtilPtrPoolFree(item);
+        // UtilPtrPoolFree(item);
     }
 
 private:

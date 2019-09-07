@@ -45,7 +45,7 @@ int _sendto(int fd, const void *msg, int len, int flags,
         StEventItem *item = GetEventScheduler()->GetEventItem(fd);
         if (item == NULL)
         {
-            LOG_ERROR("item is NULL");
+            LOG_ERROR("item is NULL, fd: %d", fd);
             return -2;
         }
         item->DisableInput();
@@ -84,7 +84,7 @@ int _recvfrom(int fd, void *buf, int len, int flags,
             return -1;
         }
 
-        StEventItem* item = GetEventScheduler()->GetEventItem(fd);
+        StEventItem *item = GetEventScheduler()->GetEventItem(fd);
         if (item == NULL)
         {
             LOG_ERROR("item is NULL");
@@ -469,6 +469,7 @@ void _sleep(int ms)
     if (thread != NULL)
     {
         thread->Sleep(ms);
+        GetThreadScheduler()->Sleep(thread);
     }
 }
 

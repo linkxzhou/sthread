@@ -44,22 +44,19 @@
 #define unlikely(x) __builtin_expect((x),0)
 #endif
 
-#define st_safe_delete(ptr)                 \
-    do                                      \
+#define st_safe_delete(ptr)     do          \
     {                                       \
         if (ptr != NULL) delete ptr;        \
         ptr = NULL;                         \
     } while(0)
 
-#define st_safe_delete_array(ptr)           \
-    do                                      \
+#define st_safe_delete_array(ptr)   do      \
     {                                       \
         if (ptr != NULL) delete [] ptr;     \
         ptr = NULL;                         \
     } while(0)
 
-#define st_safe_free(ptr)                   \
-    do                                      \
+#define st_safe_free(ptr)   do              \
     {                                       \
         if (ptr != NULL) free(ptr);         \
         ptr = NULL;                         \

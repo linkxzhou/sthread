@@ -202,7 +202,7 @@ public:
         return 0;
     }
 
-    // 生成唯一的uniqid
+    // 解决多线程情况，生成唯一的uniqid
     static uint64_t GetUniqid()
     {
         static uint64_t id = 0;
@@ -214,6 +214,7 @@ public:
         {
             id = 1;
         }
+
         rid = ++id;
         pthread_mutex_unlock(&mutex);
 
@@ -237,7 +238,7 @@ public:
 
     ~UtilPtrPool()
     {
-        ValueType* ptr = NULL;
+        ValueType *ptr = NULL;
         while (!m_ptr_list_.empty())
         {
             ptr = m_ptr_list_.front();
@@ -253,7 +254,7 @@ public:
 
     ValueType* AllocPtr()
     {
-        ValueType* ptr = NULL;
+        ValueType *ptr = NULL;
         if (!m_ptr_list_.empty())
         {
             ptr = m_ptr_list_.front();
@@ -270,14 +271,19 @@ public:
     
     void FreePtr(ValueType *ptr)
     {
-        if ((uint32_t)m_ptr_list_.size() >= m_max_free_)
+        if (ptr != NULL)
         {
-            st_safe_delete(ptr);
-            m_total_--;
-        }
-        else
-        {
-            m_ptr_list_.push(ptr);
+            if ((uint32_t)m_ptr_list_.size() >= m_max_free_)
+            {
+                st_safe_delete(ptr);
+                m_total_--;
+            }
+            else
+            {
+                // 必须继承referenceable
+                ptr->Reset();
+                m_ptr_list_.push(ptr);
+            }
         }
     }
 
@@ -314,6 +320,9 @@ public:
         return m_ref_count_;
     }
 
+    virtual void Reset()
+    { }
+
 public:
     uint32_t m_ref_count_;
 };
@@ -321,7 +330,9 @@ public:
 class Any 
 {
 public:
-    Any() : m_content_(NULL) { }
+    Any() : 
+        m_content_(NULL) 
+    { }
 
     ~Any() 
     {
@@ -330,10 +341,12 @@ public:
 
     template<typename ValueType>
     explicit Any(const ValueType& value)
-        : m_content_(new Holder<ValueType>(value)) {}
+        : m_content_(new Holder<ValueType>(value)) 
+    { }
 
     Any(const Any& rhs)
-        : m_content_(rhs.m_content_ ? rhs.m_content_->Clone() : NULL) {}
+        : m_content_(rhs.m_content_ ? rhs.m_content_->Clone() : NULL) 
+    { }
 
 public:
     Any& swap(Any& rhs) 
@@ -343,13 +356,13 @@ public:
     }
 
     template<typename ValueType>
-    Any& operator=(const ValueType& rhs) 
+    Any& operator=(const ValueType &rhs) 
     {
         Any(rhs).swap(*this);
         return *this;
     }
 
-    Any& operator=(const Any& rhs) 
+    Any& operator=(const Any &rhs) 
     {
         Any(rhs).swap(*this);
         return *this;
@@ -394,7 +407,9 @@ protected:
     class Holder : public PlaceHolder 
     {
     public:
-        Holder(const ValueType& value) : m_held_(value) {}
+        Holder(const ValueType& value) : 
+            m_held_(value) 
+        { }
 
         virtual const std::type_info& GetType() const 
         {

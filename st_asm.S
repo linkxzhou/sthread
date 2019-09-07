@@ -1,6 +1,7 @@
-/* Copyright (c) 2005-2006 Russ Cox, MIT; see COPYRIGHT 
+/*******************************************************
+    Copyright (c) 2005-2006 Russ Cox, MIT; see COPYRIGHT 
     user : zhoulv2000@163.com
-*/
+*******************************************************/
 
 #if defined(__FreeBSD__) && defined(__i386__) && __FreeBSD__ < 5
 #define NEEDX86CONTEXT 1
@@ -59,7 +60,7 @@ SET:
 	movl	44(%eax), %ecx
 
 	movl	72(%eax), %esp
-	pushl	60(%eax)	/* new %eip */
+	pushl	60(%eax)  /* new %eip */
 	movl	48(%eax), %eax
 	ret
 

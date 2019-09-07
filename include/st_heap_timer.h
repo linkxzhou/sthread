@@ -46,7 +46,7 @@ public:
     }
 
 private:
-    uint64_t m_time_expired_;
+    uint64_t    m_time_expired_;
 };
 
 // 时间控制器
@@ -90,7 +90,7 @@ public:
         return true;
     }
 
-    void Stop(TimerEntry* timerable)
+    void Stop(TimerEntry *timerable)
     {
         if (!m_heap_ || !timerable)
         {
@@ -98,7 +98,7 @@ public:
         }
 
         m_heap_->HeapDelete(timerable);
-        return;
+        return ;
     }
 
     // 检查是否过期

@@ -49,14 +49,14 @@ bool StTester::RegisterTest(const char *base, const char *name, void (*func)())
 
 int StTester::RunAllTests() 
 {
-    const char *matcher = getenv("LEVELDB_TESTS");
+    const char *matcher = ::getenv("LEVELDB_TESTS");
 
     int num = 0;
     if (tests != NULL) 
     {
         for (size_t i = 0; i < tests->size(); i++) 
         {
-            const Test& t = (*tests)[i];
+            const Test &t = (*tests)[i];
             if (matcher != NULL) 
             {
                 std::string name = t.base;
@@ -82,7 +82,7 @@ int StTester::RunAllTests()
 
 int StTester::RandomSeed() 
 {
-    const char* env = getenv("TEST_RANDOM_SEED");
+    const char *env = ::getenv("TEST_RANDOM_SEED");
     int result = (env != NULL ? atoi(env) : 301);
     if (result <= 0)
     {

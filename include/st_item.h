@@ -110,7 +110,7 @@ public:
         return m_type_; 
     }
 
-    inline void SetOwnerThread(ThreadItem* thread) 
+    inline void SetOwnerThread(ThreadItem *thread) 
     {
         m_thread_ = thread; 
     }
@@ -120,7 +120,7 @@ public:
         return m_thread_; 
     }
 
-    inline void Reset()
+    virtual void Reset()
     {
         m_fd_      = -1;
         m_events_  = 0;
@@ -144,6 +144,7 @@ class ThreadItem : public HeapEntry
 {
 public:
     ThreadItem() : 
+        HeapEntry(),
         m_wakeup_time_(0), 
         m_flag_(eNOT_INLIST),
         m_type_(eNORMAL), 
@@ -158,12 +159,13 @@ public:
         CPP_TAILQ_INIT(&m_sub_threadlist_);
     }
 
-    inline void Reset()
+    virtual void Reset()
     {
         m_wakeup_time_ = 0;
         m_flag_ = eNOT_INLIST;
         m_type_ = eNORMAL;
         m_state_ = eINITIAL;
+        st_safe_delete(m_callback_);
         m_callback_ = NULL;
         st_safe_free(m_private_);
 
@@ -212,7 +214,7 @@ public:
         return m_state_;
     }
     
-    inline void SetCallback(Closure* callback)
+    inline void SetCallback(Closure *callback)
     {
         m_callback_ = callback;
     }
@@ -316,7 +318,7 @@ public:
         return (eSUB_THREAD == m_type_);
     }
 
-    inline void SetParent(ThreadItem* parent)
+    inline void SetParent(ThreadItem *parent)
     {
         m_parent_ = parent;
     }
@@ -467,66 +469,21 @@ public:
         return m_timeout_;
     }
 
+    virtual void Reset()
+    {
+        m_osfd_ = -1;
+        m_sendbuf_ = NULL;
+        m_recvbuf_ = NULL;
+        m_type_ = eUNDEF_CONN;
+        m_timeout_ = 30000;
+    }
+
 protected:
     int             m_osfd_;
     StBuffer        *m_sendbuf_, *m_recvbuf_;
     StNetAddress    m_addr_, m_destaddr_;
-
     eConnType       m_type_;
     int32_t         m_timeout_;
-};
-
-class TaskItem
-{
-public:
-    TaskItem() :
-        m_data_(NULL),
-        m_conn_(NULL)
-    { }
-
-    virtual int HandleEncode(void *buf, int &len, void *data)
-    {
-        return 0;
-    }
-
-    virtual int HandleInput(void *buf, int len, void *msg)
-    {
-        return 0;
-    }
-
-    virtual int HandleProcess(void *buf, int len, void *msg)
-    {
-        return 0;
-    }
-
-    virtual int HandleError(int err, void *msg)
-    {
-        return 0;
-    }
-
-    inline void SetDataPtr(void *data)
-    {
-        m_data_ = data;
-    }
-
-    inline void* GetDataPtr()
-    {
-        return m_data_;
-    }
-
-    inline void SetConnItem(StConnectionItem *conn)
-    {
-        m_conn_ = conn;
-    }
-
-    inline StConnectionItem* GetConnItem()
-    {
-        return m_conn_;
-    }
-    
-private:
-    void    *m_data_;
-    StConnectionItem    *m_conn_;
 };
 
 ST_NAMESPACE_END

@@ -82,9 +82,9 @@ private:
     int32_t        m_count_;
 
 public:
-    explicit HeapList(int32_t max = 10240)
+    explicit HeapList(int32_t max = 1024)
     {
-        m_max_ = ST_MAX(max, 10240);
+        m_max_ = ST_MAX(max, 512);
         m_list_ = (pointer_pointer)calloc(m_max_ + 1, sizeof(pointer));
         memset(m_list_, 0, (m_max_ + 1) * sizeof(pointer));
         m_count_ = 0;
@@ -116,6 +116,8 @@ public:
         {
             return 0;
         }
+
+        LOG_TRACE("size: %d, m_list_: %p", size, m_list_);
 
         pointer_pointer m_list_ = (pointer_pointer)realloc(m_list_, sizeof(pointer) * (size + 1));
         if (NULL == m_list_)
@@ -215,7 +217,6 @@ public:
     }
 
 private:
-
     void HeapUp()
     {
         for (int32_t pos = m_count_; pos > 0; pos--)

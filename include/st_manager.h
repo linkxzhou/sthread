@@ -36,12 +36,15 @@ public:
 	    st_safe_delete(m_heap_timer_);
     }
 
-    void Init(int max_num = 1024)
+    void Init(int max_num = 512)
     {
+        TODO_INTO("[1]Init ...");
+
 	    int r = GetThreadScheduler()->m_sleep_list_.
             HeapResize(max_num * 2);
 	    ASSERT(r >= 0);
 
+        TODO_INTO("[2]Init ...");
 	    m_heap_timer_ = new HeapTimer(max_num * 2);
         ASSERT(m_heap_timer_ != NULL);
 	    
@@ -67,6 +70,8 @@ public:
 	    GetThreadScheduler()->SetActiveThread(m_primo_);
 
 	    m_last_clock_ = Util::SysMs();
+
+        LOG_TRACE("m_last_clock_: %d", m_last_clock_);
     }
 
     inline void SetHookFlag()
@@ -74,9 +79,9 @@ public:
     	SET_HOOK_FLAG();
     }
 
-    inline void SetLastClock(int64_t clock)
+    inline void UpdateLastClock()
     {
-        m_last_clock_ = clock;
+        m_last_clock_ = Util::SysMs();
     }
 
     inline int64_t GetLastClock()
@@ -102,7 +107,7 @@ public:
 
     inline int64_t GetTimeout()
     {
-	    Thread* thread = dynamic_cast<Thread*>(
+	    Thread *thread = dynamic_cast<Thread*>(
             GetThreadScheduler()->m_sleep_list_.HeapTop()
         );
 
@@ -124,7 +129,7 @@ public:
     int WaitEvents(int fd, int events, int timeout)
     {
 	    int64_t start = GetLastClock();
-	    Thread* thread = (Thread*)(GetThreadScheduler()->GetActiveThread());
+	    Thread *thread = (Thread*)(GetThreadScheduler()->GetActiveThread());
 
 	    int64_t now = 0;
 	    timeout = (timeout <= -1) ? 0x7fffffff : timeout;
@@ -174,6 +179,8 @@ public:
 	            return 0;
 	        }
 	    }
+
+        // TODO : 返回数据有问题
     }
 
     Thread* CreateThread(Closure *closure, bool runable = true)
@@ -184,8 +191,6 @@ public:
 	        LOG_ERROR("alloc thread failed");
 	        return NULL;
 	    }
-
-        TODO_INTO("CreateThread run ...");
         
 	    thread->SetCallback(closure);
 	    if (runable)
@@ -226,13 +231,15 @@ public:
 	    do
 	    {
             event_scheduler->Wait(manager->GetTimeout());
-            int64_t now = Util::SysMs();
-            LOG_TRACE("system ms: %ld, --------[name:%s]---------", now, 
-                GetThreadScheduler()->GetActiveThread()->GetName());
-	        manager->SetLastClock(now);
+            manager->UpdateLastClock();
+            int64_t now = manager->GetLastClock();
+            LOG_TRACE("--------[name:%s]--------- : system ms: %ld", 
+                GetThreadScheduler()->GetActiveThread()->GetName(), now);
+            // 判断sleep的thread
 	        thread_scheduler->Wakeup(now);
 	        manager->CheckExpired();
-            thread_scheduler->Yield(daemon); // 切换线程
+            // 让出线程
+            thread_scheduler->Yield(daemon);
 	    } while(true);
     }
 

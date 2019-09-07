@@ -8,7 +8,7 @@
 #include "st_util.h"
 #include "st_hash_list.h"
 
-#define ST_BUFFER_BUCKET_SIZE  1024
+#define ST_BUFFER_BUCKET_SIZE  128
 
 ST_NAMESPACE_BEGIN
 
@@ -17,7 +17,7 @@ class StBuffer;
 typedef CPP_TAILQ_ENTRY<StBuffer>  StBufferNext;
 typedef CPP_TAILQ_HEAD<StBuffer>   StBufferQueue;
 
-class StBuffer
+class StBuffer : public referenceable
 {
 public:
     StBuffer(uint32_t max_len) : 
@@ -45,7 +45,7 @@ public:
         return m_buf_type_;
     }
 
-    inline void Reset()
+    virtual void Reset()
     {
         m_msg_len_  = 0;
         m_recv_len_ = 0;
@@ -109,7 +109,7 @@ public:
     
 private:
     uint32_t    m_max_len_, m_msg_len_;
-    void*       m_msg_buf_;
+    void        *m_msg_buf_;
 
     eBuffType   m_buf_type_;
     uint32_t    m_recv_len_;
@@ -122,7 +122,7 @@ public:
 class StBufferBucket : public HashKey
 {
 public:
-    StBufferBucket(uint32_t buff_size, uint32_t max_free = 1024) : 
+    StBufferBucket(uint32_t buff_size, uint32_t max_free = 512) : 
         m_max_buf_size_(buff_size), 
         m_max_free_(max_free), 
         m_queue_num_(0)
@@ -192,7 +192,7 @@ public:
     }
 
 private:
-    uint32_t m_max_free_, m_max_buf_size_, m_queue_num_;
+    uint32_t        m_max_free_, m_max_buf_size_, m_queue_num_;
     StBufferQueue   m_msg_queue_;
 };
 
@@ -213,8 +213,8 @@ public:
             return ;
         }
 
-        StBufferBucket* msg_bucket = NULL;
-        HashKey* hash_item = m_hash_bucket_->HashGetFirst();
+        StBufferBucket *msg_bucket = NULL;
+        HashKey *hash_item = m_hash_bucket_->HashGetFirst();
         while (hash_item)
         {
             m_hash_bucket_->HashRemove(any_cast<StBufferBucket>(hash_item));
@@ -272,7 +272,8 @@ public:
             msg_bucket = new StBufferBucket(max_size, m_max_free_);
             if (!msg_bucket)
             {
-                LOG_ERROR("maybe no more memory failed. size: %d", max_size);
+                LOG_ERROR("maybe no more memory failed. size: %d", 
+                    max_size);
                 return NULL;
             }
 
@@ -291,10 +292,9 @@ public:
             return ;
         }
 
-        msg_buf->Reset();
         StBufferBucket *msg_bucket = NULL;
         StBufferBucket msg_key(msg_buf->GetMaxLen());
-        HashKey* hash_item = m_hash_bucket_->HashFind(&msg_key);
+        HashKey *hash_item = m_hash_bucket_->HashFind(&msg_key);
         
         if (hash_item)
         {
@@ -303,7 +303,8 @@ public:
 
         if (!hash_item || !msg_bucket)
         {
-            LOG_ERROR("pool find no queue, maybe error: %d", msg_buf->GetMaxLen());
+            LOG_ERROR("pool find no queue, maybe error: %d", 
+                msg_buf->GetMaxLen());
             st_safe_delete(msg_buf);
         }
         else
@@ -313,7 +314,7 @@ public:
     }
 
 private:
-    uint32_t    m_max_free_;
+    uint32_t                    m_max_free_;
     HashList<StBufferBucket>    *m_hash_bucket_;
 };
 

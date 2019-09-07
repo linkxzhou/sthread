@@ -40,6 +40,7 @@ int StEventItem::HangupNotify()
 
 void StConnectionItem::SetRecvBuffer(uint32_t len)
 {
+    // 如果buf不为空则先清理再创建
     if (m_recvbuf_ != NULL)
     {
         GetInstance< StBufferPool<> >()->FreeBuffer(m_recvbuf_);
@@ -50,6 +51,7 @@ void StConnectionItem::SetRecvBuffer(uint32_t len)
 
 void StConnectionItem::SetSendBuffer(uint32_t len)
 {
+    // 如果buf不为空则先清理再创建
     if (m_sendbuf_ != NULL)
     {
         GetInstance< StBufferPool<> >()->FreeBuffer(m_sendbuf_);

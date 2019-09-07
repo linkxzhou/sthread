@@ -2,7 +2,7 @@ INCLUDE = -I../include -I. -I../include/ucontext
 SRC = ..
 GTEST_LIB = -lpthread -ldl # ./gtest/googletest/libgtest.a
 DEBUG = -g -DTRACE
-FLAGS = -Wno-backslash-newline-escape -Wno-format -Wno-deprecated-declarations -O1 $(DEBUG)
+FLAGS = -Wno-backslash-newline-escape -Wno-format -Wno-deprecated-declarations $(DEBUG)
 COMM_SRC = $(SRC)/st_test.cpp $(SRC)/st_log.cpp $(SRC)/st_item.cpp
 
 hash_list:

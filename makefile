@@ -3,7 +3,7 @@ DEBUG = -g
 BINARY = libmthread.so libmthread.a
 
 # Comment the following line if you are not using the gnu c compiler
-DEBUG = #-g -DTRACE
+DEBUG = -g -DTRACE
 C_ARGS = -fPIC -O1 -Wno-backslash-newline-escape -Wno-format -Wno-deprecated-declarations $(DEBUG)
 #.SUFFIXES: .o .cpp
 
