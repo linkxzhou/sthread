@@ -6,6 +6,7 @@
 #define _ST_HASH_LIST_H_INCLUDED_
 
 #include "st_util.h"
+#include "st_netaddr.h"
 
 ST_NAMESPACE_BEGIN
 
@@ -59,9 +60,55 @@ private:
     void        *m_data_ptr_;
 };
 
+class NetAddressKey : public HashKey
+{
+public:
+    NetAddressKey()
+    { }
+
+    inline void SetDestAddr(const StNetAddress &dest)
+    {
+        m_destaddr_ = dest;
+    }
+
+    inline void SetSrcAddr(const StNetAddress &src)
+    {
+        m_srcaddr_ = src;
+    }
+
+    virtual uint32_t HashValue()
+    {
+        return (m_srcaddr_.Port() << 16) | m_destaddr_.Port();
+    }
+    
+    virtual int32_t HashCmp(HashKey *rhs)
+    {
+        NetAddressKey *data = dynamic_cast<NetAddressKey*>(rhs);
+        if (!data)
+        {
+            return -1;
+        }
+
+        if (!(m_srcaddr_ == data->m_srcaddr_))
+        {
+            return -1;
+        }
+
+        if (!(m_destaddr_ == data->m_destaddr_))
+        {
+            return -2;
+        }
+        
+        return 0;
+    }
+
+private:
+    StNetAddress    m_srcaddr_, m_destaddr_;
+};
+
 // 实现hashlist
 template <class T = HashKey>
-class HashList
+class HashList : public referenceable
 {
 public:
     typedef T value_type;  

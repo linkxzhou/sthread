@@ -15,7 +15,8 @@ int _sendto(int fd, const void *msg, int len, int flags,
     int n = 0;
     while ((n = st_sendto(fd, msg, len, flags, to, tolen)) < 0)
     {
-        if (n == 0) // 对端关闭
+        // 对端关闭
+        if (n == 0)
         {
             LOG_ERROR("[n=0]sendto failed, errno: %d, strerr : %s", 
                 errno, strerror(errno));
@@ -143,9 +144,9 @@ int _connect(int fd, const struct sockaddr *addr, int addrlen, int timeout)
     int n = 0;
     while ((n = st_connect(fd, addr, addrlen)) < 0)
     {
-        LOG_TRACE("connect n : %d, errno : %d, strerror : %s", n, errno, strerror(errno));
+        LOG_TRACE("connect n: %d, errno: %d, strerror: %s", n, errno, strerror(errno));
         now = Util::SysMs();
-        LOG_TRACE("now : %ld, start : %ld", now, start);
+        LOG_TRACE("now: %ld, start: %ld", now, start);
         if ((int)(now - start) > timeout)
         {
             errno = ETIME;

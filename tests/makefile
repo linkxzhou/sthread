@@ -1,12 +1,12 @@
 INCLUDE = -I../include -I. -I../include/ucontext
 SRC = ..
 GTEST_LIB = -lpthread -ldl # ./gtest/googletest/libgtest.a
-DEBUG = -g -DTRACE
-FLAGS = -Wno-backslash-newline-escape -Wno-format -Wno-deprecated-declarations $(DEBUG)
+DEBUG = # -g -DTRACE
+FLAGS = -Wno-backslash-newline-escape -Wno-format -Wno-deprecated-declarations -O3 $(DEBUG)
 COMM_SRC = $(SRC)/st_test.cpp $(SRC)/st_log.cpp $(SRC)/st_item.cpp
 
 hash_list:
-	g++ st_hash_list_unittest.cpp $(COMM_SRC) \
+	g++ st_hash_list_unittest.cpp $(COMM_SRC) $(SRC)/st_manager.cpp \
 	$(INCLUDE) $(GTEST_LIB) $(FLAGS) -o st_hash_list_unittest
 
 heap:
@@ -32,22 +32,23 @@ event:
 	./libucontext.a $(FLAGS) -o mt_event_unittest
 
 connection:
-	g++ mt_connection_unittest.cpp $(SRC)/mt_connection.cpp \
-	$(SRC)/mt_core.cpp $(SRC)/mt_sys_hook.cpp $(SRC)/mt_ext.cpp $(SRC)/mt_thread.cpp \
-	$(INCLUDE) $(GTEST_LIB) ./libucontext.a $(FLAGS) -o mt_connection_unittest
+	g++ st_connection_unittest.cpp $(COMM_SRC) $(SRC)/st_connection.cpp  \
+ 	$(SRC)/st_thread.cpp $(SRC)/st_sys.cpp $(SRC)/st_manager.cpp \
+	$(INCLUDE) $(GTEST_LIB) ./libucontext.a $(FLAGS) -o st_connection_unittest
 
 thread:
 	g++ st_thread_unittest.cpp $(COMM_SRC) $(SRC)/st_thread.cpp \
 	$(INCLUDE) $(GTEST_LIB) ./libucontext.a $(FLAGS) -o st_thread_unittest
 
 c:
-	g++ mt_c_unittest.cpp $(SRC)/mt_c.cpp $(SRC)/mt_thread.cpp \
-	$(SRC)/mt_connection.cpp $(SRC)/mt_core.cpp $(SRC)/mt_ext.cpp $(SRC)/mt_sys_hook.cpp \
-	$(INCLUDE) $(GTEST_LIB) ./libucontext.a $(FLAGS) -o mt_c_unittest
+	g++ st_c_unittest.cpp $(COMM_SRC) $(SRC)/st_connection.cpp \
+	$(SRC)/st_thread.cpp $(SRC)/st_sys.cpp $(SRC)/st_manager.cpp \
+	$(SRC)/st_c.cpp \
+	$(INCLUDE) $(GTEST_LIB) ./libucontext.a $(FLAGS) -o st_c_unittest
 
 session:
 	g++ st_session_unittest.cpp $(COMM_SRC) \
-	$(SRC)/st_thread.cpp $(SRC)/st_sys.cpp $(SRC)/st_manager.cpp \
+	$(SRC)/st_thread.cpp  $(SRC)/st_manager.cpp \
 	$(INCLUDE) $(GTEST_LIB) ./libucontext.a $(FLAGS) -o st_session_unittest
 
 manager:

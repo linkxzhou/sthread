@@ -4,9 +4,12 @@
 
 ST_NAMESPACE_USING
 
-static void socket_callback(Manager<> *manager, int i)
+static void socket_callback(Manager *manager, int i)
 {
-    StEventItem* item = manager->AllocStEventItem();
+    ::_sleep(3000);
+    LOG_TRACE("waiting 3000ms ...");
+
+    StEventItem *item = StConnectionItem::AllocStEventItem<StEventItem>();
     LOG_TRACE("item node :%p, events :%d", item, item->GetEvents());
     ASSERT(item != NULL);
 
@@ -60,20 +63,18 @@ static void socket_callback(Manager<> *manager, int i)
 
 TEST(StStatus, socket)
 {
-	Manager<>* manager = GetInstance< Manager<> >();
+	Manager *manager = GetInstance< Manager >();
     manager->SetHookFlag();
-    for (int i = 0; i < 10; i++)
+    for (int i = 0; i < 2; i++)
     {
         manager->CreateThread(NewClosure(socket_callback, manager, i));
     }
 
-    // socket_callback(manager, 10);
-    // ::_sleep(3000);
-    Manager<>::StartDaemonThread(manager);
-    StNetAddress addr;
-    addr.SetAddr("www.baidu.com");
-    LOG_TRACE("addr: %s", addr.IP());
-    LOG_TRACE("addr port: %s", addr.IPPort());
+    Manager::StartDaemonThread(manager);
+    // StNetAddress addr;
+    // addr.SetAddr("www.baidu.com");
+    // LOG_TRACE("addr: %s", addr.IP());
+    // LOG_TRACE("addr port: %s", addr.IPPort());
 }
 
 // 测试所有的功能

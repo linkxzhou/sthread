@@ -34,6 +34,20 @@ public:
         m_isipv6_(false)
     { }
 
+    bool operator == (const StNetAddress &addr)
+    {
+        if (m_isipv6_)
+        {
+            return (m_addr6_.sin6_addr.s6_addr == addr.m_addr6_.sin6_addr.s6_addr) 
+                && (m_addr6_.sin6_port = addr.m_addr6_.sin6_port);
+        }
+        else
+        {
+            return (m_addr_.sin_addr.s_addr == addr.m_addr_.sin_addr.s_addr) 
+                && (m_addr_.sin_port = addr.m_addr_.sin_port);
+        }
+    }
+
     inline void SetAddr(const char *hostname)
     {
         struct hostent *he = NULL;
@@ -142,12 +156,12 @@ public:
 
     inline void GetSockAddr(struct sockaddr * &addr) const 
     { 
-        addr = (struct sockaddr*)(&m_addr_);
+        addr = (struct sockaddr *)(&m_addr_);
     }
 
     inline void GetSockAddr(struct sockaddr_in6 * &addr) const 
     { 
-        addr = (struct sockaddr_in6*)(&m_addr6_);
+        addr = (struct sockaddr_in6 *)(&m_addr6_);
     }
 
     inline uint16_t PortNetEndian() const 

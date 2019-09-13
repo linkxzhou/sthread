@@ -51,6 +51,7 @@ public:
         m_recv_len_ = 0;
         m_send_len_ = 0;
         m_buf_type_ = eBUFF_UNDEF;
+        CPP_TAILQ_REMOVE_SELF(this, m_next_);
     }
 
     inline void SetMsgLen(uint32_t msg_len)

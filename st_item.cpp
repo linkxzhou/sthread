@@ -69,8 +69,19 @@ int StConnectionItem::SendData()
 
     // 已经发送的数据长度
     int have_send_len = m_sendbuf_->GetHaveSendLen(); 
-    int ret = ::_send(m_osfd_, buf + have_send_len, 
-        buf_len - have_send_len, 0, m_timeout_);
+    int ret = 0;
+    if (IS_UDP_CONN(m_type_))
+    {
+        struct sockaddr *servaddr;
+        m_destaddr_.GetSockAddr(servaddr);
+        ret = ::_sendto(m_osfd_, buf + have_send_len, buf_len - have_send_len, 
+            0, servaddr, sizeof(struct sockaddr), m_timeout_);
+    }
+    else
+    {
+        ret = ::_send(m_osfd_, buf + have_send_len, buf_len - have_send_len, 
+            0, m_timeout_);
+    }
 
     LOG_TRACE("send: %s", buf + have_send_len);
 
@@ -117,8 +128,24 @@ int StConnectionItem::RecvData()
     LOG_TRACE("m_osfd_: %d, buf: %p, have_recv_len: %d, "
         "m_timeout_: %d, buf_maxlen: %d", 
         m_osfd_, buf, have_recv_len, m_timeout_, buf_maxlen);
-    int ret = ::_recv(m_osfd_, (char*)buf + have_recv_len, 
-        buf_maxlen - have_recv_len, 0, m_timeout_);
+
+    int ret = 0;
+    if (IS_UDP_CONN(m_type_))
+    {
+        // 设置目的IP地址
+        struct sockaddr clientaddr;
+        socklen_t addrlen = sizeof(struct sockaddr);
+        ret = ::_sendto(m_osfd_, (char*)buf + have_recv_len, buf_maxlen - have_recv_len, 
+            0, &clientaddr, addrlen, m_timeout_);
+        StNetAddress addr(*((struct sockaddr_in*)&clientaddr));
+        SetDestAddr(addr);
+    }
+    else
+    {
+        ret = ::_recv(m_osfd_, (char*)buf + have_recv_len, buf_maxlen - have_recv_len, 
+            0, m_timeout_);
+    }
+
     if (ret < 0)
     {
         if ((errno == EINTR) || (errno == EAGAIN) || (errno == EINPROGRESS))

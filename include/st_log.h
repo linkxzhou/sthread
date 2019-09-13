@@ -110,10 +110,12 @@ private:
 
 #define LOGA(...) do                                                        \
     {                                                                       \
-        if (StLogger::getInstance().LogAble(LLOG_PVERB) != 0) {             \
-            StLogger::getInstance()._loga(##__VA_ARGS__);                     \
+        if (StLogger::GetInstance().LogAble(LLOG_PVERB) != 0) {             \
+            StLogger::GetInstance()._loga(##__VA_ARGS__);                   \
         }                                                                   \
     } while (0)
+
+#define LOG_LEVEL(level)    StLogger::GetInstance().SetLevel(level)
 
 #define TODO_INTO(cls)  LOG_DEBUG("\033[32mrun into %s: %s \033[0m", #cls, __FUNCTION__)
 

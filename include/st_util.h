@@ -60,22 +60,6 @@ typedef long long time64_t;
 
 // 使用c++封装的linux的TAILQ_ENTRY
 template<class T>
-class CPP_TAILQ_ENTRY 
-{
-public:
-    CPP_TAILQ_ENTRY() : 
-        tqe_next(NULL), 
-        tqe_prev(NULL),
-        remove_tag(true)
-    { }
-
-public:
-    T *tqe_next;  /* next element */
-    T **tqe_prev; /* address of previous next element */
-    bool remove_tag;
-};
-
-template<class T>
 class CPP_TAILQ_HEAD
 {
 public:
@@ -89,6 +73,24 @@ public:
     T *tqh_first; /* first element */
     T **tqh_last; /* addr of last next element */
     uint32_t tqh_size;
+};
+
+template<class T>
+class CPP_TAILQ_ENTRY 
+{
+public:
+    CPP_TAILQ_ENTRY() : 
+        tqe_next(NULL), 
+        tqe_prev(NULL),
+        parent(NULL),
+        remove_tag(true)
+    { }
+
+public:
+    T *tqe_next;  /* next element */
+    T **tqe_prev; /* address of previous next element */
+    CPP_TAILQ_HEAD<T> *parent;
+    bool remove_tag;
 };
 
 #define CPP_TAILQ_INCR(head)        ((head)->tqh_size++)
@@ -123,6 +125,7 @@ public:
             (head)->tqh_last = (elm)->field.tqe_prev;           \
         CPP_TAILQ_DECR(head);                                   \
         (elm)->field.remove_tag = true;                         \
+        (elm)->field.parent = NULL;                             \
         *(elm)->field.tqe_prev = CPP_TAILQ_NEXT((elm), field);  \
     } while (0)
 
@@ -135,6 +138,7 @@ public:
         (head)->tqh_last = &CPP_TAILQ_NEXT((elm), field);       \
         CPP_TAILQ_INCR(head);                                   \
         (elm)->field.remove_tag = false;                        \
+        (elm)->field.parent = head;                             \
     } while (0)
 
 #define CPP_TAILQ_CONCAT(head1, head2, field)       do      \
@@ -152,6 +156,13 @@ public:
     {                                                       \
         elm = CPP_TAILQ_FIRST(head);                        \
         CPP_TAILQ_REMOVE(head, elm, field);                 \
+    } while (0)
+
+#define CPP_TAILQ_REMOVE_SELF(elm, field)           do      \
+    {                                                       \
+        if ((elm)->field.parent != NULL) {                  \
+            CPP_TAILQ_REMOVE((elm)->field.parent, elm, field);   \
+        }                                                   \
     } while (0)
 
 class Util

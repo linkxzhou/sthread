@@ -127,6 +127,7 @@ public:
         m_revents_ = 0;
         m_type_    = 0;
         m_thread_  = NULL;
+        CPP_TAILQ_REMOVE_SELF(this, m_next_);
     }
 
 protected:
@@ -172,6 +173,8 @@ public:
         CPP_TAILQ_INIT(&m_fdset_);
         CPP_TAILQ_INIT(&m_sub_threadlist_);
         m_parent_ = NULL;
+
+        CPP_TAILQ_REMOVE_SELF(this, m_next_);
     }
 
     inline void SetFlag(eThreadFlag flag)
@@ -405,10 +408,16 @@ public:
         m_osfd_(-1),
         m_timeout_(30000),
         m_sendbuf_(NULL),
-        m_recvbuf_(NULL)
+        m_recvbuf_(NULL),
+        m_item_(NULL)
     { 
         SetRecvBuffer();
         SetSendBuffer();
+    }
+
+    virtual ~StConnectionItem()
+    {
+        this->Reset();
     }
 
     virtual int32_t CreateSocket(const StNetAddress &addr)
@@ -419,6 +428,16 @@ public:
     void SetRecvBuffer(uint32_t len = 4096);
 
     void SetSendBuffer(uint32_t len = 4096);
+
+    inline StBuffer* GetRecvBuffer()
+    {
+        return m_recvbuf_;
+    }
+
+    inline StBuffer* GetSendBuffer()
+    {
+        return m_sendbuf_;
+    }
     
     int SendData();
 
@@ -438,9 +457,19 @@ public:
         m_addr_ = addr;
     }
 
+    inline StNetAddress& GetAddr()
+    {
+        return m_addr_;
+    }
+
     inline void SetDestAddr(const StNetAddress &destaddr)
     {
         m_destaddr_ = destaddr;
+    }
+
+    inline StNetAddress& GetDestAddr()
+    {
+        return m_destaddr_;
     }
 
     inline void SetOsfd(int fd)
@@ -456,6 +485,11 @@ public:
     inline eConnType GetConnType()
     {
         return m_type_;
+    }
+
+    inline void SetConnType(eConnType type)
+    {
+        m_type_ = type;
     }
 
     // 设置超时时间
@@ -478,12 +512,25 @@ public:
         m_timeout_ = 30000;
     }
 
+    // 判断是否支持keeplive
+    bool Keeplive()
+    {
+        return false;
+    }
+
+    template<class StEventItemT>
+    static inline StEventItem* AllocStEventItem()
+    {
+        return (StEventItem*)(GetInstance< UtilPtrPool<StEventItemT> >()->AllocPtr());
+    }
+
 protected:
     int             m_osfd_;
     StBuffer        *m_sendbuf_, *m_recvbuf_;
     StNetAddress    m_addr_, m_destaddr_;
     eConnType       m_type_;
     int32_t         m_timeout_;
+    StEventItem     *m_item_;
 };
 
 ST_NAMESPACE_END

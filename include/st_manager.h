@@ -15,8 +15,6 @@
 
 ST_NAMESPACE_BEGIN
 
-template<typename ThreadT, 
-    typename StEventItemT>
 class Manager
 {
 public:
@@ -49,7 +47,7 @@ public:
         ASSERT(m_heap_timer_ != NULL);
 	    
 	    // 获取一个daemon线程(从线程池中分配)
-	    m_daemon_ = new ThreadT();
+	    m_daemon_ = new Thread();
 	    ASSERT(m_daemon_ != NULL);
 
 	    m_daemon_->SetType(eDAEMON);
@@ -57,7 +55,7 @@ public:
 	    m_daemon_->SetCallback(NewClosure(StartDaemonThread, this));
         m_daemon_->SetName("daemon");
 
-	    m_primo_ = new ThreadT();
+	    m_primo_ = new Thread();
 	    ASSERT(m_daemon_ != NULL);
 
         m_primo_->SetType(ePRIMORDIAL);
@@ -203,15 +201,10 @@ public:
 
     inline Thread* AllocThread()
     {
-        return (Thread*)(GetInstance< UtilPtrPool<ThreadT> >()->AllocPtr());
+        return (Thread*)(GetInstance< UtilPtrPool<Thread> >()->AllocPtr());
     }
-
-    inline StEventItem* AllocStEventItem()
-    {
-        return (StEventItem*)(GetInstance< UtilPtrPool<StEventItemT> >()->AllocPtr());
-    }
-
-    static void StartDaemonThread(Manager<ThreadT, StEventItemT> *manager)
+    
+    static void StartDaemonThread(Manager *manager)
     {
         ASSERT(manager != NULL);
 

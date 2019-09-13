@@ -154,15 +154,18 @@ typedef enum
     eIOWAIT     = 0x5, // IO等待
 } eThreadState;
 
-const int TCP_SERVER    = 0x1; // tcp server
-const int UDP_SERVER    = 0x2; // udp server
+#define IS_UDP_CONN(type) (((type) == eUDP_CONN) || ((type) == eUDP_SESSION_CONN)) 
+#define IS_TCP_CONN(type) (((type) == eTCP_CONN) || ((type) == eTCP_KEEPLIVE_CONN))
+#define IS_KEEPLIVE(type) (((type) & 0x1) == 0x1)
 
+// 注意：规则是最后一位0x1则表示需要保存状态，否则不需要
 typedef enum
 {
     eUNDEF_CONN     = 0x0, // 连接错误
-    eUDP_CONN       = 0x10, // udp 连接
-    eTCP_CONN       = 0x11, // tcp 短连接
-    eTCP_LONG_CONN  = 0x12,
+    eUDP_CONN       = 0x10,      // udp 连接
+    eTCP_CONN       = 0x20,      // tcp 短连接
+    eTCP_KEEPLIVE_CONN  = 0x11,  // keeplive
+    eUDP_SESSION_CONN = 0x21,    // session
 } eConnType;
 
 // enum eActionState

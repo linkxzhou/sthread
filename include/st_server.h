@@ -9,45 +9,11 @@
 #include "st_manager.h"
 #include "st_sys.h"
 #include "st_netaddr.h"
+#include "st_connection.h"
 
 ST_NAMESPACE_BEGIN
 
-class StServerConnection : public StConnectionItem
-{ 
-public:
-    virtual int Process()
-    {
-        int ret = RecvData();
-        LOG_TRACE("ret: %d", ret);
-        if (ret < 0)
-        {
-            return -1;
-        }
-
-        char buf[1024];
-        sprintf(buf, "HTTP/1.1 200 OK\r\n"
-            "Content-Length: 1\r\n"
-            "Content-Type: text/html\r\n"
-            "Date: Mon, 12 Aug 2019 15:48:13 GMT\r\n"
-            "Server: sthread/1.0.1\r\n\r\n1");
-
-        m_sendbuf_->SetBuffer(buf, strlen(buf) + 1);
-        ret = SendData();
-        LOG_TRACE("ret: %d", ret);
-
-        if (ret < 0)
-        {
-            return -2;
-        }
-
-        return 0;
-    }
-}; 
-
-template<typename ThreadT, 
-    typename StEventItemT, 
-    typename ConnetionT,
-    int ServerT = TCP_SERVER>
+template<typename ConnetionT, int ServerT = eTCP_CONN>
 class StServer
 {
 public:
@@ -56,11 +22,12 @@ public:
         m_item_(NULL)
     {
         m_osfd_ = -1;
-        m_manager_ = GetInstance< Manager<ThreadT, StEventItemT> >();
+        m_manager_ = GetInstance< Manager >();
     }
 
     ~StServer()
     {
+        m_osfd_ = -1;
         UtilPtrPoolFree(m_item_);
     }
 
@@ -74,7 +41,7 @@ public:
         m_addr_ = addr;
 
         int protocol = SOCK_STREAM;
-        if (ServerT == UDP_SERVER)
+        if (IS_UDP_CONN(ServerT))
         {
             protocol = SOCK_DGRAM;
         }
@@ -86,7 +53,7 @@ public:
             return -1;
         }
 
-        m_item_ = m_manager_->AllocStEventItem();
+        m_item_ = StConnectionItem::AllocStEventItem<StEventItem>();
         ASSERT(m_item_ != NULL);
 
         m_item_->SetOsfd(m_osfd_);
@@ -131,7 +98,7 @@ public:
 
             StNetAddress addr(*((struct sockaddr_in*)&clientaddr));
             StServerConnection *conn = (StServerConnection*)(
-                GetInstance< UtilPtrPool<ConnetionT> >()->AllocPtr()
+                GetInstance< StConnectionManager<ConnetionT> >()->AllocPtr((eConnType)ServerT, &addr)
             );
             conn->SetOsfd(connfd);
             conn->SetDestAddr(addr);
@@ -142,35 +109,35 @@ public:
     }
 
     static void CallBack(StServerConnection *conn,
-        StServer<ThreadT, 
-            StEventItemT, 
-            ConnetionT, 
-            ServerT> *server)
+        StServer<ConnetionT, ServerT> *server)
     {
-        Manager<ThreadT, StEventItemT> *manager = server->m_manager_;
+        Manager *manager = server->m_manager_;
         ASSERT(manager != NULL);
 
-        StEventItem *item = manager->AllocStEventItem();
+        StEventItem *item = StConnectionItem::AllocStEventItem<StEventItem>();
         ASSERT(item != NULL);
 
         item->SetOsfd(conn->GetOsfd());
+        ThreadItem *thread = GetThreadScheduler()->GetActiveThread();
 
         do
         {
             item->EnableInput();
             item->DisableOutput();
             GetEventScheduler()->Add(item);
-            LOG_TRACE(" ========== %p", item);
-        } while (conn->Process() > 0);
+            LOG_TRACE("CallBack ==========[name:%s]========== %p", 
+                thread->GetName(), item);
+        } while (conn->Process((void*)manager) >= 0 && conn->Keeplive());
 
         // 清理句柄数据
         GetEventScheduler()->Close(item);
         st_close(conn->GetOsfd());
-        // UtilPtrPoolFree(item);
+        UtilPtrPoolFree(item);
+        // TODO : 需要清理其他资源
     }
 
 private:
-    Manager<ThreadT, StEventItemT>  *m_manager_;
+    Manager         *m_manager_;
     int             m_osfd_;
     StNetAddress    m_addr_;
     StEventItem     *m_item_;
