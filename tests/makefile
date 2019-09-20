@@ -65,9 +65,9 @@ ucontext:
 	gcc -c $(SRC)/st_asm.S $(FLAGS) -o ./st_asm.o
 	gcc -c $(SRC)/st_ucontext.cpp $(INCLUDE) $(FLAGS) -o ./st_ucontext.o
 	gcc -c $(SRC)/st_log.cpp $(INCLUDE) $(FLAGS) -o ./st_log.o
-	ar cr libucontext.a ./st_asm.o ./st_ucontext.o ./st_util.o ./st_log.o
-	g++ st_ucontext_unittest.cpp $(INCLUDE) $(GTEST_LIB) ./libucontext.a \
-	$(FLAGS) -o st_ucontext_unittest
+	ar cr libucontext.a ./st_asm.o ./st_ucontext.o ./st_log.o
+	g++ st_ucontext_unittest.cpp \
+	$(INCLUDE) $(GTEST_LIB) ./libucontext.a $(FLAGS) -o st_ucontext_unittest
 	rm -rf *.o
 
 queue:
