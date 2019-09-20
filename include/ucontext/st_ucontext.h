@@ -57,6 +57,7 @@ extern	void		setmcontext(const mcontext_t*);
 #define	getcontext(u)	getmcontext(&(u)->uc_mcontext)
 extern	int		    swapcontext(ucontext_t*, const ucontext_t*);
 extern	void		makecontext(ucontext_t*, void(*)(), int, ...);
+#   pragma message("__FreeBSD__ < 5 activated!") 
 #endif
 
 #if defined(__APPLE__)
