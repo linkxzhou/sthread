@@ -2,8 +2,8 @@
     user : zhoulv2000@163.com
 */
 
-#ifndef _MT_UCONTEXT_H_
-#define _MT_UCONTEXT_H_
+#ifndef _ST_UCONTEXT_H_
+#define _ST_UCONTEXT_H_
 
 #ifdef __cplusplus
 extern "C" 

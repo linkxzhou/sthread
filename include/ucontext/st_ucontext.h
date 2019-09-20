@@ -2,8 +2,8 @@
     user : zhoulv2000@163.com
 */
 
-#ifndef _MT_UCONTEXT_H_INCLUDED_
-#define _MT_UCONTEXT_H_INCLUDED_
+#ifndef _ST_UCONTEXT_H_INCLUDED_
+#define _ST_UCONTEXT_H_INCLUDED_
 
 #if defined(__sun__)
 #	define __EXTENSIONS__ 1 /* SunOS */
@@ -66,10 +66,13 @@ extern	void		makecontext(ucontext_t*, void(*)(), int, ...);
 #	define ucontext_t libthread_ucontext_t
 #	if defined(__i386__)
 #		include "st_ucontext_386.h"
+#   pragma message("__APPLE__ __i386__ activated!") 
 #	elif defined(__x86_64__)
 #		include "st_ucontext_amd64.h"
+#   pragma message("__APPLE__ __x86_64__ activated!") 
 #	else
 #		include "st_ucontext_power.h"
+#   pragma message("__APPLE__ default activated!") 
 #	endif
 #endif
 
@@ -81,8 +84,10 @@ extern	void		makecontext(ucontext_t*, void(*)(), int, ...);
 
 #	if defined __i386__
 #		include "st_ucontext_386.h"
+#   pragma message("__OpenBSD__ __i386__ activated!") 
 #	else
 #		include "st_ucontext_power.h"
+#   pragma message("__OpenBSD__ default activated!") 
 #	endif
 extern pid_t rfork_thread(int, void*, int(*)(void*), void*);
 #endif
@@ -90,16 +95,18 @@ extern pid_t rfork_thread(int, void*, int(*)(void*), void*);
 #if defined(__arm__)
 int getmcontext(mcontext_t*);
 void setmcontext(const mcontext_t*);
-#define	setcontext(u)	setmcontext(&(u)->uc_mcontext)
-#define	getcontext(u)	getmcontext(&(u)->uc_mcontext)
+#   define	setcontext(u)	setmcontext(&(u)->uc_mcontext)
+#   define	getcontext(u)	getmcontext(&(u)->uc_mcontext)
+#   pragma message("__arm__ default activated!") 
 #endif
 
 #if defined(__mips__)
 #include "st_ucontext_mips.h"
 int getmcontext(mcontext_t*);
 void setmcontext(const mcontext_t*);
-#define	setcontext(u)	setmcontext(&(u)->uc_mcontext)
-#define	getcontext(u)	getmcontext(&(u)->uc_mcontext)
+#   define	setcontext(u)	setmcontext(&(u)->uc_mcontext)
+#   define	getcontext(u)	getmcontext(&(u)->uc_mcontext)
+#   pragma message("__mips__ default activated!") 
 #endif
 
 #ifdef  __cplusplus
