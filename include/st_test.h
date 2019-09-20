@@ -66,7 +66,7 @@ public:
 
     const char* CopyState(const char *state) 
     {
-        uint32_t size;
+        int size;
         memcpy(&size, state, sizeof(size));
         char *result = new char[size + 5];
         memcpy(result, state, size + 5);
