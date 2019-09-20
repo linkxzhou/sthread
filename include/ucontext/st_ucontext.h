@@ -50,16 +50,6 @@
 #include <inttypes.h>
 #include "st_util.h"
 
-#if defined(__FreeBSD__) && __FreeBSD__ < 5
-extern	int		    getmcontext(mcontext_t*);
-extern	void		setmcontext(const mcontext_t*);
-#define	setcontext(u)	setmcontext(&(u)->uc_mcontext)
-#define	getcontext(u)	getmcontext(&(u)->uc_mcontext)
-extern	int		    swapcontext(ucontext_t*, const ucontext_t*);
-extern	void		makecontext(ucontext_t*, void(*)(), int, ...);
-#   pragma message("__FreeBSD__ < 5 activated!") 
-#endif
-
 #if defined(__APPLE__)
 #	define mcontext libthread_mcontext
 #	define mcontext_t libthread_mcontext_t
@@ -91,7 +81,7 @@ void setmcontext(const mcontext_t*);
 #   define	getcontext(u)	getmcontext(&(u)->uc_mcontext)
 #   pragma message("__mips__ default activated!") 
 
-#else
+#elif defined(__FreeBSD__)
 #	define mcontext libthread_mcontext
 #	define mcontext_t libthread_mcontext_t
 #	define ucontext libthread_ucontext
@@ -105,6 +95,16 @@ void setmcontext(const mcontext_t*);
 #   pragma message("__OpenBSD__ default activated!") 
 #	endif
 extern pid_t rfork_thread(int, void*, int(*)(void*), void*);
+
+#else
+extern	int		    getmcontext(mcontext_t*);
+extern	void		setmcontext(const mcontext_t*);
+#define	setcontext(u)	setmcontext(&(u)->uc_mcontext)
+#define	getcontext(u)	getmcontext(&(u)->uc_mcontext)
+extern	int		    swapcontext(ucontext_t*, const ucontext_t*);
+extern	void		makecontext(ucontext_t*, void(*)(), int, ...);
+#   pragma message("__FreeBSD__ < 5 activated!") 
+
 #endif
 
 #ifdef  __cplusplus
