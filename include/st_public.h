@@ -83,8 +83,12 @@
 
 #define ST_DEBUG            true
 
-#define ST_MAXINT        0x7fffffff
-#define ST_MAXTIME       2177280000
+#define ST_MAXINT           0x7fffffff
+#define ST_MAXTIME          2177280000
+
+#ifndef ST_SENDRECV_BUFFSIZE
+    #define ST_SENDRECV_BUFFSIZE    8192
+#endif
 
 #define ST_ALGIN(size)      ((size) + (8-(size)%8)) // 边界对齐
 
@@ -154,18 +158,19 @@ typedef enum
     eIOWAIT     = 0x5, // IO等待
 } eThreadState;
 
-#define IS_UDP_CONN(type) (((type) == eUDP_CONN) || ((type) == eUDP_SESSION_CONN)) 
+#define IS_UDP_CONN(type) (((type) == eUDP_CONN) || ((type) == eUDP_UDPSESSION_CONN)) 
 #define IS_TCP_CONN(type) (((type) == eTCP_CONN) || ((type) == eTCP_KEEPLIVE_CONN))
-#define IS_KEEPLIVE(type) (((type) & 0x1) == 0x1)
+#define KEEPLIVE_VALUE    0x1
+#define IS_KEEPLIVE(type) (((type) & KEEPLIVE_VALUE) == KEEPLIVE_VALUE)
 
 // 注意：规则是最后一位0x1则表示需要保存状态，否则不需要
 typedef enum
 {
-    eUNDEF_CONN     = 0x0, // 连接错误
-    eUDP_CONN       = 0x10,      // udp 连接
-    eTCP_CONN       = 0x20,      // tcp 短连接
-    eTCP_KEEPLIVE_CONN  = 0x11,  // keeplive
-    eUDP_SESSION_CONN = 0x21,    // session
+    eUNDEF_CONN     = 0x0,      // 连接错误
+    eUDP_CONN       = 0x10,     // udp 连接
+    eTCP_CONN       = 0x20,     // tcp 短连接
+    eTCP_KEEPLIVE_CONN      = 0x10 & KEEPLIVE_VALUE,  // keeplive
+    eUDP_UDPSESSION_CONN    = 0x20 & KEEPLIVE_VALUE,
 } eConnType;
 
 // enum eActionState

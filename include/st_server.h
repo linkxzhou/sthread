@@ -13,7 +13,8 @@
 
 ST_NAMESPACE_BEGIN
 
-template<typename ConnetionT, int ServerT = eTCP_CONN>
+template<class ConnetionT, 
+    int ServerT = eTCP_CONN>
 class StServer
 {
 public:
@@ -53,9 +54,11 @@ public:
             return -1;
         }
 
-        m_item_ = StConnectionItem::AllocStEventItem<StEventItem>();
-        ASSERT(m_item_ != NULL);
+        m_item_ = GetInstance< 
+                UtilPtrPool<typename ConnetionT::ServerStEventBaseT> 
+            >()->AllocPtr();
 
+        ASSERT(m_item_ != NULL);
         m_item_->SetOsfd(m_osfd_);
         m_item_->EnableOutput();
         m_item_->DisableInput();
@@ -97,7 +100,7 @@ public:
             }
 
             StNetAddress addr(*((struct sockaddr_in*)&clientaddr));
-            StServerConnection *conn = (StServerConnection*)(
+            StConnection *conn = (StConnection*)(
                 GetInstance< StConnectionManager<ConnetionT> >()->AllocPtr((eConnType)ServerT, &addr)
             );
             conn->SetOsfd(connfd);
@@ -108,17 +111,19 @@ public:
         }
     }
 
-    static void CallBack(StServerConnection *conn,
+    static void CallBack(StConnection *conn,
         StServer<ConnetionT, ServerT> *server)
     {
         Manager *manager = server->m_manager_;
         ASSERT(manager != NULL);
 
-        StEventItem *item = StConnectionItem::AllocStEventItem<StEventItem>();
+        StEventBase *item = GetInstance< 
+                UtilPtrPool<typename ConnetionT::ServerStEventBaseT> 
+            >()->AllocPtr();
         ASSERT(item != NULL);
 
         item->SetOsfd(conn->GetOsfd());
-        ThreadItem *thread = GetThreadScheduler()->GetActiveThread();
+        StThreadBase *thread = GetThreadScheduler()->GetActiveThread();
 
         do
         {
@@ -127,12 +132,13 @@ public:
             GetEventScheduler()->Add(item);
             LOG_TRACE("CallBack ==========[name:%s]========== %p", 
                 thread->GetName(), item);
-        } while (conn->Process((void*)manager) >= 0 && conn->Keeplive());
+        } while (conn->HandleProcess(NULL, 0) >= 0 && conn->Keeplive());
 
         // 清理句柄数据
         GetEventScheduler()->Close(item);
         st_close(conn->GetOsfd());
         UtilPtrPoolFree(item);
+        
         // TODO : 需要清理其他资源
     }
 
@@ -140,7 +146,7 @@ private:
     Manager         *m_manager_;
     int             m_osfd_;
     StNetAddress    m_addr_;
-    StEventItem     *m_item_;
+    StEventBase     *m_item_;
 };
 
 ST_NAMESPACE_END

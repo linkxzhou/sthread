@@ -22,18 +22,18 @@
 
 ST_NAMESPACE_BEGIN
 
-class StEventItem;
-class ThreadItem;
+class StEventBase;
+class StThreadBase;
 
-typedef CPP_TAILQ_HEAD<StEventItem>     StEventItemQueue;
-typedef CPP_TAILQ_ENTRY<StEventItem>    StEventItemNext;
-typedef CPP_TAILQ_HEAD<ThreadItem>      ThreadItemQueue;
-typedef CPP_TAILQ_ENTRY<ThreadItem>     ThreadItemNext;
+typedef CPP_TAILQ_HEAD<StEventBase>     StEventBaseQueue;
+typedef CPP_TAILQ_ENTRY<StEventBase>    StEventBaseNext;
+typedef CPP_TAILQ_HEAD<StThreadBase>    StThreadBaseQueue;
+typedef CPP_TAILQ_ENTRY<StThreadBase>   StThreadBaseNext;
 
-class StEventItem : public referenceable
+class StEventBase : public referenceable
 {
 public:
-    explicit StEventItem(int32_t fd = -1) : 
+    explicit StEventBase(int32_t fd = -1) : 
         m_fd_(fd), 
         m_events_(0), 
         m_revents_(0), 
@@ -41,14 +41,41 @@ public:
         m_thread_(NULL)
     { }
 
-    virtual ~StEventItem()
-    { }
+    virtual ~StEventBase()
+    { 
+        this->Reset();
+    }
 
-    virtual int32_t InputNotify();
+    virtual int32_t InputNotify()
+    {
+        LOG_TRACE("InputNotify ###, thread : %p", m_thread_);
+        if (unlikely(NULL == m_thread_))
+        {
+            LOG_ERROR("m_thread_ is NULL");
+            return -1;
+        }
 
-    virtual int32_t OutputNotify();
+        return 0;
+    }
 
-    virtual int32_t HangupNotify();
+    virtual int32_t OutputNotify()
+    {
+        LOG_TRACE("OutputNotify ###, thread : %p", m_thread_);
+        if (unlikely(NULL == m_thread_))
+        {
+            LOG_ERROR("m_thread_ is NULL");
+            return -1;
+        }
+
+        return 0;
+    }
+
+    virtual int32_t HangupNotify()
+    {
+        LOG_TRACE("HangupNotify ###, thread : %p", m_thread_);
+
+        return 0;
+    }
 
     inline void EnableInput() 
     { 
@@ -110,12 +137,12 @@ public:
         return m_type_; 
     }
 
-    inline void SetOwnerThread(ThreadItem *thread) 
+    inline void SetOwnerThread(StThreadBase *thread) 
     {
         m_thread_ = thread; 
     }
 
-    inline ThreadItem* GetOwnerThread()
+    inline StThreadBase* GetOwnerThread()
     {
         return m_thread_; 
     }
@@ -131,20 +158,20 @@ public:
     }
 
 protected:
-    int32_t     m_fd_;      // 监听句柄
-    int32_t     m_events_;  // 事件
-    int32_t     m_revents_; // recv事件
-    int32_t     m_type_;    // 通知类型
-    ThreadItem  *m_thread_;
+    int32_t         m_fd_;      // 监听句柄
+    int32_t         m_events_;  // 事件
+    int32_t         m_revents_; // recv事件
+    int32_t         m_type_;    // 通知类型
+    StThreadBase    *m_thread_;
 
 public:
-    StEventItemNext m_next_;
+    StEventBaseNext m_next_;
 };
 
-class ThreadItem : public HeapEntry
+class StThreadBase : public HeapEntry
 {
 public:
-    ThreadItem() : 
+    StThreadBase() : 
         HeapEntry(),
         m_wakeup_time_(0), 
         m_flag_(eNOT_INLIST),
@@ -258,7 +285,7 @@ public:
     }
 
     // 获取fdset的列表
-    inline StEventItemQueue& GetFdSet(void)
+    inline StEventBaseQueue& GetFdSet(void)
     {
         return m_fdset_;
     }
@@ -276,9 +303,9 @@ public:
     // 直接运行
     virtual void Run(void) = 0;
 
-    virtual void RestoreContext(ThreadItem *thread) = 0;
+    virtual void RestoreContext(StThreadBase *thread) = 0;
 
-    virtual void Add(StEventItem *item)
+    virtual void Add(StEventBase *item)
     {
         TODO_INTO();
 
@@ -290,7 +317,7 @@ public:
         CPP_TAILQ_INSERT_TAIL(&m_fdset_, item, m_next_);
     }
 
-    virtual void Add(StEventItemQueue *fdset)
+    virtual void Add(StEventBaseQueue *fdset)
     {
         if (CPP_TAILQ_EMPTY(&m_fdset_))
         {
@@ -301,7 +328,7 @@ public:
         CPP_TAILQ_CONCAT(&m_fdset_, fdset, m_next_);
     }
 
-    inline ThreadItem* GetParent()
+    inline StThreadBase* GetParent()
     {
         return m_parent_;
     }
@@ -321,12 +348,12 @@ public:
         return (eSUB_THREAD == m_type_);
     }
 
-    inline void SetParent(ThreadItem *parent)
+    inline void SetParent(StThreadBase *parent)
     {
         m_parent_ = parent;
     }
 
-    inline void AddSubThread(ThreadItem *sub)
+    inline void AddSubThread(StThreadBase *sub)
     {
         if (!sub->HasFlag(eSUB_LIST))
         {
@@ -336,7 +363,7 @@ public:
         sub->SetFlag(eSUB_LIST);
     }
 
-    inline void RemoveSubThread(ThreadItem *sub)
+    inline void RemoveSubThread(StThreadBase *sub)
     {
         if (sub->HasFlag(eSUB_LIST))
         {
@@ -361,11 +388,11 @@ public:
         strncpy(m_name_, name, sizeof(m_name_) - 1);
     }
 
-    ThreadItem* GetRootThread()
+    StThreadBase* GetRootThread()
     {
 	    eThreadType type = GetType();
-        ThreadItem *thread = this;
-	    ThreadItem *parent = thread;
+        StThreadBase *thread = this;
+	    StThreadBase *parent = thread;
 
 	    while (eSUB_THREAD == type)
 	    {
@@ -392,145 +419,12 @@ protected:
     Closure         *m_callback_;    // 启动函数
 
 public:
-    StEventItemQueue    m_fdset_;
-    ThreadItemQueue     m_sub_threadlist_;    // 子线程
-    ThreadItem          *m_parent_;           // 父线程
-    ThreadItemNext      m_next_, m_sub_next_;
+    StEventBaseQueue    m_fdset_;
+    StThreadBaseQueue     m_sub_threadlist_;    // 子线程
+    StThreadBase          *m_parent_;           // 父线程
+    StThreadBaseNext      m_next_, m_sub_next_;
     uint32_t            m_stack_size_;
     char                m_name_[64];
-};
-
-class StConnectionItem : public referenceable
-{
-public:
-    StConnectionItem() :
-        m_type_(eUNDEF_CONN),
-        m_osfd_(-1),
-        m_timeout_(30000),
-        m_sendbuf_(NULL),
-        m_recvbuf_(NULL),
-        m_item_(NULL)
-    { 
-        SetRecvBuffer();
-        SetSendBuffer();
-    }
-
-    virtual ~StConnectionItem()
-    {
-        this->Reset();
-    }
-
-    virtual int32_t CreateSocket(const StNetAddress &addr)
-    { 
-        return -1;
-    }
-
-    void SetRecvBuffer(uint32_t len = 4096);
-
-    void SetSendBuffer(uint32_t len = 4096);
-
-    inline StBuffer* GetRecvBuffer()
-    {
-        return m_recvbuf_;
-    }
-
-    inline StBuffer* GetSendBuffer()
-    {
-        return m_sendbuf_;
-    }
-    
-    int SendData();
-
-    int RecvData();
-
-    inline void CloseSocket()
-    {
-        if (m_osfd_ > 0)
-        {
-            st_close(m_osfd_);
-            m_osfd_ = -1;
-        }
-    }
-
-    inline void SetAddr(const StNetAddress &addr)
-    {
-        m_addr_ = addr;
-    }
-
-    inline StNetAddress& GetAddr()
-    {
-        return m_addr_;
-    }
-
-    inline void SetDestAddr(const StNetAddress &destaddr)
-    {
-        m_destaddr_ = destaddr;
-    }
-
-    inline StNetAddress& GetDestAddr()
-    {
-        return m_destaddr_;
-    }
-
-    inline void SetOsfd(int fd)
-    {
-        m_osfd_ = fd;
-    }
-
-    inline int GetOsfd()
-    {
-        return m_osfd_;
-    }
-
-    inline eConnType GetConnType()
-    {
-        return m_type_;
-    }
-
-    inline void SetConnType(eConnType type)
-    {
-        m_type_ = type;
-    }
-
-    // 设置超时时间
-    inline void SetTimeout(int32_t timeout)
-    {
-        m_timeout_ = timeout;
-    }
-
-    inline int32_t GetTimeout()
-    {
-        return m_timeout_;
-    }
-
-    virtual void Reset()
-    {
-        m_osfd_ = -1;
-        m_sendbuf_ = NULL;
-        m_recvbuf_ = NULL;
-        m_type_ = eUNDEF_CONN;
-        m_timeout_ = 30000;
-    }
-
-    // 判断是否支持keeplive
-    bool Keeplive()
-    {
-        return false;
-    }
-
-    template<class StEventItemT>
-    static inline StEventItem* AllocStEventItem()
-    {
-        return (StEventItem*)(GetInstance< UtilPtrPool<StEventItemT> >()->AllocPtr());
-    }
-
-protected:
-    int             m_osfd_;
-    StBuffer        *m_sendbuf_, *m_recvbuf_;
-    StNetAddress    m_addr_, m_destaddr_;
-    eConnType       m_type_;
-    int32_t         m_timeout_;
-    StEventItem     *m_item_;
 };
 
 ST_NAMESPACE_END

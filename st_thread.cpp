@@ -52,7 +52,7 @@ static void StartActiveThread(uint ty, uint tx)
 }
 
 // 调度系统(run - > stop)
-void ThreadScheduler::SwitchThread(ThreadItem *rthread, ThreadItem *sthread)
+void ThreadScheduler::SwitchThread(StThreadBase *rthread, StThreadBase *sthread)
 {
     SetActiveThread(rthread);
     rthread->RestoreContext(sthread);
@@ -60,9 +60,9 @@ void ThreadScheduler::SwitchThread(ThreadItem *rthread, ThreadItem *sthread)
 }
 
 // 让出线程
-int ThreadScheduler::Yield(ThreadItem *athread)
+int ThreadScheduler::Yield(StThreadBase *athread)
 {
-    ThreadItem *thread = NULL;
+    StThreadBase *thread = NULL;
     if (CPP_TAILQ_EMPTY(&m_run_list_))
     {
         thread = DaemonThread();
@@ -81,7 +81,7 @@ int ThreadScheduler::Yield(ThreadItem *athread)
     return 0;
 }
 
-int ThreadScheduler::Sleep(ThreadItem *thread)
+int ThreadScheduler::Sleep(StThreadBase *thread)
 {
     LOG_TRACE("m_active_thread_, thread : %p, %p", 
         m_active_thread_, thread);
@@ -109,7 +109,7 @@ int ThreadScheduler::Sleep(ThreadItem *thread)
     return 0;
 }
 
-int ThreadScheduler::Pend(ThreadItem *thread)
+int ThreadScheduler::Pend(StThreadBase *thread)
 {
     thread->SetFlag(ePEND_LIST);
     thread->SetState(ePENDING);
@@ -125,7 +125,7 @@ int ThreadScheduler::Pend(ThreadItem *thread)
     return 0;
 }
 
-int ThreadScheduler::Unpend(ThreadItem *thread)
+int ThreadScheduler::Unpend(StThreadBase *thread)
 {
     thread->UnsetFlag(ePEND_LIST);
     CPP_TAILQ_REMOVE(&m_pend_list_, thread, m_next_);
@@ -135,7 +135,7 @@ int ThreadScheduler::Unpend(ThreadItem *thread)
     return 0;
 }
 
-int ThreadScheduler::IOWaitToRunable(ThreadItem *thread)
+int ThreadScheduler::IOWaitToRunable(StThreadBase *thread)
 {
     if (unlikely(NULL == thread))
     {
@@ -150,7 +150,7 @@ int ThreadScheduler::IOWaitToRunable(ThreadItem *thread)
     return 0;
 }
 
-int ThreadScheduler::RemoveIOWait(ThreadItem *thread)
+int ThreadScheduler::RemoveIOWait(StThreadBase *thread)
 {
     if (unlikely(NULL == thread))
     {
@@ -168,7 +168,7 @@ int ThreadScheduler::RemoveIOWait(ThreadItem *thread)
     return 0;
 }
 
-int ThreadScheduler::InsertIOWait(ThreadItem *thread)
+int ThreadScheduler::InsertIOWait(StThreadBase *thread)
 {
     if (unlikely(NULL == thread))
     {
@@ -185,7 +185,7 @@ int ThreadScheduler::InsertIOWait(ThreadItem *thread)
     return 0;
 }
 
-int ThreadScheduler::InsertRunable(ThreadItem *thread)
+int ThreadScheduler::InsertRunable(StThreadBase *thread)
 {
     if (unlikely(NULL == thread))
     {
@@ -201,7 +201,7 @@ int ThreadScheduler::InsertRunable(ThreadItem *thread)
     return 0;
 }
 
-int ThreadScheduler::RemoveRunable(ThreadItem *thread)
+int ThreadScheduler::RemoveRunable(StThreadBase *thread)
 {
     if (unlikely(NULL == thread))
     {
@@ -218,9 +218,9 @@ int ThreadScheduler::RemoveRunable(ThreadItem *thread)
     return 0;
 }
 
-ThreadItem* ThreadScheduler::PopRunable()
+StThreadBase* ThreadScheduler::PopRunable()
 {
-    ThreadItem *thread = NULL;
+    StThreadBase *thread = NULL;
     CPP_TAILQ_POP(&m_run_list_, thread, m_next_);
     if (unlikely(thread != NULL))
     {
@@ -231,7 +231,7 @@ ThreadItem* ThreadScheduler::PopRunable()
     return thread;
 }
 
-int ThreadScheduler::RemoveSleep(ThreadItem *thread)
+int ThreadScheduler::RemoveSleep(StThreadBase *thread)
 {
     thread->UnsetFlag(eSLEEP_LIST);
     // 如果HeapSize < 0 则不需要处理
@@ -252,7 +252,7 @@ int ThreadScheduler::RemoveSleep(ThreadItem *thread)
     return 0;
 }
 
-int ThreadScheduler::InsertSleep(ThreadItem *thread)
+int ThreadScheduler::InsertSleep(StThreadBase *thread)
 {
     thread->SetFlag(eSLEEP_LIST);
     thread->SetState(eSLEEPING);
@@ -262,9 +262,9 @@ int ThreadScheduler::InsertSleep(ThreadItem *thread)
     return 0;
 }
 
-void ThreadScheduler::WakeupParent(ThreadItem *thread)
+void ThreadScheduler::WakeupParent(StThreadBase *thread)
 {
-    ThreadItem *parent = dynamic_cast<Thread*>(thread->GetParent());
+    StThreadBase *parent = dynamic_cast<Thread*>(thread->GetParent());
     if (parent)
     {
         parent->RemoveSubThread(thread);
@@ -308,7 +308,7 @@ int EventScheduler::Init(int max_num)
         goto INIT_EXIT_LABEL;
     }
 
-    m_container_ = (StEventItemPtr*)malloc(sizeof(StEventItemPtr) * m_maxfd_);
+    m_container_ = (StEventBasePtr*)malloc(sizeof(StEventBasePtr) * m_maxfd_);
     if (NULL == m_container_)
     {
         rc = -3;
@@ -316,7 +316,7 @@ int EventScheduler::Init(int max_num)
     }
 
     // 初始化设置为空指针
-    memset(m_container_, 0, sizeof(StEventItemPtr) * m_maxfd_);
+    memset(m_container_, 0, sizeof(StEventBasePtr) * m_maxfd_);
 
     // 设置系统参数
     struct rlimit rlim;
@@ -345,12 +345,12 @@ INIT_EXIT_LABEL:
     return rc;
 }       
 
-bool EventScheduler::Add(StEventItemQueue &fdset)
+bool EventScheduler::Add(StEventBaseQueue &fdset)
 {
     bool ret = true;
 
     // 保存最后一个出错的位置
-    StEventItem *item = NULL, *temp_item = NULL; 
+    StEventBase *item = NULL, *temp_item = NULL; 
     CPP_TAILQ_FOREACH(item, &fdset, m_next_)
     {
         if (!Add(item))
@@ -383,10 +383,10 @@ ADD_EXIT_LABEL:
     return ret;
 }
 
-bool EventScheduler::Delete(StEventItemQueue &fdset)
+bool EventScheduler::Delete(StEventBaseQueue &fdset)
 {
     bool ret = true;
-    StEventItem *item = NULL, *temp_item = NULL;
+    StEventBase *item = NULL, *temp_item = NULL;
     CPP_TAILQ_FOREACH(item, &fdset, m_next_)
     {
         if (!Delete(item))
@@ -417,7 +417,7 @@ DELETE_EXIT_LABEL:
     return ret;
 }
 
-bool EventScheduler::Add(StEventItem *item)
+bool EventScheduler::Add(StEventBase *item)
 {
     if (NULL == item)
     {
@@ -433,7 +433,7 @@ bool EventScheduler::Add(StEventItem *item)
     }
 
     int new_events = item->GetEvents();
-    StEventItem *old_item = m_container_[osfd];
+    StEventBase *old_item = m_container_[osfd];
     LOG_TRACE("add old_item: %p, item: %p", old_item, item);
     if (NULL == old_item)
     {
@@ -465,7 +465,7 @@ bool EventScheduler::Add(StEventItem *item)
     return true;
 }
 
-bool EventScheduler::Delete(StEventItem *item)
+bool EventScheduler::Delete(StEventBase *item)
 {
     if (NULL == item)
     {
@@ -481,7 +481,7 @@ bool EventScheduler::Delete(StEventItem *item)
     }
 
     int new_events = item->GetEvents();
-    StEventItem *old_item = m_container_[osfd];
+    StEventBase *old_item = m_container_[osfd];
     LOG_TRACE("delete old_item: %p, item: %p", old_item, item);
     if (NULL == old_item)
     {
@@ -554,7 +554,7 @@ bool EventScheduler::DeleteFd(int fd, int events)
 void EventScheduler::Dispatch(int fdnum)
 {
     int ret = 0, osfd = 0, revents = 0;
-    StEventItem *item = NULL;
+    StEventBase *item = NULL;
 
     for (int i = 0; i < fdnum; i++)
     {
@@ -574,7 +574,7 @@ void EventScheduler::Dispatch(int fdnum)
             continue;
         }
 
-        ThreadItem *thread = item->GetOwnerThread();
+        StThreadBase *thread = item->GetOwnerThread();
         ASSERT(thread != NULL);
 
         item->SetRecvEvents(revents); // 设置收到的事件
@@ -660,9 +660,9 @@ void EventScheduler::Wait(int timeout)
 }
 
 // 调度信息
-bool EventScheduler::Schedule(ThreadItem *thread, 
-        StEventItemQueue *fdset,
-        StEventItem *item,
+bool EventScheduler::Schedule(StThreadBase *thread, 
+        StEventBaseQueue *fdset,
+        StEventBase *item,
         uint64_t wakeup_timeout)
 {
     if (NULL == thread)
@@ -698,8 +698,8 @@ bool EventScheduler::Schedule(ThreadItem *thread,
     }
 
     int recv_num = 0;
-    StEventItemQueue &recv_fdset = thread->GetFdSet();
-    StEventItem *_item = NULL;
+    StEventBaseQueue &recv_fdset = thread->GetFdSet();
+    StEventBase *_item = NULL;
     CPP_TAILQ_FOREACH(_item, &recv_fdset, m_next_)
     {
         LOG_TRACE("GetRecvEvents: %d, GetEvents: %d, fd: %d", 
@@ -801,7 +801,7 @@ void Thread::InitContext()
 	makecontext(&m_stack_->m_context_.uc, (void(*)())StartActiveThread, 2, ty, tx);
 }
 
-void Thread::RestoreContext(ThreadItem *thread)
+void Thread::RestoreContext(StThreadBase *thread)
 {
     LOG_TRACE("RestoreContext ### begin ### this : %p, thread : %p", this, thread);
     // 切换的线程相同

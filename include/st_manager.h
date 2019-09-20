@@ -142,7 +142,7 @@ public:
 	            return -1;
 	        }
 
-	        StEventItem *item = GetEventScheduler()->GetEventItem(fd);
+	        StEventBase *item = GetEventScheduler()->GetEventItem(fd);
             if (NULL == item)
             {
                 LOG_TRACE("item is NULL");

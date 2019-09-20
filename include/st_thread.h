@@ -7,7 +7,7 @@
 
 #include "st_util.h"
 #include "st_heap_timer.h"
-#include "st_item.h"
+#include "st_base.h"
 
 ST_NAMESPACE_BEGIN
 
@@ -26,22 +26,22 @@ public:
         CPP_TAILQ_INIT(&m_pend_list_);
     }
 
-    inline ThreadItem* DaemonThread(void)
+    inline StThreadBase* DaemonThread(void)
     {
         return m_daemon_;
     }
 
-    inline ThreadItem* PrimoThread(void)
+    inline StThreadBase* PrimoThread(void)
     {
         return m_primo_;
     }
 
-    inline void SetDaemonThread(ThreadItem *thread)
+    inline void SetDaemonThread(StThreadBase *thread)
     {
         m_daemon_ = thread;
     }
 
-    inline void SetPrimoThread(ThreadItem *thread)
+    inline void SetPrimoThread(StThreadBase *thread)
     {
         m_primo_ = thread;
     }
@@ -51,49 +51,49 @@ public:
         m_sleep_list_.HeapResize(max_num);
     }
 
-    inline ThreadItem* GetActiveThread()
+    inline StThreadBase* GetActiveThread()
     {
         return m_active_thread_;
     }
 
-    inline void SetActiveThread(ThreadItem *thread)
+    inline void SetActiveThread(StThreadBase *thread)
     {
         m_active_thread_ = thread;
     }
 
-    void SwitchThread(ThreadItem *rthread, ThreadItem *sthread);
+    void SwitchThread(StThreadBase *rthread, StThreadBase *sthread);
 
     // 让出当前线程
-    int Yield(ThreadItem *thread);
+    int Yield(StThreadBase *thread);
 
-    int Sleep(ThreadItem *thread);
+    int Sleep(StThreadBase *thread);
 
-    int Pend(ThreadItem *thread);
+    int Pend(StThreadBase *thread);
 
-    int Unpend(ThreadItem *thread);
+    int Unpend(StThreadBase *thread);
 
-    int IOWaitToRunable(ThreadItem *thread);
+    int IOWaitToRunable(StThreadBase *thread);
 
-    int InsertIOWait(ThreadItem *thread);
+    int InsertIOWait(StThreadBase *thread);
 
-    int RemoveIOWait(ThreadItem *thread);
+    int RemoveIOWait(StThreadBase *thread);
 
-    int InsertRunable(ThreadItem *thread);
+    int InsertRunable(StThreadBase *thread);
 
-    int RemoveRunable(ThreadItem *thread);
+    int RemoveRunable(StThreadBase *thread);
 
-    int InsertSleep(ThreadItem *thread);
+    int InsertSleep(StThreadBase *thread);
 
-    int RemoveSleep(ThreadItem *thread);
+    int RemoveSleep(StThreadBase *thread);
 
     // 唤醒父亲线程
-    void WakeupParent(ThreadItem *thread);
+    void WakeupParent(StThreadBase *thread);
 
     // 唤醒sleep的列表中的线程
     void Wakeup(int64_t now);
 
     // pop最新一个运行的线程
-    ThreadItem* PopRunable(); 
+    StThreadBase* PopRunable(); 
 
     void ForeachPrint()
     {
@@ -104,14 +104,14 @@ public:
     }
 
 public:
-    ThreadItemQueue         m_run_list_, m_io_list_, m_pend_list_;
-    HeapList<ThreadItem>    m_sleep_list_;
-    ThreadItem              *m_active_thread_, *m_daemon_, *m_primo_;
+    StThreadBaseQueue         m_run_list_, m_io_list_, m_pend_list_;
+    HeapList<StThreadBase>    m_sleep_list_;
+    StThreadBase              *m_active_thread_, *m_daemon_, *m_primo_;
 };
 
 class EventScheduler : public referenceable
 {
-    typedef StEventItem* StEventItemPtr;
+    typedef StEventBase* StEventBasePtr;
 
 public:
     EventScheduler(int32_t max_num = 1024) : 
@@ -135,18 +135,18 @@ public:
 
     int32_t Init(int32_t max_num);
 
-    bool Schedule(ThreadItem *thread, 
-        StEventItemQueue *fdset,
-        StEventItem *item,
+    bool Schedule(StThreadBase *thread, 
+        StEventBaseQueue *fdset,
+        StEventBase *item,
         uint64_t wakeup_timeout);
 
-    bool Add(StEventItemQueue &fdset);
+    bool Add(StEventBaseQueue &fdset);
 
-    bool Add(StEventItem *item);
+    bool Add(StEventBase *item);
 
-    bool Delete(StEventItemQueue &fdset);
+    bool Delete(StEventBaseQueue &fdset);
 
-    bool Delete(StEventItem *item);
+    bool Delete(StEventBase *item);
 
     bool AddFd(int32_t fd, int32_t new_events);
 
@@ -157,7 +157,7 @@ public:
         return ((fd >= m_maxfd_) || (fd < 0)) ? false : true;
     }
 
-    inline bool SetEventItem(int32_t fd, StEventItem *item)
+    inline bool SetEventItem(int32_t fd, StEventBase *item)
     {
         if (unlikely(IsValidFd(fd)))
         {
@@ -168,7 +168,7 @@ public:
         return false;
     }
 
-    inline StEventItem* GetEventItem(int32_t fd)
+    inline StEventBase* GetEventItem(int32_t fd)
     {
         if (unlikely(IsValidFd(fd)))
         {
@@ -188,7 +188,7 @@ public:
         m_state_->ApiFree(); // 释放链接
     }
 
-    inline void Close(StEventItem *item)
+    inline void Close(StEventBase *item)
     {
         Delete(item);
         
@@ -205,15 +205,15 @@ public:
 protected:
     int32_t             m_maxfd_;
     StApiState          *m_state_;
-    StEventItemPtr      *m_container_;
+    StEventBasePtr      *m_container_;
     int32_t             m_timeout_;
     ThreadScheduler     *m_thread_scheduler_;
 };
 
-class Thread : public ThreadItem
+class Thread : public StThreadBase
 {
 public:
-    Thread() : ThreadItem()
+    Thread() : StThreadBase()
     {
         bool r = InitStack();
         ASSERT(r == true);
@@ -235,7 +235,7 @@ public:
         LOG_TRACE("now: %ld, m_wakeup_time_: %ld", now, m_wakeup_time_);
     }
 
-    virtual void RestoreContext(ThreadItem* switch_thread);
+    virtual void RestoreContext(StThreadBase* switch_thread);
 
     void WakeupParent();
 

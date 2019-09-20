@@ -2,25 +2,26 @@
 
 ST_NAMESPACE_USING
 
-class StTcpServerConnection : public StServerConnection
+class StTcpServerConnection : 
+    public StServerConnection<StEventBase>
 {
-    virtual int Process(void *manager)
+    virtual int32_t HandleProcess(void *buf, int32_t len)
     {
-        int ret = RecvData();
+        int ret = this->RecvData();
         LOG_TRACE("ret: %d", ret);
         if (ret < 0)
         {
             return -1;
         }
 
-        char buf[1024];
-        sprintf(buf, "HTTP/1.1 200 OK\r\n"
+        char buf1[1024];
+        int n = sprintf(buf1, "HTTP/1.1 200 OK\r\n"
             "Content-Length: 1\r\n"
             "Content-Type: text/html\r\n"
             "Date: Mon, 12 Aug 2019 15:48:13 GMT\r\n"
             "Server: sthread/1.0.1\r\n\r\n1");
 
-        GetSendBuffer()->SetBuffer(buf, strlen(buf) + 1);
+        GetSendBuffer()->SetBuffer(buf1, n);
         ret = SendData();
         LOG_TRACE("ret: %d", ret);
         if (ret < 0)
@@ -28,7 +29,7 @@ class StTcpServerConnection : public StServerConnection
             return -2;
         }
 
-        return 1;
+        return 0;
     }
 };
 

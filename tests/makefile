@@ -3,7 +3,7 @@ SRC = ..
 GTEST_LIB = -lpthread -ldl # ./gtest/googletest/libgtest.a
 DEBUG = # -g -DTRACE
 FLAGS = -Wno-backslash-newline-escape -Wno-format -Wno-deprecated-declarations -O3 $(DEBUG)
-COMM_SRC = $(SRC)/st_test.cpp $(SRC)/st_log.cpp $(SRC)/st_item.cpp
+COMM_SRC = $(SRC)/st_test.cpp $(SRC)/st_log.cpp
 
 hash_list:
 	g++ st_hash_list_unittest.cpp $(COMM_SRC) $(SRC)/st_manager.cpp \
@@ -57,7 +57,7 @@ manager:
 	$(INCLUDE) $(GTEST_LIB) ./libucontext.a $(FLAGS) -o st_manager_unittest
 
 server:
-	g++ st_server_unittest.cpp $(COMM_SRC) \
+	g++ st_server_unittest.cpp $(COMM_SRC) $(SRC)/st_connection.cpp  \
 	$(SRC)/st_thread.cpp $(SRC)/st_sys.cpp $(SRC)/st_manager.cpp \
 	$(INCLUDE) $(GTEST_LIB) ./libucontext.a $(FLAGS) -o st_server_unittest
 

@@ -7,77 +7,128 @@
 
 ST_NAMESPACE_USING
 
-int32_t StClientConnection::CreateSocket(const StNetAddress &addr)
+int32_t StConnection::SendData()
 {
-    m_destaddr_ = addr;
+    ASSERT(m_sendbuf_ != NULL);
 
-    int protocol = SOCK_STREAM;
+    char *buf = (char*)m_sendbuf_->GetBuffer();
+    uint32_t buf_len = m_sendbuf_->GetMsgLen();
+
+    int have_send_len = m_sendbuf_->GetHaveSendLen(); 
+    int ret = 0;
     if (IS_UDP_CONN(m_type_))
     {
-        protocol = SOCK_DGRAM;
+        struct sockaddr *servaddr;
+        m_destaddr_.GetSockAddr(servaddr);
+        ret = ::_sendto(m_osfd_, buf + have_send_len, buf_len - have_send_len, 
+            0, servaddr, sizeof(struct sockaddr), m_timeout_);
     }
-    m_osfd_ = st_socket(addr.IsIPV6() ? AF_INET6 : AF_INET, protocol, 0);
-    LOG_TRACE("m_osfd_: %d", m_osfd_);
-    if (m_osfd_ < 0)
+    else
     {
-        LOG_ERROR("create socket failed, ret[%d]", m_osfd_);
-        return -1;
-    }
-
-    m_item_ = StConnectionItem::AllocStEventItem<StEventItem>();
-    ASSERT(m_item_ != NULL);
-
-    m_item_->SetOsfd(m_osfd_);
-    m_item_->EnableOutput();
-    m_item_->DisableInput();
-    GetEventScheduler()->Add(m_item_);
-
-    if (IS_TCP_CONN(m_type_))
-    {
-        int32_t rc = OpenConnect(addr);
-        if (rc < 0)
-        {
-            LOG_ERROR("connect error, rc: %d", rc);
-            CloseSocket();
-            // TODO : 异常情况下需要清理item
-            
-            return -2;
-        }
+        ret = ::_send(m_osfd_, buf + have_send_len, buf_len - have_send_len, 
+            0, m_timeout_);
     }
 
-    return m_osfd_;
-}
+    LOG_TRACE("send: %s", buf + have_send_len);
 
-int32_t StClientConnection::OpenConnect(const StNetAddress &addr)
-{
-    struct sockaddr *destaddr;
-    addr.GetSockAddr(destaddr);
-
-    int32_t err = 0;
-    int32_t ret = ::_connect(m_osfd_, destaddr, sizeof(struct sockaddr_in), m_timeout_);
-    if (ret < 0)
+    if (ret == -1)
     {
-        err = errno;
-        if (err == EISCONN)
+        if ((errno == EINTR) || (errno == EAGAIN) || (errno == EINPROGRESS))
         {
             return 0;
         }
         else
         {
-            if ((err == EINPROGRESS) || (err == EALREADY) || (err == EINTR))
-            {
-                LOG_ERROR("open connect not ok, sock: %d, errno: %d, strerr: %s", 
-                    m_osfd_, err, strerror(err));
-                return -1;
-            }
-            else
-            {
-                LOG_ERROR("open connect not ok, sock: %d, errno: %d, strerr: %s", 
-                    m_osfd_, err, strerror(err));
-                return -2;
-            }
+            LOG_ERROR("send tcp socket failed, error: %d", errno);
+            return -1;
         }
     }
-    
+    else
+    {
+        have_send_len += ret;
+        m_sendbuf_->SetHaveSendLen(have_send_len);
+    }
+
+    if (have_send_len >= buf_len)
+    {
+        return buf_len;
+    }
+    else
+    {
+        return 0;
+    }
+}
+
+int32_t StConnection::RecvData()
+{
+    ASSERT(m_recvbuf_ != NULL);
+
+    char *buf = (char*)m_recvbuf_->GetBuffer();
+    int buf_maxlen = m_recvbuf_->GetMaxLen();
+
+    // 已经收到的数据长度
+    int have_recv_len = m_recvbuf_->GetHaveRecvLen();
+    LOG_TRACE("osfd: %d, buf: %p, have_recv_len: %d, "
+        "timeout: %d, buf_maxlen: %d", 
+        m_osfd_, buf, have_recv_len, m_timeout_, buf_maxlen);
+
+    int ret = 0;
+    if (IS_UDP_CONN(m_type_))
+    {
+        // 设置目的IP地址
+        struct sockaddr clientaddr;
+        socklen_t addrlen = sizeof(struct sockaddr);
+        ret = ::_sendto(m_osfd_, (char*)buf + have_recv_len, 
+            buf_maxlen - have_recv_len, 0, &clientaddr, addrlen, m_timeout_);
+        m_destaddr_ = StNetAddress(*((struct sockaddr_in*)&clientaddr));
+    }
+    else
+    {
+        ret = ::_recv(m_osfd_, (char*)buf + have_recv_len, 
+            buf_maxlen - have_recv_len, 0, m_timeout_);
+    }
+
+    if (ret < 0)
+    {
+        if ((errno == EINTR) || (errno == EAGAIN) || (errno == EINPROGRESS))
+        {
+            return 0;
+        }
+        else
+        {
+            LOG_ERROR("recv tcp socket failed, error: %d", errno);
+            return -2;
+        }
+    }
+    else if (ret == 0)
+    {
+        LOG_ERROR("tcp remote close, address: %s", m_destaddr_.IPPort());
+        return -1;
+    }
+    else
+    {
+        have_recv_len += ret;
+        m_recvbuf_->SetHaveRecvLen(have_recv_len);
+    }
+
+    ret = HandleInput(m_recvbuf_->GetBuffer(), m_recvbuf_->GetHaveRecvLen());
+    if (ret > 0)
+    {
+        m_recvbuf_->SetMsgLen(ret);
+    }
+    else if (ret == 0)
+    {
+        return 0;
+    }
+    else if (ret == -65535)
+    {
+        m_recvbuf_->SetHaveRecvLen(0);
+        return 0;
+    }
+    else
+    {
+        return -1;
+    }
+
     return 0;
 }

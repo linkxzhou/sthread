@@ -1,10 +1,10 @@
-#include "../include/st_item.h"
+#include "../include/st_base.h"
 
 ST_NAMESPACE_USING
 
-TEST(StStatus, StEventItem)
+TEST(StStatus, StEventBase)
 {
-    StEventItem *item = new StEventItem();
+    StEventBase *item = new StEventBase();
     item->InputNotify();
     item->OutputNotify();
     item->HangupNotify();

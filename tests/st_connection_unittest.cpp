@@ -8,7 +8,7 @@ TEST(StStatus, TCP)
     Manager *manager = GetInstance< Manager >();
     manager->SetHookFlag();
 
-	StClientConnection *conn = new StClientConnection();
+	StClientConnection<StEventBase> *conn = new StClientConnection<StEventBase>();
     StNetAddress addr;
     addr.SetAddr("112.80.248.75", 80);
     int fd = conn->CreateSocket(addr);

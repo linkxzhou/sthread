@@ -9,7 +9,7 @@ static void socket_callback(Manager *manager, int i)
     ::_sleep(3000);
     LOG_TRACE("waiting 3000ms ...");
 
-    StEventItem *item = StConnectionItem::AllocStEventItem<StEventItem>();
+    StEventBase *item = new StEventBase();
     LOG_TRACE("item node :%p, events :%d", item, item->GetEvents());
     ASSERT(item != NULL);
 

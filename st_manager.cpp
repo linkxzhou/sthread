@@ -43,7 +43,7 @@ int _sendto(int fd, const void *msg, int len, int flags,
             return -1;
         }
 
-        StEventItem *item = GetEventScheduler()->GetEventItem(fd);
+        StEventBase *item = GetEventScheduler()->GetEventItem(fd);
         if (item == NULL)
         {
             LOG_ERROR("item is NULL, fd: %d", fd);
@@ -85,7 +85,7 @@ int _recvfrom(int fd, void *buf, int len, int flags,
             return -1;
         }
 
-        StEventItem *item = GetEventScheduler()->GetEventItem(fd);
+        StEventBase *item = GetEventScheduler()->GetEventItem(fd);
         if (item == NULL)
         {
             LOG_ERROR("item is NULL");
@@ -171,7 +171,7 @@ int _connect(int fd, const struct sockaddr *addr, int addrlen, int timeout)
             return -1;
         }
 
-        StEventItem *item = GetEventScheduler()->GetEventItem(fd);
+        StEventBase *item = GetEventScheduler()->GetEventItem(fd);
         if (item == NULL)
         {
             LOG_ERROR("item is NULL");
@@ -230,7 +230,7 @@ ssize_t _read(int fd, void *buf, size_t nbyte, int timeout)
             return -1;
         }
 
-        StEventItem *item = GetEventScheduler()->GetEventItem(fd);
+        StEventBase *item = GetEventScheduler()->GetEventItem(fd);
         if (item == NULL)
         {
             LOG_ERROR("item is NULL");
@@ -301,7 +301,7 @@ ssize_t _write(int fd, const void *buf, size_t nbyte, int timeout)
             }
         }
 
-        StEventItem *item = GetEventScheduler()->GetEventItem(fd);
+        StEventBase *item = GetEventScheduler()->GetEventItem(fd);
         if (item == NULL)
         {
             LOG_ERROR("item is NULL");
@@ -343,7 +343,7 @@ int _recv(int fd, void *buf, int len, int flags, int timeout)
             return -1;
         }
 
-        StEventItem *item = GetEventScheduler()->GetEventItem(fd);
+        StEventBase *item = GetEventScheduler()->GetEventItem(fd);
         if (item == NULL)
         {
             LOG_ERROR("item is NULL");
@@ -441,7 +441,7 @@ ssize_t _send(int fd, const void *buf, size_t nbyte, int flags, int timeout)
             }
         }
 
-        StEventItem *item = GetEventScheduler()->GetEventItem(fd);
+        StEventBase *item = GetEventScheduler()->GetEventItem(fd);
         if (item == NULL)
         {
             LOG_ERROR("item is NULL");
@@ -493,7 +493,7 @@ int _accept(int fd, struct sockaddr *addr, socklen_t *addrlen)
             return -1;
         }
 
-        StEventItem *item = GetEventScheduler()->GetEventItem(fd);
+        StEventBase *item = GetEventScheduler()->GetEventItem(fd);
         if (item == NULL)
         {
             LOG_ERROR("item is NULL");

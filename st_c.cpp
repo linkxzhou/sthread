@@ -9,11 +9,11 @@
 ST_NAMESPACE_USING
 
 // 获取连接的句柄信息
-static StClientConnection* s_get_conn(struct sockaddr_in *dst, int32_t &sock, eConnType type)
+static StExecClientConnection* _get_conn(struct sockaddr_in *dst, int32_t &sock, eConnType type)
 {
     StNetAddress addr(*dst);
-    StClientConnection *conn = GetInstance< 
-            StConnectionManager<StClientConnection>
+    StExecClientConnection *conn = GetInstance< 
+            StConnectionManager<StExecClientConnection>
         >()->AllocPtr(type, &addr);
     if (NULL == conn)
     {
@@ -26,6 +26,7 @@ static StClientConnection* s_get_conn(struct sockaddr_in *dst, int32_t &sock, eC
     if (osfd < 0)
     {
         LOG_ERROR("create socket failed, ret[%d]", osfd);
+        // TODO : 
         // GetInstance< 
         //     StConnectionManager<StClientConnection>
         // >()->FreePtr(conn);
@@ -121,7 +122,7 @@ int32_t udp_sendrecv(struct sockaddr_in *dst,
     int32_t time_left = 0;
     int32_t sock = -1;
 
-    StClientConnection *conn = s_get_conn(dst, sock, eUDP_CONN);
+    StExecClientConnection *conn = _get_conn(dst, sock, eUDP_CONN);
     LOG_TRACE("socket: %d, conn: %p", sock, conn);
     if ((conn == NULL) || (sock < 0))
     {
