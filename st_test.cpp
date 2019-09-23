@@ -9,12 +9,12 @@
 
 std::vector<Test> *tests;
 
-inline StStatus::StStatus(const StStatus &rhs) 
+StStatus::StStatus(const StStatus &rhs) 
 {
     m_state_ = (rhs.m_state_ == NULL) ? NULL : CopyState(rhs.m_state_);
 }
 
-inline StStatus& StStatus::operator=(const StStatus &rhs) 
+StStatus& StStatus::operator=(const StStatus &rhs) 
 {
     if (m_state_ != rhs.m_state_)
     {
@@ -25,7 +25,7 @@ inline StStatus& StStatus::operator=(const StStatus &rhs)
     return *this;
 }
 
-inline StStatus& StStatus::operator=(StStatus &rhs) 
+StStatus& StStatus::operator=(StStatus &rhs) 
 {
     std::swap(m_state_, rhs.m_state_);
     return *this;

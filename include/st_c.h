@@ -23,18 +23,18 @@ ST_NAMESPACE_END
 extern "C" {
 #endif
 
-typedef uint32_t (*CheckLengthCallback)(void *buf, int len);
+typedef int32_t (*CheckLengthCallback)(void *buf, int len);
 
 int udp_sendrecv(struct sockaddr_in *dst, 
     void *pkg, int len, 
     void *recvbuf, int &bufsize, 
     int timeout);
 
-// int tcp_sendrecv(struct sockaddr_in *dst, 
-//     void *pkg, int len, 
-//     void *recv_buf, int &buf_size, 
-//     int timeout, 
-//     CheckLengthCallback callback, bool keeplive = false);
+int tcp_sendrecv(struct sockaddr_in *dst, 
+    void *pkg, int len, 
+    void *recvbuf, int &bufsize, 
+    int timeout, 
+    CheckLengthCallback callback, bool keeplive = false);
 
 void st_set_private(void *data); // 设置私有数据
 

@@ -104,12 +104,12 @@ typedef unsigned short ushort;
 typedef unsigned long long uvlong;
 typedef long long vlong;
 
-extern	int getmcontext(mcontext_t*);
-extern	void setmcontext(const mcontext_t*);
+extern int getmcontext(mcontext_t*);
+extern void setmcontext(const mcontext_t*);
 #define	setcontext(u)	setmcontext(&(u)->uc_mcontext)
 #define	getcontext(u)	getmcontext(&(u)->uc_mcontext)
-extern	int	swapcontext(ucontext_t*, const ucontext_t*);
-extern	void makecontext(ucontext_t*, void(*)(), int, ...);
+extern int	swapcontext(ucontext_t*, const ucontext_t*);
+extern void makecontext(ucontext_t*, void(*)(), int, ...);
 #   pragma message("__FreeBSD__ < 5 activated!") 
 
 #endif

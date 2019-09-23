@@ -26,9 +26,8 @@ static StExecClientConnection* _get_conn(struct sockaddr_in *dst, int32_t &sock,
     if (osfd < 0)
     {
         LOG_ERROR("create socket failed, ret[%d]", osfd);
-        // TODO : 
         // GetInstance< 
-        //     StConnectionManager<StClientConnection>
+        //     StConnectionManager<StExecClientConnection>
         // >()->FreePtr(conn);
         return NULL;
     }
@@ -39,67 +38,73 @@ static StExecClientConnection* _get_conn(struct sockaddr_in *dst, int32_t &sock,
 }
 
 // 获取tcp的接收信息
-// static int32_t s_tcp_check_recv(int32_t sock, char* recv_buf, int32_t &len, int32_t flags, 
-//     int32_t timeout, TcpCheckMsgLenCallback func)
-// {
-//     int32_t recv_len = 0;
-//     time64_t start_ms = GetInstance<Frame>()->GetLastClock();
-//     do
-//     {
-//         time64_t cost_time = GetInstance<Frame>()->GetLastClock() - start_ms;
-//         LOG_TRACE("current cost_time : %ld", cost_time);
-//         if (cost_time > (time64_t)timeout)
-//         {
-//             errno = ETIME;
-//             LOG_ERROR("tcp socket[%d] recv not ok, timeout", sock);
-//             return -3;
-//         }
-//         int32_t rc = Frame::recv(sock, (recv_buf + recv_len), (len - recv_len), 0, 
-//             (timeout - (int32_t)cost_time));
-//         LOG_TRACE("sock : %d, rc : %d, recv_len : %d", sock, rc, recv_len);
-//         if (rc < 0)
-//         {
-//             LOG_ERROR("tcp socket[%d] recv failed ret[%d][%m]", sock, rc);
-//             return -4;
-//         }
-//         else if (rc == 0)
-//         {
-//             LOG_ERROR("tcp socket[%d] remote close", sock);
-//             return -7;
-//         }
-//         recv_len += rc;
+static int32_t _tcp_check_recv(int32_t sock, 
+    char* recvbuf, int32_t &len, int32_t flags, 
+    int32_t timeout, CheckLengthCallback callback)
+{
+    int32_t recvlen = 0;
+    time64_t start_ms = Util::SysMs();
 
-//         rc = func(recv_buf, recv_len);
-//         if (rc < 0)
-//         {
-//             LOG_ERROR("tcp socket[%d] user check pkg error[%d]", sock, rc);
-//             return -5;
-//         }
-//         else if (rc == 0)
-//         {
-//             if (len == recv_len)
-//             {
-//                 LOG_ERROR("tcp socket[%d] user check pkg not ok, but no more buff", sock);
-//                 return -6;
-//             }
-//             continue;
-//         }
-//         else
-//         {
-//             if (rc > recv_len)
-//             {
-//                 continue;
-//             }
-//             else
-//             {
-//                 len = rc;
-//                 break;
-//             }
-//         }
-//     } while (true);
+    do
+    {
+        time64_t cost_time = Util::SysMs() - start_ms;
+        LOG_TRACE("cost_time: %ld", cost_time);
 
-//     return 0;
-// }
+        if (cost_time > timeout)
+        {
+            errno = ETIME;
+            LOG_ERROR("tcp socket[%d] recv not ok, timeout", sock);
+            return -3;
+        }
+
+        int32_t rc = ::_recv(sock, 
+            (recvbuf + recvlen), (len - recvlen), 
+            0,  (timeout - cost_time));
+        LOG_TRACE("sock: %d, rc: %d, recvlen: %d", sock, rc, recvlen);
+        if (rc < 0)
+        {
+            LOG_ERROR("tcp socket[%d] recv failed ret[%d][%m]", sock, rc);
+            return -4;
+        }
+        else if (rc == 0)
+        {
+            LOG_ERROR("tcp socket[%d] remote close", sock);
+            return -5;
+        }
+        recvlen += rc;
+
+        rc = callback(recvbuf, recvlen);
+        if (rc < 0)
+        {
+            LOG_ERROR("tcp socket[%d] user check pkg error[%d]", sock, rc);
+            return -6;
+        }
+        else if (rc == 0)
+        {
+            if (len == recvlen)
+            {
+                LOG_ERROR("tcp socket[%d] user check pkg not ok, but no more buff", sock);
+                return -7;
+            }
+
+            continue;
+        }
+        else
+        {
+            if (rc > recvlen)
+            {
+                continue;
+            }
+            else
+            {
+                len = rc;
+                break;
+            }
+        }
+    } while (true);
+
+    return 0;
+}
 
 int32_t udp_sendrecv(struct sockaddr_in *dst, 
     void *pkg, int32_t len, 
@@ -176,77 +181,71 @@ UDP_SENDRECV_EXIT_LABEL:
 }
 
 // tcp的发送和接收信息(长连接)
-// int32_t tcp_sendrecv(struct sockaddr_in *dst, 
-//     void *pkg, int32_t len, 
-//     void *recvbuf, int32_t &bufsize, 
-//     int32_t timeout, 
-//     TcpCheckMsgLenCallback callback, bool keeplive)
-// {
-//     if (!dst || !pkg || !recvbuf || !callback || bufsize <= 0)
-//     {
-//         LOG_ERROR("input params invalid, dst[%p], pkg[%p], recvbuf[%p], callback[%p], bufsize[%d]",
-//             dst, pkg, recvbuf, callback, bufsize);
-//         return -10;
-//     }
+int32_t tcp_sendrecv(struct sockaddr_in *dst, 
+    void *pkg, int32_t len, 
+    void *recvbuf, int32_t &bufsize, 
+    int32_t timeout, 
+    CheckLengthCallback callback, bool keeplive)
+{
+    if (!dst || !pkg || !recvbuf || !callback || bufsize <= 0)
+    {
+        LOG_ERROR("input params invalid, dst[%p], pkg[%p], recvbuf[%p], callback[%p], bufsize[%d]",
+            dst, pkg, recvbuf, callback, bufsize);
+        return -10;
+    }
 
-//     int32_t ret = 0, rc = 0;
-//     int32_t addr_len = sizeof(struct sockaddr_in);
-//     // 获取时间戳
-//     time64_t start_ms = Util::SysMs(), cost_time = 0;
-//     // 连接超时时间
-//     int32_t time_left = timeout;
-//     int32_t sock = -1;
+    int32_t ret = 0, rc = 0;
+    int32_t addr_len = sizeof(struct sockaddr_in);
+    // 获取时间戳
+    time64_t start_ms = Util::SysMs(), cost_time = 0;
+    // 连接超时时间
+    int32_t time_left = timeout;
+    int32_t sock = -1;
 
-//     // 判断是否为长连接
-//     StClientConnection *conn = s_get_conn(dst, sock, keeplive ? eTCP_KEEPLIVE_CONN : eTCP_CONN);
-//     LOG_TRACE("socket :%d, conn : %p", sock, conn);
-//     if ((conn == NULL) || (sock < 0))
-//     {
-//         LOG_ERROR("socket[%d] get conn failed, ret", sock);
-//         ret = -1;
-//         goto EXIT_LABEL2;
-//     }
+    // 判断是否为长连接
+    StConnection *conn = _get_conn(dst, sock, keeplive ? eTCP_KEEPLIVE_CONN : eTCP_CONN);
+    LOG_TRACE("socket: %d, conn: %p", sock, conn);
+    if ((conn == NULL) || (sock < 0))
+    {
+        LOG_ERROR("socket[%d] get conn failed, ret", sock);
+        ret = -1;
+        goto TCP_SENDRECV_EXIT_LABEL;
+    }
 
-//     cost_time = Util::SysMs() - start_ms;
-//     time_left = (timeout > cost_time) ? (timeout - cost_time) : 0;
-//     // 先将数据包发送
-//     rc = ::_send(sock, pkg, len, 0, time_left);
-//     if (rc < 0)
-//     {
-//         LOG_ERROR("socket[%d] send failed, ret[%d]", sock, rc);
-//         ret = -2;
-//         goto EXIT_LABEL2;
-//     }
+    cost_time = Util::SysMs() - start_ms;
+    time_left = (timeout > cost_time) ? (timeout - cost_time) : 0;
+    // 先将数据包发送
+    rc = ::_send(sock, pkg, len, 0, time_left);
+    if (rc < 0)
+    {
+        LOG_ERROR("socket[%d] send failed, ret[%d]", sock, rc);
+        ret = -2;
+        goto TCP_SENDRECV_EXIT_LABEL;
+    }
 
-//     cost_time = Util::SysMs() - start_ms;
-//     time_left = (timeout > cost_time) ? (timeout - cost_time) : 0;
-//     rc = s_tcp_check_recv(sock, (char*)recv_buf, buf_size, 0, time_left, func);
-//     if (rc < 0)
-//     {
-//         LOG_ERROR("socket[%d] recv failed, ret[%d]", sock, rc);
-//         ret = rc;
-//         goto EXIT_LABEL2;
-//     }
-//     // 短连接close
-//     if (!tcp_long)
-//     {
-//         mt_close(sock);
-//     }
+    cost_time = Util::SysMs() - start_ms;
+    time_left = (timeout > cost_time) ? (timeout - cost_time) : 0;
+    rc = _tcp_check_recv(sock, (char*)recvbuf, bufsize, 0, time_left, callback);
+    if (rc < 0)
+    {
+        LOG_ERROR("socket[%d] recv failed, ret[%d]", sock, rc);
+        ret = rc;
+        goto TCP_SENDRECV_EXIT_LABEL;
+    }
 
-// TCP_SENDRECV_EXIT_LABEL:
-//     // 释放连接(条件 : 如果ret<0，则强制释放，否则判断是否为短连接)
-//     if (conn != NULL)
-//     {
-//         bool force_free = ((ret < 0) ? true : false);
-//         force_free = ((!tcp_long) ? true : force_free);
-//         GetInstance<ConnectionPool>()->FreeConnection(conn, force_free);
-//     }
+TCP_SENDRECV_EXIT_LABEL:
+    // 短连接close
+    if (!keeplive)
+    {
+        conn->CloseSocket();
+        // 释放链接
+    }
 
-//     return ret;
-// }
+    return ret;
+}
 
 // 设置私有数据
-void mt_set_private(void *data)
+void st_set_private(void *data)
 {
     Thread *athread = (Thread*)(GetThreadScheduler()->GetActiveThread());
     ASSERT(athread == NULL);
@@ -259,7 +258,7 @@ void mt_set_private(void *data)
 }
 
 // 获取私有数据
-void* mt_get_private()
+void* st_get_private()
 {
     Thread *athread = (Thread*)(GetThreadScheduler()->GetActiveThread());
     ASSERT(athread == NULL);

@@ -316,23 +316,25 @@ public:
     referenceable() : m_ref_count_(0)
     { }
 
-    void incrref()
+    inline void incrref()
     {
         ++m_ref_count_;
     }
 
-    void decref()
+    inline void decref()
     {
         --m_ref_count_;
     }
 
-    uint32_t getref()
+    inline uint32_t getref()
     {
         return m_ref_count_;
     }
 
     virtual void Reset()
-    { }
+    { 
+        m_ref_count_ = 0;
+    }
 
 public:
     uint32_t m_ref_count_;
@@ -351,7 +353,7 @@ public:
     }
 
     template<typename ValueType>
-    explicit Any(const ValueType& value)
+    explicit Any(const ValueType &value)
         : m_content_(new Holder<ValueType>(value)) 
     { }
 
@@ -360,7 +362,7 @@ public:
     { }
 
 public:
-    Any& swap(Any& rhs) 
+    Any& swap(Any &rhs) 
     {
         std::swap(m_content_, rhs.m_content_);
         return *this;
@@ -418,7 +420,7 @@ protected:
     class Holder : public PlaceHolder 
     {
     public:
-        Holder(const ValueType& value) : 
+        Holder(const ValueType &value) : 
             m_held_(value) 
         { }
 

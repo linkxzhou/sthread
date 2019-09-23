@@ -13,8 +13,7 @@
 
 ST_NAMESPACE_BEGIN
 
-template<class ConnetionT, 
-    int ServerT = eTCP_CONN>
+template<class ConnetionT, int ServerT = eTCP_CONN>
 class StServer
 {
 public:
@@ -125,6 +124,7 @@ public:
         item->SetOsfd(conn->GetOsfd());
         StThreadBase *thread = GetThreadScheduler()->GetActiveThread();
 
+        int32_t ret = 0;
         do
         {
             item->EnableInput();
@@ -132,8 +132,30 @@ public:
             GetEventScheduler()->Add(item);
             LOG_TRACE("CallBack ==========[name:%s]========== %p", 
                 thread->GetName(), item);
-        } while (conn->HandleProcess(NULL, 0) >= 0 && conn->Keeplive());
 
+            // 收数据
+            if ((ret = conn->RecvData()) < 0)
+            {
+                conn->HandleError(ret);
+                goto CALLBACK_EXIT1;
+            }
+
+            // 处理数据
+            if ((ret = conn->HandleProcess()) < 0)
+            {
+                conn->HandleError(ret);
+                goto CALLBACK_EXIT1;
+            }
+            
+            // 发数据
+            if ((ret = conn->SendData()) < 0)
+            {
+                conn->HandleError(ret);
+                goto CALLBACK_EXIT1;
+            }
+        } while (conn->Keeplive());
+
+    CALLBACK_EXIT1:
         // 清理句柄数据
         GetEventScheduler()->Close(item);
         st_close(conn->GetOsfd());

@@ -32,6 +32,7 @@ public:
 
     ~StBuffer()
     {
+        this->Reset();
         st_safe_free(m_msg_buf_);
     }
 
@@ -111,7 +112,6 @@ public:
 private:
     uint32_t    m_max_len_, m_msg_len_;
     void        *m_msg_buf_;
-
     eBuffType   m_buf_type_;
     uint32_t    m_recv_len_;
     uint32_t    m_send_len_;

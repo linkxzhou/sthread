@@ -130,6 +130,7 @@ int ThreadScheduler::Unpend(StThreadBase *thread)
     thread->UnsetFlag(ePEND_LIST);
     CPP_TAILQ_REMOVE(&m_pend_list_, thread, m_next_);
     InsertRunable(thread);
+
     ForeachPrint();
 
     return 0;
@@ -145,6 +146,7 @@ int ThreadScheduler::IOWaitToRunable(StThreadBase *thread)
 
     RemoveIOWait(thread);
     InsertRunable(thread);
+
     ForeachPrint();
 
     return 0;
@@ -163,6 +165,7 @@ int ThreadScheduler::RemoveIOWait(StThreadBase *thread)
         thread, CPP_TAILQ_SIZE(&m_io_list_));
     CPP_TAILQ_REMOVE(&m_io_list_, thread, m_next_);
     RemoveSleep(thread);
+
     ForeachPrint();
 
     return 0;
@@ -180,6 +183,7 @@ int ThreadScheduler::InsertIOWait(StThreadBase *thread)
     thread->SetState(eIOWAIT);
     CPP_TAILQ_INSERT_TAIL(&m_io_list_, thread, m_next_);
     InsertSleep(thread);
+
     ForeachPrint();
 
     return 0;
@@ -196,6 +200,7 @@ int ThreadScheduler::InsertRunable(StThreadBase *thread)
     thread->SetFlag(eRUN_LIST);
     thread->SetState(eRUNABLE);
     CPP_TAILQ_INSERT_TAIL(&m_run_list_, thread, m_next_);
+
     ForeachPrint();
 
     return 0;
@@ -213,6 +218,7 @@ int ThreadScheduler::RemoveRunable(StThreadBase *thread)
     LOG_TRACE("remove thread: %p, m_io_list_ size: %d", 
         thread, CPP_TAILQ_SIZE(&m_io_list_));
     CPP_TAILQ_REMOVE(&m_run_list_, thread, m_next_);
+
     ForeachPrint();
 
     return 0;
@@ -226,6 +232,7 @@ StThreadBase* ThreadScheduler::PopRunable()
     {
         thread->UnsetFlag(eRUN_LIST);
     }
+
     ForeachPrint();
 
     return thread;
@@ -247,6 +254,7 @@ int ThreadScheduler::RemoveSleep(StThreadBase *thread)
             rc, m_sleep_list_.HeapSize());
         return -2;
     }
+
     ForeachPrint();
 
     return 0;
@@ -257,6 +265,7 @@ int ThreadScheduler::InsertSleep(StThreadBase *thread)
     thread->SetFlag(eSLEEP_LIST);
     thread->SetState(eSLEEPING);
     m_sleep_list_.HeapPush(thread);
+    
     ForeachPrint();
     
     return 0;

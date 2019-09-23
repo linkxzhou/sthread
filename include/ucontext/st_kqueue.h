@@ -152,9 +152,6 @@ public:
             retval = kevent(m_kqfd_, NULL, 0, m_events_, m_size_, NULL);
         }
 
-        LOG_TRACE("retval: %d, tvp: %p, m_events_: %p, m_size_: %d", 
-            retval, tvp, m_events_, m_size_);
-
         if (retval > 0) 
         {
             numevents = retval;
@@ -167,8 +164,6 @@ public:
                 if (e->filter == EVFILT_WRITE) mask |= ST_WRITEABLE;
                 m_fired_[j].fd = e->ident;
                 m_fired_[j].mask = mask;
-
-                LOG_TRACE("m_fired_[j].fd : %d, mask : %d", m_fired_[j].fd, mask);
             }
         }
 

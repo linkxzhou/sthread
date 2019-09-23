@@ -21,7 +21,6 @@
 #include <vector>
 #include <errno.h>
 #include <unistd.h>
-
 #include "st_test.h"
 
 #define ST_THREAD 1
@@ -39,6 +38,7 @@
 #if __GNUC__ == 2 && __GNUC_MINOR__ < 96 
 #define __builtin_expect(x, expected_value) (x) 
 #endif
+
 #define likely(x)   __builtin_expect((x),1) 
 #define unlikely(x) __builtin_expect((x),0)
 
@@ -171,45 +171,20 @@ typedef enum
     eUDP_UDPSESSION_CONN    = 0x20 & KEEPLIVE_VALUE,
 } eConnType;
 
-// enum eActionState
-// {
-//     eACTION_FLAG_UNDEF   = 0x0,
-//     eACTION_FLAG_INIT    = 0x1,
-//     eACTION_FLAG_OPEN    = 0x2,
-//     eACTION_FLAG_SEND    = 0x4,
-//     eACTION_FLAG_FIN     = 0x8,
-// };
-
-// enum eActionError
-// {
-//     eERR_NONE            =  0,
-//     eERR_SOCKET_FAIL     = -1, // 创建socket失败
-//     eERR_CONNECT_FAIL    = -2, // 连接失败
-//     eERR_SEND_FAIL       = -3, // 发送失败
-//     eERR_RECV_FAIL       = -4, // 接收失败
-//     eERR_SEND_TIMEOUT    = -5, // 发送数据超时
-//     eERR_RECV_TIMEOUT    = -6, // 超时
-//     eERR_POLL_FAIL       = -7, // event异常
-//     eERR_FRAME_ERROR     = -8, // 框架失败
-//     eERR_PEER_CLOSE      = -9, // 对端关闭
-//     eERR_PARAM_ERROR     = -10, // 参数错误
-//     eERR_MEMORY_ERROR    = -11, // 内存异常
-//     eERR_ENCODE_ERROR    = -12, // encode流程错误
-//     eERR_DST_ADDR_ERROR  = -13, // 目标ip异常
-// };
-
-// enum eSessionFlag
-// {
-//     eSESSION_IDLE    = 0x0, // session是idle类型
-//     eSESSION_INUSE   = 0x1, // session正在使用
-//     eSESSION_SET     = 0x2, // session已经设置
-//     eSESSION_UNSET   = 0x3, // session未设置
-// };
-
-// enum eKeepFlag
-// {
-//     eKEEP_IN_LIST  = 0x1,
-//     eKEEP_IN_POLL  = 0x2,
-// };
+// 对应的错误
+#define eERR_NONE              0
+#define eERR_SOCKET_FAIL      -1    // 创建socket失败
+#define eERR_CONNECT_FAIL     -2    // 连接失败
+#define eERR_SEND_FAIL        -3    // 发送失败
+#define eERR_RECV_FAIL        -4    // 接收失败
+#define eERR_SEND_TIMEOUT     -5    // 发送数据超时
+#define eERR_RECV_TIMEOUT     -6    // 超时
+#define eERR_POLL_FAIL        -7    // event异常
+#define eERR_FRAME_ERROR      -8    // 框架失败
+#define eERR_PEER_CLOSE       -9    // 对端关闭
+#define eERR_PARAM_ERROR      -10   // 参数错误
+#define eERR_MEMORY_ERROR     -11   // 内存异常
+#define eERR_ENCODE_ERROR     -12   // encode流程错误
+#define eERR_DST_ADDR_ERROR   -13   // 目标ip异常
 
 #endif

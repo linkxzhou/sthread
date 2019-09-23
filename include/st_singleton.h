@@ -19,7 +19,7 @@ private: \
     Class(const Class&); \
     Class& operator=(const Class&);
 
-template <typename T>
+template <class T>
 class Singleton
 {
 protected:
@@ -77,7 +77,7 @@ public:
             pthread_key_delete(m_pkey_);
         }
 
-        void Set(T* o)
+        void Set(T *o)
         {
             assert(pthread_getspecific(m_pkey_) == NULL);
             pthread_setspecific(m_pkey_, o);

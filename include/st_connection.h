@@ -100,6 +100,9 @@ public:
 
     virtual void Reset()
     {
+        GetInstance< StBufferPool<> >()->FreeBuffer(m_sendbuf_);
+        GetInstance< StBufferPool<> >()->FreeBuffer(m_recvbuf_);
+
         m_osfd_ = -1;
         m_sendbuf_ = NULL;
         m_recvbuf_ = NULL;
@@ -127,7 +130,8 @@ public:
 
     int32_t RecvData();
 
-    virtual int32_t HandleEncode(void *buf, int32_t &len)
+    // 处理操作
+    virtual int32_t HandleOutput(void *buf, int32_t &len)
     {
         return 0;
     }
@@ -137,7 +141,7 @@ public:
         return 0;
     }
 
-    virtual int32_t HandleProcess(void *buf, int32_t len)
+    virtual int32_t HandleProcess()
     {
         return 0;
     }

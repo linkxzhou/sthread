@@ -10,10 +10,10 @@
 #include "st_thread.h"
 #include "st_sys.h"
 
+ST_NAMESPACE_BEGIN
+
 #define GetEventScheduler()     (GetInstance<EventScheduler>())
 #define GetThreadScheduler()    (GetInstance<ThreadScheduler>())
-
-ST_NAMESPACE_BEGIN
 
 class Manager
 {
@@ -34,15 +34,12 @@ public:
 	    st_safe_delete(m_heap_timer_);
     }
 
-    void Init(int max_num = 512)
+    void Init(int max_num = 1024)
     {
-        TODO_INTO("[1]Init ...");
-
 	    int r = GetThreadScheduler()->m_sleep_list_.
             HeapResize(max_num * 2);
 	    ASSERT(r >= 0);
 
-        TODO_INTO("[2]Init ...");
 	    m_heap_timer_ = new HeapTimer(max_num * 2);
         ASSERT(m_heap_timer_ != NULL);
 	    

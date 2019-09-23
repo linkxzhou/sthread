@@ -5,6 +5,10 @@
 #ifndef _ST_CLOSURE_H_INCLUDED_
 #define _ST_CLOSURE_H_INCLUDED_
 
+#include "st_public.h"
+
+ST_NAMESPACE_BEGIN
+
 class Closure 
 {
 public:
@@ -279,5 +283,7 @@ Closure* NewClosure(Object *object,
         R (Object::*)(Arg1, Arg2, Arg3), 
         Arg1, Arg2, Arg3>(object, fun, arg1, arg2, arg3);
 }
+
+ST_NAMESPACE_END
 
 #endif // _ST_CLOSURE_H_INCLUDED_

@@ -119,12 +119,13 @@ public:
 
         LOG_TRACE("size: %d, m_list_: %p", size, m_list_);
 
-        pointer_pointer m_list_ = (pointer_pointer)realloc(m_list_, sizeof(pointer) * (size + 1));
-        if (NULL == m_list_)
+        pointer_pointer vptr = (pointer_pointer)realloc(m_list_, sizeof(pointer) * (size + 1));
+        if (NULL == vptr)
         {
             return -1;
         }
 
+        m_list_ = vptr;
         m_max_ = size;
         return 0;
     }

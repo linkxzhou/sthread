@@ -1,8 +1,21 @@
 #include "st_log.h"
-#include "st_public.h"
 
-static const char* g_level_cn[12] = {"EMERG", "ALERT", "CRIT", "ERR", 
-    "WARN", "NOTICE", "INFO", "DEBUG", "VERB", "VVERB", "VVVERB", "PVERB"};
+ST_NAMESPACE_USING
+
+static const char* g_level_cn[12] = {
+        "EMERG", 
+        "ALERT", 
+        "CRIT", 
+        "ERR", 
+        "WARN", 
+        "NOTICE", 
+        "INFO", 
+        "DEBUG", 
+        "VERB", 
+        "VVERB", 
+        "VVVERB", 
+        "PVERB"
+    };
 
 StLogger::StLogger()
 {

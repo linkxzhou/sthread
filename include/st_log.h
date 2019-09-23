@@ -19,6 +19,9 @@
 #include <limits.h>
 #include <unistd.h>
 #include <assert.h>
+#include "st_public.h"
+
+ST_NAMESPACE_BEGIN
 
 #define LLOG_EMERG   0      /* system in unusable */
 #define LLOG_ALERT   1      /* action must be taken immediately */
@@ -122,5 +125,7 @@ private:
 #define TODO_OUT(cls)   LOG_DEBUG("\033[34mrun out %s: %s \033[0m", #cls, __FUNCTION__)
 
 #define ASSERT(exp)     assert((exp))
+
+ST_NAMESPACE_END
 
 #endif

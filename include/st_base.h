@@ -187,6 +187,11 @@ public:
         CPP_TAILQ_INIT(&m_sub_threadlist_);
     }
 
+    virtual ~StThreadBase()
+    {
+        this->Reset();
+    }
+
     virtual void Reset()
     {
         m_wakeup_time_ = 0;
@@ -319,6 +324,8 @@ public:
 
     virtual void Add(StEventBaseQueue *fdset)
     {
+        TODO_INTO();
+
         if (CPP_TAILQ_EMPTY(&m_fdset_))
         {
             CPP_TAILQ_INIT(&m_fdset_);
@@ -420,9 +427,9 @@ protected:
 
 public:
     StEventBaseQueue    m_fdset_;
-    StThreadBaseQueue     m_sub_threadlist_;    // 子线程
-    StThreadBase          *m_parent_;           // 父线程
-    StThreadBaseNext      m_next_, m_sub_next_;
+    StThreadBaseQueue   m_sub_threadlist_;    // 子线程
+    StThreadBase        *m_parent_;           // 父线程
+    StThreadBaseNext    m_next_, m_sub_next_;
     uint32_t            m_stack_size_;
     char                m_name_[64];
 };

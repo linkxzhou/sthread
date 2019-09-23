@@ -11,11 +11,21 @@ int32_t StConnection::SendData()
 {
     ASSERT(m_sendbuf_ != NULL);
 
+    int32_t len = m_sendbuf_->GetMaxLen();
+    int ret = HandleOutput(m_sendbuf_->GetBuffer(), len);
+    if (ret < 0)
+    {
+        LOG_ERROR("HandleOutput failed, ret: %d", ret);
+        return ret;
+    }
+
+    // 设置消息的长度
+    m_sendbuf_->SetMsgLen(len);
+
     char *buf = (char*)m_sendbuf_->GetBuffer();
     uint32_t buf_len = m_sendbuf_->GetMsgLen();
 
     int have_send_len = m_sendbuf_->GetHaveSendLen(); 
-    int ret = 0;
     if (IS_UDP_CONN(m_type_))
     {
         struct sockaddr *servaddr;
@@ -111,6 +121,7 @@ int32_t StConnection::RecvData()
         m_recvbuf_->SetHaveRecvLen(have_recv_len);
     }
 
+    // 处理收到的buffer数据
     ret = HandleInput(m_recvbuf_->GetBuffer(), m_recvbuf_->GetHaveRecvLen());
     if (ret > 0)
     {
@@ -127,6 +138,7 @@ int32_t StConnection::RecvData()
     }
     else
     {
+        LOG_ERROR("HandleInput failed, ret: %d", ret);
         return -1;
     }
 

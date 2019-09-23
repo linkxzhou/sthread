@@ -1,5 +1,5 @@
-#ifndef _ST_TEST_H_
-#define _ST_TEST_H_
+#ifndef _ST_TEST_H_INCLUDE_
+#define _ST_TEST_H_INCLUDE_
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -74,7 +74,7 @@ public:
         return result;
     }
 
- private:
+private:
     const char *m_state_;
 
     enum Code 
@@ -197,21 +197,21 @@ private:
 #define ASSERT_LE(a,b)  StTester(__FILE__, __LINE__).IsLe((a),(b))
 #define ASSERT_LT(a,b)  StTester(__FILE__, __LINE__).IsLt((a),(b))
 
-#define TCONCAT(a, b) TCONCAT1(a, b)
-#define TCONCAT1(a, b) a##b
+#define TCONCAT(a, b)   TCONCAT1(a, b)
+#define TCONCAT1(a, b)  a##b
 
-#define TEST(base, name)                                            \
-class TCONCAT(_Test_, name) : public base {                         \
-    public:                                                         \
-        void _Run();                                                \
-        static void _RunIt()                                        \
-        {                                                           \
-            TCONCAT(_Test_, name) t;                                \
-            t._Run();                                               \
-        }                                                           \
-};                                                                  \
-bool TCONCAT(_Test_ignored_, name) =                                \
-  StTester::RegisterTest(#base, #name, &TCONCAT(_Test_, name)::_RunIt); \
+#define TEST(base, name)                                        \
+class TCONCAT(_Test_, name) : public base {                     \
+public:                                                         \
+    void _Run();                                                \
+    static void _RunIt()                                        \
+    {                                                           \
+        TCONCAT(_Test_, name) t;                                \
+        t._Run();                                               \
+    }                                                           \
+};                                                              \
+bool TCONCAT(_Test_ignored_, name) =                            \
+    StTester::RegisterTest(#base, #name, &TCONCAT(_Test_, name)::_RunIt); \
 void TCONCAT(_Test_, name)::_Run()
 
 struct Test 
@@ -223,4 +223,4 @@ struct Test
 
 #define RUN_ALL_TESTS()     StTester::RunAllTests()
 
-#endif  // _ST_TEST_H_
+#endif  // _ST_TEST_H_INCLUDE_
