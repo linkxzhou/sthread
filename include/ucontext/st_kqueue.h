@@ -41,7 +41,7 @@ public:
         m_kqfd_ = kqueue();
         if (m_kqfd_ == -1)
         {
-            st_safe_free(m_events_);
+            ApiFree();
             return -1;
         }
 
@@ -68,7 +68,7 @@ public:
 
     void ApiFree() 
     {
-        ::close(m_kqfd_);
+        if (m_kqfd_ > 0) ::close(m_kqfd_);
         st_safe_free(m_events_);
         st_safe_free(m_file_events_);
         st_safe_free(m_fired_);

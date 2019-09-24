@@ -37,9 +37,7 @@ public:
         m_epfd_ = epoll_create(1024); /* 1024 is just a hint for the kernel */
         if (m_epfd_ == -1) 
         {
-            st_safe_free(m_events_);
-            st_safe_free(m_file_events_);
-            st_safe_free(m_fired_);
+            ApiFree();
             return -1;
         }
 
@@ -65,7 +63,7 @@ public:
 
     void ApiFree() 
     {
-        close(m_epfd_);
+        if (m_epfd_ > 0) ::close(m_epfd_);
         st_safe_free(m_events_);
         st_safe_free(m_file_events_);
         st_safe_free(m_fired_);
