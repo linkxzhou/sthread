@@ -127,7 +127,7 @@ public:
             }
         }
 
-        m_file_events_[fd].mask = m_file_events_[fd].mask & (~mask); 
+        m_file_events_[fd].mask = mask; 
 
         return 0;
     }
