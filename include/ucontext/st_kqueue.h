@@ -76,8 +76,13 @@ public:
 
     int32_t ApiAddEvent(int32_t fd, int32_t mask) 
     {
-        struct kevent ke[1];
+        // 不需要处理
+        if (m_file_events_[fd].mask == mask)
+        {
+            return 0;
+        }
 
+        struct kevent ke[1];
         if (mask & ST_READABLE) 
         {
             EV_SET(&ke[0], fd, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
@@ -108,13 +113,14 @@ public:
             { }
         }
 
+        m_file_events_[fd].mask = mask;
+
         return 0;
     }
 
     int32_t ApiDelEvent(int32_t fd, int32_t mask) 
     {
         struct kevent ke[1];
-
         if (mask & ST_READABLE) 
         {
             EV_SET(&ke[0], fd, EVFILT_READ, EV_DELETE, 0, 0, NULL);
@@ -133,6 +139,8 @@ public:
             }
         }
 
+        m_file_events_[fd].mask = m_file_events_[fd].mask & (~mask);
+        
         return 0;
     }
 

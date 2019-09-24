@@ -29,7 +29,9 @@ public:
         m_file_events_ = (StFileEvent *)malloc(sizeof(StFileEvent) * size);
         m_fired_ = (StFiredEvent *)malloc(sizeof(StFiredEvent) * size);
 
-        if (NULL == m_events_ || NULL == m_file_events_ ||NULL == m_fired_) 
+        if (NULL == m_events_ || 
+            NULL == m_file_events_ || 
+            NULL == m_fired_) 
         {
             return -1;
         }
@@ -73,11 +75,17 @@ public:
 
     int32_t ApiAddEvent(int32_t fd, int32_t mask) 
     {
+        // 不需要处理
+        if (m_file_events_[fd].mask == mask)
+        {
+            return 0;
+        }
+
         struct epoll_event ee = {0}; /* avoid valgrind warning */
         int32_t op = (m_file_events_[fd].mask == ST_NONE) ? EPOLL_CTL_ADD : EPOLL_CTL_MOD;
 
         ee.events = 0;
-        mask |= m_file_events_[fd].mask; /* Merge old events */
+        mask |= m_file_events_[fd].mask; /* Merge old events */ 
         if (mask & ST_READABLE) ee.events |= EPOLLIN;
         if (mask & ST_WRITEABLE) ee.events |= EPOLLOUT;
         ee.data.fd = fd;
@@ -86,6 +94,8 @@ public:
         {
             return -1;
         }
+
+        m_file_events_[fd].mask = mask;
 
         return 0;
     }
@@ -116,6 +126,8 @@ public:
                 return -1;
             }
         }
+
+        m_file_events_[fd].mask = m_file_events_[fd].mask & (~mask); 
 
         return 0;
     }
