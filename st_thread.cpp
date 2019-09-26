@@ -665,7 +665,6 @@ void EventScheduler::Wait(int timeout)
     }
 
     Dispatch(nfd);
-    // TODO : 增加优先级调度线程算法
 }
 
 // 调度信息

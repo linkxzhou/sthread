@@ -250,4 +250,4 @@ protected:
 
 ST_NAMESPACE_END
 
-#endif
+#endif // _ST_THREAD_H_INCLUDED_

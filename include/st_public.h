@@ -99,28 +99,14 @@
 #define ST_VAR(s, s2, n)       (((n) < 2) ? 0.0 : ((s2) - ST_SQUARE(s)/(n)) / ((n) - 1))
 #define ST_STDDEV(s, s2, n)    (((n) < 2) ? 0.0 : sqrt(ST_VAR((s), (s2), (n))))
 
-/***
- * eBuffType : 数据包的BUFF类型
- * ***/
-typedef enum
-{
-    eBUFF_UNDEF  =  0x0,
-    eBUFF_RECV   =  0x1, // 收包
-    eBUFF_SEND   =  0x2, // 发包
-} eBuffType;
-
-/***
- * eEventType : 触发的事件类型
- * ***/
+// eEventType : 触发的事件类型
 typedef enum
 {
     eEVENT_UNDEF     = 0x0,
     eEVENT_TIMEOUT   = 0x1,
 } eEventType;
 
-/***
- * eThreadType : thread的类型
- * ***/
+// eThreadType : thread的类型
 typedef enum
 {
     eNORMAL          = 0x1, // 通用的
@@ -129,9 +115,8 @@ typedef enum
     eSUB_THREAD      = 0x4, // 孩子thread
 } eThreadType;
 
-/***
- * eThreadFlag : 所在线程的列表类型
- * ***/
+
+// eThreadFlag : 所在线程的列表类型
 typedef enum
 {
     eNOT_INLIST  = 0x0,
@@ -143,9 +128,7 @@ typedef enum
     eSUB_LIST    = 0x20, // 子线程
 } eThreadFlag;
 
-/***
- * eThreadState : 线程状态
- * ***/
+// eThreadState : 线程状态
 typedef enum
 {
     eINITIAL    = 0x0, // 初始化
@@ -161,14 +144,14 @@ typedef enum
 #define KEEPLIVE_VALUE    0x1
 #define IS_KEEPLIVE(type) (((type) & KEEPLIVE_VALUE) == KEEPLIVE_VALUE)
 
-// 注意：规则是最后一位0x1则表示需要保存状态，否则不需要
+// 规则是最后一位0x1则表示需要保存状态，否则不需要
 typedef enum
 {
     eUNDEF_CONN     = 0x0,      // 连接错误
     eUDP_CONN       = 0x10,     // udp 连接
     eTCP_CONN       = 0x20,     // tcp 短连接
-    eTCP_KEEPLIVE_CONN      = 0x10 & KEEPLIVE_VALUE,  // keeplive
-    eUDP_UDPSESSION_CONN    = 0x20 & KEEPLIVE_VALUE,
+    eTCP_KEEPLIVE_CONN      = (0x10 & KEEPLIVE_VALUE),  // keeplive
+    eUDP_UDPSESSION_CONN    = (0x20 & KEEPLIVE_VALUE),
 } eConnType;
 
 // 对应的错误
@@ -185,6 +168,6 @@ typedef enum
 #define eERR_PARAM_ERROR      -10   // 参数错误
 #define eERR_MEMORY_ERROR     -11   // 内存异常
 #define eERR_ENCODE_ERROR     -12   // encode流程错误
-#define eERR_DST_ADDR_ERROR   -13   // 目标ip异常
+#define eERR_DEST_ADDR_ERROR  -13   // 目标IP异常
 
 #endif

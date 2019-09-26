@@ -158,10 +158,8 @@ public:
     CALLBACK_EXIT1:
         // 清理句柄数据
         GetEventScheduler()->Close(item);
-        st_close(conn->GetOsfd());
+        conn->CloseSocket();
         UtilPtrPoolFree(item);
-        
-        // TODO : 需要清理其他资源
     }
 
 private:

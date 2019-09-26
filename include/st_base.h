@@ -26,8 +26,8 @@ class StEventBase;
 class StThreadBase;
 
 typedef CPP_TAILQ_HEAD<StEventBase>     StEventBaseQueue;
-typedef CPP_TAILQ_ENTRY<StEventBase>    StEventBaseNext;
 typedef CPP_TAILQ_HEAD<StThreadBase>    StThreadBaseQueue;
+typedef CPP_TAILQ_ENTRY<StEventBase>    StEventBaseNext;
 typedef CPP_TAILQ_ENTRY<StThreadBase>   StThreadBaseNext;
 
 class StEventBase : public referenceable
@@ -48,31 +48,21 @@ public:
 
     virtual int32_t InputNotify()
     {
-        LOG_TRACE("InputNotify ###, thread : %p", m_thread_);
-        if (unlikely(NULL == m_thread_))
-        {
-            LOG_ERROR("m_thread_ is NULL");
-            return -1;
-        }
+        LOG_TRACE("InputNotify ###, thread: %p", m_thread_);
 
         return 0;
     }
 
     virtual int32_t OutputNotify()
     {
-        LOG_TRACE("OutputNotify ###, thread : %p", m_thread_);
-        if (unlikely(NULL == m_thread_))
-        {
-            LOG_ERROR("m_thread_ is NULL");
-            return -1;
-        }
+        LOG_TRACE("OutputNotify ###, thread: %p", m_thread_);
 
         return 0;
     }
 
     virtual int32_t HangupNotify()
     {
-        LOG_TRACE("HangupNotify ###, thread : %p", m_thread_);
+        LOG_TRACE("HangupNotify ###, thread: %p", m_thread_);
 
         return 0;
     }
@@ -221,12 +211,7 @@ public:
 
     inline bool HasFlag(eThreadFlag flag)
     {
-        return m_flag_ & flag;
-    }
-
-    inline eThreadFlag GetFlag()
-    {
-        return m_flag_;
+        return (m_flag_ & flag);
     }
 
     inline void SetType(eThreadType type)
@@ -234,7 +219,7 @@ public:
         m_type_ = type;
     }
     
-    inline eThreadType GetType(void)
+    inline eThreadType GetType()
     {
         return m_type_;
     }
@@ -244,7 +229,7 @@ public:
         m_state_ = state;
     }
 
-    inline eThreadState GetState(void)
+    inline eThreadState GetState()
     {
         return m_state_;
     }
@@ -254,12 +239,12 @@ public:
         m_callback_ = callback;
     }
 
-    inline uint64_t GetWakeupTime(void)
+    inline int64_t GetWakeupTime()
     {
         return m_wakeup_time_;
     }
 
-    inline void SetWakeupTime(uint64_t wakeup_time)
+    inline void SetWakeupTime(int64_t wakeup_time)
     {
         m_wakeup_time_ = wakeup_time;
     }
@@ -329,7 +314,6 @@ public:
         if (CPP_TAILQ_EMPTY(&m_fdset_))
         {
             CPP_TAILQ_INIT(&m_fdset_);
-            LOG_TRACE("m_fdset_ is INIT");
         }
 
         CPP_TAILQ_CONCAT(&m_fdset_, fdset, m_next_);
@@ -420,7 +404,7 @@ protected:
     eThreadState    m_state_;
     eThreadType     m_type_;
     eThreadFlag     m_flag_;
-    uint64_t        m_wakeup_time_;
+    int64_t         m_wakeup_time_;
     Stack           *m_stack_;       // 堆栈信息
     void            *m_private_;
     Closure         *m_callback_;    // 启动函数

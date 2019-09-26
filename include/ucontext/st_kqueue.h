@@ -118,9 +118,11 @@ public:
         return 0;
     }
 
-    int32_t ApiDelEvent(int32_t fd, int32_t mask) 
+    int32_t ApiDelEvent(int32_t fd, int32_t delmask) 
     {
         struct kevent ke[1];
+        int32_t mask = m_file_events_[fd].mask & (~delmask);
+
         if (mask & ST_READABLE) 
         {
             EV_SET(&ke[0], fd, EVFILT_READ, EV_DELETE, 0, 0, NULL);
@@ -139,7 +141,7 @@ public:
             }
         }
 
-        m_file_events_[fd].mask = m_file_events_[fd].mask & (~mask);
+        m_file_events_[fd].mask = mask;
         
         return 0;
     }

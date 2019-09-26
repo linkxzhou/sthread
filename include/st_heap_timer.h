@@ -94,10 +94,11 @@ public:
     {
         if (!m_heap_ || !timerable)
         {
-            return;
+            return ;
         }
 
         m_heap_->HeapDelete(timerable);
+
         return ;
     }
 
@@ -128,7 +129,7 @@ public:
     }
 
 private:
-    HeapList<TimerEntry> *m_heap_;
+    HeapList<TimerEntry>    *m_heap_;
 };
 
 ST_NAMESPACE_END

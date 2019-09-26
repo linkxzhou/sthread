@@ -60,6 +60,7 @@ private:
     void        *m_data_ptr_;
 };
 
+// NetAddressKey根据四元组决定是否相等
 class NetAddressKey : public HashKey
 {
 public:
@@ -91,12 +92,12 @@ public:
 
         if (!(m_srcaddr_ == data->m_srcaddr_))
         {
-            return -1;
+            return -2;
         }
 
         if (!(m_destaddr_ == data->m_destaddr_))
         {
-            return -2;
+            return -3;
         }
         
         return 0;
@@ -115,7 +116,7 @@ public:
     typedef value_type* pointer;
     typedef pointer* pointer_pointer;
 
-    explicit HashList(int32_t max = 1024)
+    explicit HashList(int32_t max = 8192)
     {
         m_max_ = Util::MaxPrimeNum((max > 2) ? max : 1024);
         m_buckets_ = (pointer*)calloc(m_max_, sizeof(pointer));
@@ -268,7 +269,7 @@ public:
     {
         if (!m_buckets_)
         {
-            return;
+            return ;
         }
 
         for (int32_t i = 0; i < m_max_; i++)

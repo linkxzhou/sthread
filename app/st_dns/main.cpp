@@ -34,7 +34,6 @@ int main(int argc, char* argv[])
     int ret = mt_init_frame();
     LOG_DEBUG("init ret : %d", ret);
     mt_set_hook_flag();
-    mt_set_timeout(100);
 
     Frame *frame = GetInstance<Frame>();
 

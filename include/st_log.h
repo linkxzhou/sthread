@@ -36,7 +36,7 @@ ST_NAMESPACE_BEGIN
 #define LLOG_VVVERB  10     /* verbose messages on ganga */
 #define LLOG_PVERB   11     /* periodic verbose messages on crack */
 
-#define LOG_MAX_LEN  4096   /* max length of log message */
+#define LOG_MAX_LEN  8192   /* max length of log message */
 
 class StLogger
 {

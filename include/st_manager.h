@@ -159,8 +159,8 @@ public:
 	        }
 
 	        int64_t wakeup_timeout = timeout + GetLastClock();
-            bool r = GetEventScheduler()->Schedule(thread, NULL, item, wakeup_timeout);
-	        if (!r)
+            bool rc = GetEventScheduler()->Schedule(thread, NULL, item, wakeup_timeout);
+	        if (!rc)
 	        {
 	            LOG_ERROR("item schedule failed, errno: %d, strerr: %s", 
                     errno, strerror(errno)); 
@@ -174,8 +174,6 @@ public:
 	            return 0;
 	        }
 	    }
-
-        // TODO : 返回数据有问题
     }
 
     Thread* CreateThread(Closure *closure, bool runable = true)

@@ -214,8 +214,10 @@ public:
             if (rc < 0)
             {
                 LOG_ERROR("connect error, rc: %d", rc);
+
+                GetEventScheduler()->Close(m_item_);
+                UtilPtrPoolFree(m_item_);
                 CloseSocket();
-                // TODO : 异常情况下需要清理item
                 
                 return -2;
             }

@@ -1,88 +1,96 @@
+CLANG = g++
 INCLUDE = -I../include -I. -I../include/ucontext
 SRC = ..
-GTEST_LIB = -lpthread -ldl # ./gtest/googletest/libgtest.a
-DEBUG = # -g -DTRACE
-FLAGS = -Wno-backslash-newline-escape -Wno-format -Wno-deprecated-declarations -O3 $(DEBUG)
+TEST_LIB = -lpthread -ldl ./libucontext.a # ./gtest/googletest/libgtest.a
+DEBUG = -g -DTRACE
+FLAGS = -Wno-backslash-newline-escape -Wno-format \
+	-Wno-deprecated-declarations $(DEBUG) \
+	-fsanitize=address -fno-omit-frame-pointer
 COMM_SRC = $(SRC)/st_test.cpp $(SRC)/st_log.cpp
 
 hash_list:
-	g++ st_hash_list_unittest.cpp $(COMM_SRC) $(SRC)/st_manager.cpp \
-	$(INCLUDE) $(GTEST_LIB) $(FLAGS) -o st_hash_list_unittest
+	$(CLANG) st_hash_list_unittest.cpp $(COMM_SRC) \
+		$(SRC)/st_manager.cpp \
+		$(INCLUDE) $(TEST_LIB) \
+		$(FLAGS) -o st_hash_list_unittest
 
 heap:
-	g++ st_heap_unittest.cpp $(COMM_SRC) \
-	$(INCLUDE) $(GTEST_LIB) $(FLAGS) -o st_heap_unittest
+	$(CLANG) st_heap_unittest.cpp $(COMM_SRC) \
+		$(INCLUDE) $(TEST_LIB) \
+		$(FLAGS) -o st_heap_unittest
 
 heap_timer:
-	g++ st_heap_timer_unittest.cpp $(COMM_SRC) \
-	$(INCLUDE) $(GTEST_LIB) $(FLAGS) -o st_heap_timer_unittest
+	$(CLANG) st_heap_timer_unittest.cpp $(COMM_SRC) \
+		$(INCLUDE) $(TEST_LIB) \
+		$(FLAGS) -o st_heap_timer_unittest
 
 buffer:
-	g++ st_buffer_unittest.cpp $(COMM_SRC) \
-	$(INCLUDE) $(GTEST_LIB) $(FLAGS) -o st_buffer_unittest
+	$(CLANG) st_buffer_unittest.cpp $(COMM_SRC) \
+		$(INCLUDE) $(TEST_LIB) \
+		$(FLAGS) -o st_buffer_unittest
 
 item:
-	g++ st_item_unittest.cpp $(COMM_SRC) \
-	$(INCLUDE) $(GTEST_LIB) $(FLAGS) -o st_item_unittest
-
-event:
-	g++ mt_event_unittest.cpp $(SRC)/mt_core.cpp \
-	$(SRC)/mt_ext.cpp $(SRC)/mt_thread.cpp $(SRC)/mt_connection.cpp \
-	$(SRC)/mt_sys_hook.cpp $(COMM_SRC) $(INCLUDE) $(GTEST_LIB) \
-	./libucontext.a $(FLAGS) -o mt_event_unittest
+	$(CLANG) st_item_unittest.cpp $(COMM_SRC) \
+		$(INCLUDE) $(TEST_LIB) \
+		$(FLAGS) -o st_item_unittest
 
 connection:
-	g++ st_connection_unittest.cpp $(COMM_SRC) $(SRC)/st_connection.cpp  \
- 	$(SRC)/st_thread.cpp $(SRC)/st_sys.cpp $(SRC)/st_manager.cpp \
-	$(INCLUDE) $(GTEST_LIB) ./libucontext.a $(FLAGS) -o st_connection_unittest
+	$(CLANG) st_connection_unittest.cpp $(COMM_SRC) \
+		$(SRC)/st_connection.cpp  $(SRC)/st_thread.cpp \
+		$(SRC)/st_sys.cpp $(SRC)/st_manager.cpp \
+		$(INCLUDE) $(TEST_LIB) \
+		$(FLAGS) -o st_connection_unittest
 
 thread:
-	g++ st_thread_unittest.cpp $(COMM_SRC) $(SRC)/st_thread.cpp \
-	$(INCLUDE) $(GTEST_LIB) ./libucontext.a $(FLAGS) -o st_thread_unittest
+	$(CLANG) st_thread_unittest.cpp $(COMM_SRC) \
+		$(SRC)/st_thread.cpp \
+		$(INCLUDE) $(TEST_LIB) \
+		$(FLAGS) -o st_thread_unittest
 
 c:
-	g++ st_c_unittest.cpp $(COMM_SRC) $(SRC)/st_connection.cpp \
-	$(SRC)/st_thread.cpp $(SRC)/st_sys.cpp $(SRC)/st_manager.cpp \
-	$(SRC)/st_c.cpp \
-	$(INCLUDE) $(GTEST_LIB) ./libucontext.a $(FLAGS) -o st_c_unittest
+	$(CLANG) st_c_unittest.cpp $(COMM_SRC) \
+		$(SRC)/st_connection.cpp $(SRC)/st_thread.cpp $(SRC)/st_sys.cpp \
+		$(SRC)/st_manager.cpp $(SRC)/st_c.cpp \
+		$(INCLUDE) $(TEST_LIB) \
+		$(FLAGS) -o st_c_unittest
 
 session:
-	g++ st_session_unittest.cpp $(COMM_SRC) \
-	$(SRC)/st_thread.cpp  $(SRC)/st_manager.cpp \
-	$(INCLUDE) $(GTEST_LIB) ./libucontext.a $(FLAGS) -o st_session_unittest
+	$(CLANG) st_session_unittest.cpp $(COMM_SRC) \
+		$(SRC)/st_thread.cpp  $(SRC)/st_manager.cpp \
+		$(INCLUDE) $(TEST_LIB) \
+		$(FLAGS) -o st_session_unittest
 
 manager:
-	g++ st_manager_unittest.cpp $(COMM_SRC) \
-	$(SRC)/st_thread.cpp $(SRC)/st_sys.cpp $(SRC)/st_manager.cpp \
-	$(INCLUDE) $(GTEST_LIB) ./libucontext.a $(FLAGS) -o st_manager_unittest
+	$(CLANG) st_manager_unittest.cpp $(COMM_SRC) \
+		$(SRC)/st_thread.cpp $(SRC)/st_sys.cpp $(SRC)/st_manager.cpp \
+		$(INCLUDE) $(TEST_LIB) \ 
+		$(FLAGS) -o st_manager_unittest
 
 server:
-	g++ st_server_unittest.cpp $(COMM_SRC) $(SRC)/st_connection.cpp  \
-	$(SRC)/st_thread.cpp $(SRC)/st_sys.cpp $(SRC)/st_manager.cpp \
-	$(INCLUDE) $(GTEST_LIB) ./libucontext.a $(FLAGS) -o st_server_unittest
+	$(CLANG) st_server_unittest.cpp $(COMM_SRC) \
+		$(SRC)/st_connection.cpp  $(SRC)/st_thread.cpp \
+		$(SRC)/st_sys.cpp $(SRC)/st_manager.cpp \
+		$(INCLUDE) $(TEST_LIB) \
+		$(FLAGS) -o st_server_unittest
 
 ucontext:
-	gcc -c $(SRC)/st_asm.S $(FLAGS) -o ./st_asm.o
-	gcc -c $(SRC)/st_ucontext.cpp $(INCLUDE) $(FLAGS) -o ./st_ucontext.o
-	gcc -c $(SRC)/st_log.cpp $(INCLUDE) $(FLAGS) -o ./st_log.o
+	$(CLANG) -c $(SRC)/st_asm.S $(FLAGS) -o ./st_asm.o
+	$(CLANG) -c $(SRC)/st_ucontext.cpp $(INCLUDE) $(FLAGS) -o ./st_ucontext.o
+	$(CLANG) -c $(SRC)/st_log.cpp $(INCLUDE) $(FLAGS) -o ./st_log.o
 	ar cr libucontext.a ./st_asm.o ./st_ucontext.o ./st_log.o
-	g++ st_ucontext_unittest.cpp $(SRC)/st_test.cpp \
-	$(INCLUDE) $(GTEST_LIB) ./libucontext.a $(FLAGS) -o st_ucontext_unittest
+	$(CLANG) st_ucontext_unittest.cpp \
+		$(SRC)/st_test.cpp $(INCLUDE) $(TEST_LIB) \
+		$(FLAGS) -o st_ucontext_unittest
 	rm -rf *.o
 
 queue:
-	g++ queue_unittest.cpp $(FLAGS) -o queue_unittest
+	$(CLANG) queue_unittest.cpp $(FLAGS) -o queue_unittest
 
 singleton:
-	g++ st_singleton_unittest.cpp $(GTEST_LIB) \
-	$(FLAGS) -o st_singleton_unittest
+	$(CLANG) st_singleton_unittest.cpp $(TEST_LIB) \
+		$(FLAGS) -o st_singleton_unittest
 
 clean:
 	rm -rf *_unittest
 	rm -rf *.dSYM
-
-all:
-	make clean
-	make hash_list heap heap_timer buffer action
-	make connection thread c session frame ucontext
-	make server
+	rm -rf *.o

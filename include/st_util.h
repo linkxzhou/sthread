@@ -15,17 +15,13 @@
 #include <sys/resource.h>
 #include <pthread.h>
 
-#include "st_public.h"
+#include "st_public.h" 
 #include "st_singleton.h"
 #include "st_log.h"
 #include "st_closure.h"
 
 ST_NAMESPACE_BEGIN
 
-/**
-* @brief add more detail for linux <sys/queue.h>, freebsd and University of California
-* @info  queue.h version 8.3 (suse) diff version 8.5 (tlinux)
-*/
 #ifndef TAILQ_CONCAT
 
 #define TAILQ_EMPTY(head)   ((head)->tqh_first == NULL)
@@ -483,4 +479,4 @@ ValueType any_cast(const Any& any)
 
 ST_NAMESPACE_END
 
-#endif
+#endif // _ST_UTIL_H_INCLUDED_
