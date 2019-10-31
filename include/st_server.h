@@ -2,8 +2,8 @@
  * Copyright (C) zhoulv2000@163.com
  */
 
-#ifndef _ST_SERVER_H_INCLUDED_
-#define _ST_SERVER_H_INCLUDED_
+#ifndef _ST_SERVER_H__
+#define _ST_SERVER_H__
 
 #include "st_util.h"
 #include "st_manager.h"
@@ -54,7 +54,7 @@ public:
         }
 
         m_item_ = GetInstance< 
-                UtilPtrPool<typename ConnetionT::ServerStEventBaseT> 
+                UtilPtrPool<typename ConnetionT::ServerStEventSuperT> 
             >()->AllocPtr();
 
         ASSERT(m_item_ != NULL);
@@ -106,7 +106,7 @@ public:
             conn->SetDestAddr(addr);
             
             LOG_TRACE("connfd: %d", connfd);
-            m_manager_->CreateThread(NewClosure(CallBack, conn, this));
+            m_manager_->CreateThread(NewStClosure(CallBack, conn, this));
         }
     }
 
@@ -116,13 +116,13 @@ public:
         Manager *manager = server->m_manager_;
         ASSERT(manager != NULL);
 
-        StEventBase *item = GetInstance< 
-                UtilPtrPool<typename ConnetionT::ServerStEventBaseT> 
+        StEventSuper *item = GetInstance< 
+                UtilPtrPool<typename ConnetionT::ServerStEventSuperT> 
             >()->AllocPtr();
         ASSERT(item != NULL);
 
         item->SetOsfd(conn->GetOsfd());
-        StThreadBase *thread = GetThreadScheduler()->GetActiveThread();
+        StThreadSuper *thread = GetThreadScheduler()->GetActiveThread();
 
         int32_t ret = 0;
         do
@@ -166,7 +166,7 @@ private:
     Manager         *m_manager_;
     int             m_osfd_;
     StNetAddress    m_addr_;
-    StEventBase     *m_item_;
+    StEventSuper     *m_item_;
 };
 
 ST_NAMESPACE_END

@@ -1,5 +1,6 @@
 #include "../include/st_buffer.h"
 #include "../include/st_util.h"
+#include <gperftools/profiler.h>
 
 ST_NAMESPACE_USING
 
@@ -27,5 +28,9 @@ TEST(StStatus, StBuffer)
 // 测试所有的功能
 int main(int argc, char* argv[])
 {
-    return RUN_ALL_TESTS();
+    ProfilerStart("buffer.prof");
+    int rc = RUN_ALL_TESTS();
+    ProfilerStop();
+
+    return rc;
 }

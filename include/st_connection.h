@@ -2,8 +2,8 @@
  * Copyright (C) zhoulv2000@163.com
  */
 
-#ifndef _ST_CONNECTION_H_INCLUDED_
-#define _ST_CONNECTION_H_INCLUDED_
+#ifndef _ST_CONNECTION_H__
+#define _ST_CONNECTION_H__
 
 #include "st_util.h"
 #include "st_base.h"
@@ -157,25 +157,25 @@ protected:
     StNetAddress    m_addr_, m_destaddr_;
     eConnType       m_type_;
     int32_t         m_timeout_;
-    StEventBase     *m_item_;
+    StEventSuper     *m_item_;
 };
 
-template<class StEventBaseT>
+template<class StEventSuperT>
 class StServerConnection : public StConnection
 { 
 public:
-    typedef StEventBaseT    ServerStEventBaseT;
+    typedef StEventSuperT    ServerStEventSuperT;
 
     StServerConnection() :
         StConnection()
     { }
 }; 
 
-template<class StEventBaseT>
-class StClientConnection : public StConnection, public TimerEntry
+template<class StEventSuperT>
+class StClientConnection : public StConnection, public StTimerEntry
 {
 public:
-    typedef StEventBaseT    ClientStEventBaseT;
+    typedef StEventSuperT    ClientStEventSuperT;
 
     StClientConnection() : 
         StConnection()
@@ -199,7 +199,7 @@ public:
         }
 
         m_item_ = GetInstance< 
-                UtilPtrPool<ClientStEventBaseT> 
+                UtilPtrPool<ClientStEventSuperT> 
             >()->AllocPtr();
         ASSERT(m_item_ != NULL);
 
@@ -271,7 +271,7 @@ public:
         const StNetAddress *destaddr = NULL, 
         const StNetAddress *srcaddr = NULL)
     {
-        NetAddressKey key;
+        StNetAddressKey key;
         if (IS_KEEPLIVE(type) && destaddr != NULL)
         {
             key.SetDestAddr(*destaddr);
@@ -286,7 +286,7 @@ public:
         // 是否保持状态
         if (IS_KEEPLIVE(type))
         {
-            conn = (ConnectionTPtr)(m_hashlist_.HashFindData(&key));
+            conn = (ConnectionTPtr)(m_StHashList_.HashFindData(&key));
         }
 
         if (conn == NULL)
@@ -306,7 +306,7 @@ public:
             if (IS_KEEPLIVE(type))
             {
                 key.SetDataPtr((void*)conn);
-                int32_t r = m_hashlist_.HashInsert(&key);
+                int32_t r = m_StHashList_.HashInsert(&key);
                 ASSERT(r >= 0);
             }
         }
@@ -320,17 +320,17 @@ public:
         eConnType type = conn->GetConnType();
         if (IS_KEEPLIVE(type))
         {
-            NetAddressKey key;
+            StNetAddressKey key;
             key.SetDestAddr(conn->GetDestAddr());
             key.SetSrcAddr(conn->GetAddr());
-            m_hashlist_.HashRemove(&key);
+            m_StHashList_.HashRemove(&key);
         }
 
         UtilPtrPoolFree(conn);
     }
 
 private:
-    HashList<NetAddressKey>   m_hashlist_;
+    StHashList<StNetAddressKey>   m_StHashList_;
 };
 
 ST_NAMESPACE_END

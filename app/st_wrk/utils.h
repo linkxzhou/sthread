@@ -3,8 +3,8 @@
  * refer to wrk(https://github.com/wg/wrk)
  */
 
-#ifndef __UTILS_H_INCLUDED__
-#define __UTILS_H_INCLUDED__
+#ifndef __UTILS_H___
+#define __UTILS_H___
 
 #include <stdlib.h>
 #include <string.h>

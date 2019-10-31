@@ -2,8 +2,8 @@
  * Copyright (C) zhoulv2000@163.com
  */
 
-#ifndef _ST_MANAGER_H_INCLUDED_
-#define _ST_MANAGER_H_INCLUDED_
+#ifndef _ST_MANAGER_H__
+#define _ST_MANAGER_H__
 
 #include "st_util.h"
 #include "st_heap_timer.h"
@@ -40,7 +40,7 @@ public:
             HeapResize(max_num * 2);
 	    ASSERT(r >= 0);
 
-	    m_heap_timer_ = new HeapTimer(max_num * 2);
+	    m_heap_timer_ = new StHeapTimer(max_num * 2);
         ASSERT(m_heap_timer_ != NULL);
 	    
 	    // 获取一个daemon线程(从线程池中分配)
@@ -49,7 +49,7 @@ public:
 
 	    m_daemon_->SetType(eDAEMON);
 	    m_daemon_->SetState(eRUNABLE);
-	    m_daemon_->SetCallback(NewClosure(StartDaemonThread, this));
+	    m_daemon_->SetCallback(NewStClosure(StartDaemonThread, this));
         m_daemon_->SetName("daemon");
 
 	    m_primo_ = new Thread();
@@ -84,7 +84,7 @@ public:
         return m_last_clock_;
     }
 
-    inline HeapTimer* GetHeapTimer()
+    inline StHeapTimer* GetStHeapTimer()
     {
         return m_heap_timer_;
     }
@@ -139,7 +139,7 @@ public:
 	            return -1;
 	        }
 
-	        StEventBase *item = GetEventScheduler()->GetEventItem(fd);
+	        StEventSuper *item = GetEventScheduler()->GetEventItem(fd);
             if (NULL == item)
             {
                 LOG_TRACE("item is NULL");
@@ -176,7 +176,7 @@ public:
 	    }
     }
 
-    Thread* CreateThread(Closure *closure, bool runable = true)
+    Thread* CreateThread(StClosure *StClosure, bool runable = true)
     {
     	Thread *thread = AllocThread();
 	    if (NULL == thread)
@@ -185,7 +185,7 @@ public:
 	        return NULL;
 	    }
         
-	    thread->SetCallback(closure);
+	    thread->SetCallback(StClosure);
 	    if (runable)
 	    {
 	        GetThreadScheduler()->InsertRunable(thread); // 插入运行线程
@@ -233,7 +233,7 @@ public:
 
 public:
     Thread      *m_daemon_, *m_primo_;
-    HeapTimer   *m_heap_timer_;
+    StHeapTimer   *m_heap_timer_;
     int64_t     m_last_clock_, m_timeout_;
 };
 

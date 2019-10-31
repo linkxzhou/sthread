@@ -2,9 +2,9 @@
 
 ST_NAMESPACE_USING
 
-TEST(StStatus, StEventBase)
+TEST(StStatus, StEventSuper)
 {
-    StEventBase *item = new StEventBase();
+    StEventSuper *item = new StEventSuper();
     item->InputNotify();
     item->OutputNotify();
     item->HangupNotify();

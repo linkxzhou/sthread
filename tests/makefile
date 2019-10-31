@@ -1,9 +1,10 @@
 CLANG = g++
 INCLUDE = -I../include -I. -I../include/ucontext
 SRC = ..
-TEST_LIB = -lpthread -ldl ./libucontext.a # ./gtest/googletest/libgtest.a
+TEST_LIB = ./libucontext.a # ./gtest/googletest/libgtest.a
 DEBUG = -g -DTRACE
-FLAGS = -Wno-backslash-newline-escape -Wno-format \
+FLAGS = -lpthread -ltcmalloc -lprofiler -ldl \
+	-Wno-backslash-newline-escape -Wno-format \
 	-Wno-deprecated-declarations $(DEBUG) \
 	-fsanitize=address -fno-omit-frame-pointer
 COMM_SRC = $(SRC)/st_test.cpp $(SRC)/st_log.cpp

@@ -3,8 +3,8 @@
  * refer to wrk(https://github.com/wg/wrk)
  */
 
-#ifndef __STATS_H_INCLUDED__
-#define __STATS_H_INCLUDED__
+#ifndef __STATS_H___
+#define __STATS_H___
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -205,4 +205,4 @@ private:
 
 }
 
-#endif /* _STATS_H_INCLUDED_ */
+#endif /* _STATS_H__ */

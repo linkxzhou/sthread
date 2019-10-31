@@ -2,22 +2,28 @@
  * Copyright (C) zhoulv2000@163.com
  */
 
-#ifndef _ST_EVENT_H_INCLUDED_
-#define _ST_EVENT_H_INCLUDED_
+#ifndef _ST_EVENT_H_
+#define _ST_EVENT_H_
 
 #include <sys/epoll.h>
-#include "st_util.h"
+#include "st_def.h"
+
+stlib_namespace_begin
+
+#define DATA_SIZE   1
+#define EVENT_SIZE  1024
 
 typedef struct 
 {
     int32_t fd;
     int32_t mask;
+    void *data[DATA_SIZE];
 } StFiredEvent;
 
 typedef struct
 {
     int32_t mask; /* one of READABLE|WRITABLE */
-    void    *client_data;
+    void *client_data;
 } StFileEvent;
 
 class StApiState
@@ -26,48 +32,54 @@ public:
     int32_t ApiCreate(int32_t size) 
     {
         m_events_ = (struct epoll_event *)malloc(sizeof(struct epoll_event) * size);
-        m_file_events_ = (StFileEvent *)malloc(sizeof(StFileEvent) * size);
+        m_file_ = (StFileEvent *)malloc(sizeof(StFileEvent) * size);
         m_fired_ = (StFiredEvent *)malloc(sizeof(StFiredEvent) * size);
 
         if (NULL == m_events_ || 
-            NULL == m_file_events_ || 
+            NULL == m_file_ || 
             NULL == m_fired_) 
         {
-            return -1;
+            return ST_ERROR;
         }
 
-        m_epfd_ = epoll_create(1024); /* 1024 is just a hint for the kernel */
+        m_epfd_ = epoll_create(EVENT_SIZE);
         if (m_epfd_ == -1) 
         {
             ApiFree();
-            return -1;
+            return ST_ERROR;
         }
 
         m_size_ = size;
 
-        memset(m_file_events_, 0, sizeof(StFileEvent) * size);
+        memset(m_file_, 0, sizeof(StFileEvent) * size);
         memset(m_fired_, 0, sizeof(StFiredEvent) * size);
+        memset(m_file_.data, 0, sizeof(void*) * DATA_SIZE);
 
         fcntl(m_epfd_, F_SETFD, FD_CLOEXEC);
 
-        return 0;
+        return ST_OK;
     }
 
     int32_t ApiResize(int32_t setsize) 
     {
-        m_events_ = (struct epoll_event *)realloc(m_events_, sizeof(struct epoll_event) * setsize);
-        m_file_events_ = (StFileEvent *)malloc(sizeof(StFileEvent) * setsize);
+        m_events_ = (struct epoll_event *)realloc(m_events_, 
+            sizeof(struct epoll_event) * setsize);
+        m_file_ = (StFileEvent *)malloc(sizeof(StFileEvent) * setsize);
         m_fired_ = (StFiredEvent *)malloc(sizeof(StFiredEvent) * setsize);
         m_size_ = setsize;
 
-        return 0;
+        return ST_OK;
     }
 
     void ApiFree() 
     {
-        if (m_epfd_ > 0) ::close(m_epfd_);
+        if (m_epfd_ > 0) 
+        {
+            ::close(m_epfd_);
+        }
+
         st_safe_free(m_events_);
-        st_safe_free(m_file_events_);
+        st_safe_free(m_file_);
         st_safe_free(m_fired_);
 
         m_size_ = 0;
@@ -76,34 +88,34 @@ public:
     int32_t ApiAddEvent(int32_t fd, int32_t mask) 
     {
         // 不需要处理
-        if (m_file_events_[fd].mask == mask)
+        if (m_file_[fd].mask == mask)
         {
-            return 0;
+            return ST_OK;
         }
 
         struct epoll_event ee = {0}; /* avoid valgrind warning */
-        int32_t op = (m_file_events_[fd].mask == ST_NONE) ? EPOLL_CTL_ADD : EPOLL_CTL_MOD;
+        int32_t op = (m_file_[fd].mask == ST_NONE) ? EPOLL_CTL_ADD : EPOLL_CTL_MOD;
 
         ee.events = 0;
-        mask |= m_file_events_[fd].mask; /* Merge old events */ 
+        mask |= m_file_[fd].mask; /* Merge old events */ 
         if (mask & ST_READABLE) ee.events |= EPOLLIN;
         if (mask & ST_WRITEABLE) ee.events |= EPOLLOUT;
         ee.data.fd = fd;
 
         if (epoll_ctl(m_epfd_, op, fd, &ee) == -1) 
         {
-            return -1;
+            return ST_ERROR;
         }
 
         m_file_events_[fd].mask = mask;
 
-        return 0;
+        return ST_OK;
     }
 
     int32_t ApiDelEvent(int32_t fd, int32_t delmask) 
     {
         struct epoll_event ee = {0}; /* avoid valgrind warning */
-        int32_t mask = m_file_events_[fd].mask & (~delmask);
+        int32_t mask = m_file_[fd].mask & (~delmask);
 
         ee.events = 0;
         if (mask & ST_READABLE) ee.events |= EPOLLIN;
@@ -114,7 +126,7 @@ public:
         {
             if (epoll_ctl(m_epfd_, EPOLL_CTL_MOD, fd, &ee) == -1)
             {
-                return -1;
+                return ST_ERROR;
             }
         } 
         else 
@@ -123,16 +135,16 @@ public:
              * EPOLL_CTL_DEL. */
             if (epoll_ctl(m_epfd_, EPOLL_CTL_DEL, fd, &ee) == -1)
             {
-                return -1;
+                return ST_ERROR;
             }
         }
 
-        m_file_events_[fd].mask = mask; 
+        m_file_[fd].mask = mask; 
 
-        return 0;
+        return ST_OK;
     }
 
-    int32_t ApiPoll(struct timeval *tvp) 
+    int32_t ApiPoll(struct timeval *tvp = NULL) 
     {
         int32_t retval, numevents = 0;
 
@@ -174,10 +186,12 @@ public:
 private:
     int32_t m_epfd_, m_size_;
     struct epoll_event *m_events_;
-    StFileEvent *m_file_events_; // 保存状态
+    StFileEvent *m_file_; // 保存状态
 
 public:
     StFiredEvent *m_fired_; // 对外使用
 };
+
+stlib_namespace_end
 
 #endif

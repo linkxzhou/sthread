@@ -1,6 +1,6 @@
 #include "st_log.h"
 
-ST_NAMESPACE_USING
+stlib_namespace_using
 
 static const char* g_level_cn[12] = {
         "EMERG", 

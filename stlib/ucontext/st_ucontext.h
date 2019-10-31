@@ -2,8 +2,8 @@
     user : zhoulv2000@163.com
 */
 
-#ifndef _ST_UCONTEXT_H_INCLUDED_
-#define _ST_UCONTEXT_H_INCLUDED_
+#ifndef _ST_UCONTEXT_H_
+#define _ST_UCONTEXT_H_
 
 #if defined(__sun__)
 #	define __EXTENSIONS__ 1 /* SunOS */
@@ -41,14 +41,14 @@
 #include <sched.h>
 #include <signal.h>
 
-#if USE_UCONTEXT
-#warning "USE_UCONTEXT"
+#if _UCONTEXT
+#warning "_UCONTEXT"
 #include <ucontext.h>
 #endif
 
 #include <sys/utsname.h>
 #include <inttypes.h>
-#include "st_util.h"
+#include "st_def.h"
 
 #if defined(__APPLE__)
 #	define mcontext libthread_mcontext
@@ -118,7 +118,7 @@ extern "C" {
 
 enum
 {
-    STACK = 131072 // 128K
+    STACK = 260096 // 256K
 };
 
 typedef unsigned char uchar;
@@ -142,11 +142,7 @@ void context_init(Context *c);
 
 int context_switch(Context *from, Context *to);
 
-void context_exit();
-
-uint64_t get_sthreadid(void);
-
-void set_sthreadid(uint64_t sthreadid);
+void context_exit(int _errno);
 
 #ifdef  __cplusplus
 }

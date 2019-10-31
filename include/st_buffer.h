@@ -2,8 +2,8 @@
  * Copyright (C) zhoulv2000@163.com
  */
 
-#ifndef _ST_BUFFER_H_INCLUDED_
-#define _ST_BUFFER_H_INCLUDED_
+#ifndef _ST_BUFFER_H__
+#define _ST_BUFFER_H__
 
 #include "st_util.h"
 #include "st_hash_list.h"
@@ -107,7 +107,7 @@ public:
     StBufferNext    m_next_;
 };
 
-class StBufferBucket : public HashKey
+class StBufferBucket : public StHashKey
 {
 public:
     StBufferBucket(uint32_t buff_size, uint32_t max_free = 512) : 
@@ -174,7 +174,7 @@ public:
         return m_max_buf_size_;
     }
 
-    virtual int32_t HashCmp(HashKey *rhs)
+    virtual int32_t HashCmp(StHashKey *rhs)
     {
         return m_max_buf_size_ - (int32_t)rhs->HashValue();
     }
@@ -191,7 +191,7 @@ public:
     explicit StBufferPool(uint32_t max_free = MAX_FREE) : 
         m_max_free_(max_free)
     {
-        m_hash_bucket_ = new HashList<StBufferBucket>(ST_BUFFER_BUCKET_SIZE);
+        m_hash_bucket_ = new StHashList<StBufferBucket>(ST_BUFFER_BUCKET_SIZE);
     }
     
     ~StBufferPool()
@@ -202,7 +202,7 @@ public:
         }
 
         StBufferBucket *_bucket = NULL;
-        HashKey *hash_item = m_hash_bucket_->HashGetFirst();
+        StHashKey *hash_item = m_hash_bucket_->HashGetFirst();
         while (hash_item)
         {
             m_hash_bucket_->HashRemove(any_cast<StBufferBucket>(hash_item));
@@ -236,7 +236,7 @@ public:
 
         StBufferBucket *_bucket = NULL;
         StBufferBucket _key(max_size);
-        HashKey *hash_item = m_hash_bucket_->HashFind(&_key);
+        StHashKey *hash_item = m_hash_bucket_->HashFind(&_key);
 
         if (hash_item)
         {
@@ -282,7 +282,7 @@ public:
 
         StBufferBucket *_bucket = NULL;
         StBufferBucket _key(_buf->GetMaxLen());
-        HashKey *hash_item = m_hash_bucket_->HashFind(&_key);
+        StHashKey *hash_item = m_hash_bucket_->HashFind(&_key);
         
         if (hash_item)
         {
@@ -303,7 +303,7 @@ public:
 
 private:
     uint32_t                    m_max_free_;
-    HashList<StBufferBucket>    *m_hash_bucket_;
+    StHashList<StBufferBucket>  *m_hash_bucket_;
 };
 
 ST_NAMESPACE_END

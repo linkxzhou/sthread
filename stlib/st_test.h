@@ -1,5 +1,5 @@
-#ifndef _ST_TEST_H_INCLUDE_
-#define _ST_TEST_H_INCLUDE_
+#ifndef _ST_TEST_H_
+#define _ST_TEST_H_
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -7,6 +7,9 @@
 #include <sstream>
 #include <algorithm>
 #include <string>
+#include "ucontext/st_def.h"
+
+stlib_namespace_begin
 
 class StStatus 
 {
@@ -223,4 +226,6 @@ struct Test
 
 #define RUN_ALL_TESTS()     StTester::RunAllTests()
 
-#endif  // _ST_TEST_H_INCLUDE_
+stlib_namespace_end
+
+#endif  // _ST_TEST_H_

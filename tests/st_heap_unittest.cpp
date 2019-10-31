@@ -2,7 +2,7 @@
 
 ST_NAMESPACE_USING
 
-class TestHeap : public HeapEntry
+class TestHeap : public StHeapEntry
 {
 public:
 	virtual int64_t HeapValue()
@@ -24,7 +24,7 @@ typedef TestHeap * TestHeapNode;
 
 TEST(StStatus, compare)
 {
-	HeapList<TestHeap> *h = new HeapList<TestHeap>();
+	StHeapList<TestHeap> *h = new StHeapList<TestHeap>();
 	TestHeapNode n1 = new TestHeap();
 	n1->m_data_ = 19;
 	h->HeapPush(n1);

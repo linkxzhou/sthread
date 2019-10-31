@@ -2,28 +2,28 @@
  * Copyright (C) zhoulv2000@163.com
  */
 
-#ifndef _ST_HASH_LIST_H_INCLUDED_
-#define _ST_HASH_LIST_H_INCLUDED_
+#ifndef _ST_HASH_LIST_H_
+#define _ST_HASH_LIST_H_
 
 #include "st_util.h"
 #include "st_netaddr.h"
 
-ST_NAMESPACE_BEGIN
+stlib_namespace_begin
 
-template <class T> class HashList;
+template <class T> class StHashList;
 
-class HashKey : public Any, public referenceable
+class StHashKey : public Any, public referenceable
 {
-    template <typename T> friend class HashList;
+    template <typename T> friend class StHashList;
     
 public:
-    HashKey() : 
+    StHashKey() : 
         m_next_ptr_(NULL), 
         m_hash_value_(0), 
         m_data_ptr_(NULL) 
     { }
 
-    virtual ~HashKey()
+    virtual ~StHashKey()
     { 
         m_next_ptr_ = NULL;
         m_hash_value_ = 0;
@@ -34,7 +34,7 @@ public:
         return m_hash_value_;
     }
 
-    virtual int32_t HashCmp(HashKey *rhs)
+    virtual int32_t HashCmp(StHashKey *rhs)
     {
         return 0;
     }
@@ -55,24 +55,24 @@ public:
     }
 
 private:
-    HashKey     *m_next_ptr_;
+    StHashKey   *m_next_ptr_;
     uint32_t    m_hash_value_;
     void        *m_data_ptr_;
 };
 
-// NetAddressKey根据四元组决定是否相等
-class NetAddressKey : public HashKey
+// StNetAddrKey根据四元组决定是否相等
+class StNetAddrKey : public StHashKey
 {
 public:
-    NetAddressKey()
+    StNetAddrKey()
     { }
 
-    inline void SetDestAddr(const StNetAddress &dest)
+    inline void SetDestAddr(const StNetAddr &dest)
     {
         m_destaddr_ = dest;
     }
 
-    inline void SetSrcAddr(const StNetAddress &src)
+    inline void SetSrcAddr(const StNetAddr &src)
     {
         m_srcaddr_ = src;
     }
@@ -82,9 +82,9 @@ public:
         return (m_srcaddr_.Port() << 16) | m_destaddr_.Port();
     }
     
-    virtual int32_t HashCmp(HashKey *rhs)
+    virtual int32_t HashCmp(StHashKey *rhs)
     {
-        NetAddressKey *data = dynamic_cast<NetAddressKey*>(rhs);
+        StNetAddrKey *data = dynamic_cast<StNetAddrKey*>(rhs);
         if (!data)
         {
             return -1;
@@ -104,32 +104,28 @@ public:
     }
 
 private:
-    StNetAddress    m_srcaddr_, m_destaddr_;
+    StNetAddr    m_srcaddr_, m_destaddr_;
 };
 
-// 实现hashlist
-template <class T = HashKey>
-class HashList : public referenceable
+// 实现StHashList
+template <class T = StHashKey>
+class StHashList : public referenceable
 {
 public:
     typedef T value_type;  
     typedef value_type* pointer;
     typedef pointer* pointer_pointer;
 
-    explicit HashList(int32_t max = 8192)
+    explicit StHashList(int32_t max = 8192)
     {
         m_max_ = Util::MaxPrimeNum((max > 2) ? max : 1024);
         m_buckets_ = (pointer*)calloc(m_max_, sizeof(pointer));
         m_count_ = 0;
     }
 
-    virtual ~HashList()
+    virtual ~StHashList()
     {
-        if (m_buckets_)
-        {
-            st_safe_free(m_buckets_);
-        }
-        
+        st_safe_free(m_buckets_);
         m_count_ = 0;
     }
 
@@ -161,12 +157,13 @@ public:
             m_buckets_[idx]->m_hash_value_ = 0;
         }
 
-        pointer next_item = any_cast<value_type>(m_buckets_[idx]->m_next_ptr_);
-        LOG_TRACE("m_buckets_ : %p, next_item : %p, idx : %d", m_buckets_, next_item, idx);
+        pointer _next = any_cast<value_type>(m_buckets_[idx]->m_next_ptr_);
+        LOG_TRACE("m_buckets_ : %p, next_item : %p, idx : %d", 
+            m_buckets_, _next, idx);
 
         // 第一个元素不存储任何对象，只存储当前开链列表中的list的个数到hash_value_中
         m_buckets_[idx]->m_next_ptr_ = key;
-        key->m_next_ptr_ = next_item;
+        key->m_next_ptr_ = _next;
         (m_buckets_[idx]->m_hash_value_)++;
         m_count_++;
 
@@ -243,6 +240,7 @@ public:
         {
             return ;
         }
+
         pointer prev = m_buckets_[idx];
         pointer item = any_cast<value_type>(prev->m_next_ptr_);
         
@@ -251,11 +249,11 @@ public:
             if ((item->m_hash_value_ == hash) && (item->HashCmp(key) == 0))
             {
                 prev->m_next_ptr_ = item->m_next_ptr_;
-                pointer tmp = item;
+                pointer temp = item;
                 item = any_cast<value_type>(item->m_next_ptr_);
                 m_count_--;
                 (m_buckets_[idx]->m_hash_value_)--;
-                st_safe_delete(tmp); // 释放指针
+                st_safe_delete(temp); // 释放指针
             }
             else
             {
@@ -305,6 +303,6 @@ private:
     int32_t         m_count_, m_max_;
 };
 
-ST_NAMESPACE_END
+stlib_namespace_end
 
 #endif

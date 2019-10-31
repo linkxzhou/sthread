@@ -4,10 +4,6 @@
 
 #include "st_ucontext.h"
 
-// 全局的context
-__THREAD Context* g_context_initial = NULL;
-__THREAD Context* g_context_runing = NULL;
-
 #if defined(__APPLE__)
 #if defined(__i386__)
 #define NEEDX86MAKECONTEXT
@@ -88,12 +84,11 @@ void makecontext(ucontext_t *ucp, void (*func)(void), int argc, ...)
 	ucp->uc_mcontext.mc_rdi = va_arg(va, int);
 	ucp->uc_mcontext.mc_rsi = va_arg(va, int);
 	va_end(va);
-    // LOG_TRACE("ucp->uc_stack.ss_sp : %p, size : %d", ucp->uc_stack.ss_sp, 
-    //     ucp->uc_stack.ss_size/sizeof(long));
+
 	sp = (long*)ucp->uc_stack.ss_sp+ucp->uc_stack.ss_size/sizeof(long);
 	sp -= argc;
 	sp = (long*)((uintptr_t)sp - (uintptr_t)sp%16);	/* 16-align for OS X */
-    // LOG_TRACE("sp : %p", sp);
+
 	*--sp = 0;	/* return address */
 	ucp->uc_mcontext.mc_rip = (long)func;
 	ucp->uc_mcontext.mc_rsp = (long)sp;
@@ -148,6 +143,10 @@ int swapcontext(ucontext_t *oucp, const ucontext_t *ucp)
 }
 #endif
 
+// 全局的context，初始化的线程和正在运行的线程
+__THREAD Context *g_context_initial = NULL;
+__THREAD Context *g_context_runing = NULL;
+
 void context_init(Context *c)
 {
     g_context_initial = c;
@@ -157,7 +156,7 @@ int context_switch(Context *from, Context *to)
 {
     if (NULL == g_context_initial)
     {
-        g_context_initial = from;
+        context_init(from);
     }
 
     if (g_context_runing != to)
@@ -168,7 +167,7 @@ int context_switch(Context *from, Context *to)
 	return swapcontext(&from->uc, &to->uc);
 }
 
-void context_exit()
+void context_exit(int _errno)
 {
     if (g_context_runing != NULL && 
         g_context_initial != NULL &&
@@ -176,16 +175,4 @@ void context_exit()
     {
         context_switch(g_context_runing, g_context_initial);
     }
-}
-
-__THREAD uint64_t g_st_threadid;
-
-uint64_t get_sthreadid(void)
-{
-    return g_st_threadid;
-}
-
-void set_sthreadid(uint64_t id)
-{
-    g_st_threadid = id;
 }

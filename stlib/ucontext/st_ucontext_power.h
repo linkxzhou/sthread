@@ -58,8 +58,8 @@ int _getmcontext(mcontext_t*);
 
 void _setmcontext(const mcontext_t*);
 
-#endif
-
 #ifdef __cplusplus
 }
+#endif
+
 #endif

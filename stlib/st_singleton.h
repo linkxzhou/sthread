@@ -2,17 +2,16 @@
  * Copyright (C) zhoulv2000@163.com
  */
 
-#ifndef _ST_SINGLETON_H_INCLUDED_
-#define _ST_SINGLETON_H_INCLUDED_
+#ifndef _ST_SINGLETON_H__
+#define _ST_SINGLETON_H__
 
 #include <new>
 #include <stdlib.h>
 #include <pthread.h>
 #include <assert.h>
+#include "ucontext/st_def.h"
 
-#include "st_public.h"
-
-ST_NAMESPACE_BEGIN
+stlib_namespace_begin
 
 #define DECLARE_UNCOPYABLE(Class) \
 private: \
@@ -121,6 +120,6 @@ T* GetInstance()
     return Singleton<T>::GetInstance();
 }
 
-ST_NAMESPACE_END
+stlib_namespace_end
 
 #endif

@@ -2,16 +2,12 @@
  * Copyright (C) zhoulv2000@163.com
  */
 
-#ifndef _ST_HEAP_H_INCLUDED_
-#define _ST_HEAP_H_INCLUDED_
+#ifndef _ST_HEAP_H_
+#define _ST_HEAP_H_
 
 #include "st_util.h"
 
-ST_NAMESPACE_BEGIN
-
-class HeapEntry;
-
-typedef HeapEntry* HeapEntryNode;
+stlib_namespace_begin
 
 enum eOrderType
 {
@@ -19,14 +15,14 @@ enum eOrderType
     eOrderAsc
 };
 
-class HeapEntry : public Any, public referenceable
+class StHeap : public Any, public referenceable
 {
 public:
-    HeapEntry() : 
+    StHeap() : 
         m_index_(0) 
     { }
 
-    virtual ~HeapEntry() 
+    virtual ~StHeap() 
     { }
 
     virtual int64_t HeapValue() = 0;
@@ -47,7 +43,7 @@ public:
         m_index_ = index;
     }
 
-    inline int32_t HeapValueCmp(HeapEntry *rhs)
+    inline int32_t HeapValueCmp(StHeap *rhs)
     {
         if (this->HeapValue() == rhs->HeapValue())
         {
@@ -67,22 +63,18 @@ private:
     int32_t  m_index_;
 };
 
+typedef StHeap* StHeapNode;
+
 // 堆的list
-template<class T = HeapEntryNode>
-class HeapList
+template<class T = StHeapNode>
+class StHeapList
 {
 public:
     typedef T value_type;  
     typedef value_type* pointer;
     typedef pointer* pointer_pointer;
 
-private:
-    pointer_pointer m_list_;
-    int32_t        m_max_;
-    int32_t        m_count_;
-
-public:
-    explicit HeapList(int32_t max = 1024)
+    explicit StHeapList(int32_t max = 1024)
     {
         m_max_ = ST_MAX(max, 512);
         m_list_ = (pointer_pointer)calloc(m_max_ + 1, sizeof(pointer));
@@ -90,22 +82,11 @@ public:
         m_count_ = 0;
     }
 
-    virtual ~HeapList()
+    virtual ~StHeapList()
     {
         // 清理元素的数据
-        if (m_list_)
-        {
-            for (int32_t i = 0; i < m_max_; i++)
-            {
-                if (m_list_[i] != NULL)
-                {
-                    st_safe_delete(m_list_[i]);
-                }
-            }
-
-            st_safe_free(m_list_);
-        }
-
+        st_safe_free(m_list_);
+        
         m_max_ = 0;
         m_count_ = 0;
     }
@@ -127,6 +108,7 @@ public:
 
         m_list_ = vptr;
         m_max_ = size;
+        
         return 0;
     }
 
@@ -156,7 +138,7 @@ public:
             return NULL;
         }
 
-        HeapEntry *top = (HeapEntry *)(m_list_[1]);
+        StHeap *top = (StHeap *)(m_list_[1]);
         this->Swap(1, m_count_);
         m_count_--;
         this->HeapDown();
@@ -310,8 +292,13 @@ private:
         m_list_[i]->SetIndex(i);
         m_list_[j]->SetIndex(j);
     }
+
+private:
+    pointer_pointer m_list_;
+    int32_t        m_max_;
+    int32_t        m_count_;
 };
 
-ST_NAMESPACE_END
+stlib_namespace_end
 
 #endif

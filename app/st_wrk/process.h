@@ -2,8 +2,8 @@
  * Copyright (C) zhoulv2000@163.com
  */
 
-#ifndef __PROCESS_H_INCLUDED__
-#define __PROCESS_H_INCLUDED__
+#ifndef __PROCESS_H___
+#define __PROCESS_H___
 
 #include <stdio.h>
 #include <unistd.h>

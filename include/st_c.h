@@ -2,8 +2,8 @@
  * Copyright (C) zhoulv2000@163.com
  */
 
-#ifndef _ST_C_H_INCLUDED_
-#define _ST_C_H_INCLUDED_
+#ifndef _ST_C_H__
+#define _ST_C_H__
 
 #include <netinet/in.h>
 #include <vector>
@@ -14,7 +14,7 @@
 
 ST_NAMESPACE_BEGIN
 
-class StExecClientConnection : public StClientConnection<StEventBase>
+class StExecClientConnection : public StClientConnection<StEventSuper>
 { };
 
 ST_NAMESPACE_END

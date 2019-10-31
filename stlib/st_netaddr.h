@@ -2,39 +2,40 @@
  * Copyright (C) zhoulv2000@163.com
  */
 
-#ifndef _ST_NET_H_INCLUDED_
-#define _ST_NET_H_INCLUDED_
+#ifndef _ST_NETADDR_H_
+#define _ST_NETADDR_H_
 
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <netdb.h>
 #include <sys/socket.h>
-#include "st_util.h"
+#include "ucontext/st_def.h"
+#include "st_log.h"
 
-ST_NAMESPACE_BEGIN
+stlib_namespace_begin
 
-class StNetAddress
+class StNetAddr
 {
 public:
-    explicit StNetAddress() : 
+    explicit StNetAddr() : 
         m_errno_(0), 
         m_isipv6_(false)
     { }
 
-    explicit StNetAddress(const struct sockaddr_in &addr) : 
+    explicit StNetAddr(const struct sockaddr_in &addr) : 
         m_addr_(addr), 
         m_errno_(0),
         m_isipv6_(false)
     { }
 
-    explicit StNetAddress(const struct sockaddr_in6 &addr) : 
+    explicit StNetAddr(const struct sockaddr_in6 &addr) : 
         m_addr6_(addr), 
         m_errno_(0),
-        m_isipv6_(false)
+        m_isipv6_(true)
     { }
 
-    bool operator == (const StNetAddress &addr)
+    bool operator == (const StNetAddr &addr)
     {
         if (m_isipv6_)
         {
@@ -121,13 +122,13 @@ public:
 
         if (!m_isipv6_)
         {
-            assert(size >= INET_ADDRSTRLEN);
+            ASSERT(size >= INET_ADDRSTRLEN);
             const struct sockaddr_in *addr4 = static_cast<const struct sockaddr_in*>(&m_addr_);
             ::inet_ntop(AF_INET, &addr4->sin_addr, buf, static_cast<socklen_t>(size));
         }
         else
         {
-            assert(size >= INET6_ADDRSTRLEN);
+            ASSERT(size >= INET6_ADDRSTRLEN);
             const struct sockaddr_in6 *addr6 = static_cast<const struct sockaddr_in6*>(&m_addr6_);
             ::inet_ntop(AF_INET6, &addr6->sin6_addr, buf, static_cast<socklen_t>(size));
         }
@@ -154,14 +155,14 @@ public:
         return ntohs(PortNetEndian());
     }
 
-    inline void GetSockAddr(struct sockaddr * &addr) const 
+    inline struct sockaddr* GetSockAddr() const 
     { 
-        addr = (struct sockaddr *)(&m_addr_);
+        return (struct sockaddr *)(&m_addr_);
     }
 
-    inline void GetSockAddr(struct sockaddr_in6 * &addr) const 
+    inline struct sockaddr_in6* GetSock6Addr() const 
     { 
-        addr = (struct sockaddr_in6 *)(&m_addr6_);
+        return (struct sockaddr_in6 *)(&m_addr6_);
     }
 
     inline uint16_t PortNetEndian() const 
@@ -190,6 +191,6 @@ private:
     bool m_isipv6_;
 };
 
-ST_NAMESPACE_END
+stlib_namespace_end
 
 #endif

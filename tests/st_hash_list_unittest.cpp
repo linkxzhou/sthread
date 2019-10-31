@@ -2,11 +2,11 @@
 
 ST_NAMESPACE_USING
 
-typedef HashList<> HT;
+typedef StHashList<> HT;
 
 TEST(StStatus, hash_list)
 {
-	HashList<> *h = new HashList<>();
+	StHashList<> *h = new StHashList<>();
 
 	LOG_TRACE("size : %d", h->HashSize());
 

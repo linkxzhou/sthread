@@ -9,7 +9,7 @@ static void socket_callback(Manager *manager, int i)
     ::_sleep(3000);
     LOG_TRACE("waiting 3000ms ...");
 
-    StEventBase *item = new StEventBase();
+    StEventSuper *item = new StEventSuper();
     LOG_TRACE("item node :%p, events :%d", item, item->GetEvents());
     ASSERT(item != NULL);
 
@@ -57,7 +57,7 @@ static void socket_callback(Manager *manager, int i)
     ret = ::_recv(socket_fd, buf2, sizeof(buf2), 0, 3000);
 
     // 测试重新发送请求
-    // manager->CreateThread(NewClosure(socket_callback, manager, 99));
+    // manager->CreateThread(NewStClosure(socket_callback, manager, 99));
     // context_exit();
 }
 
@@ -67,7 +67,7 @@ TEST(StStatus, socket)
     manager->SetHookFlag();
     for (int i = 0; i < 2; i++)
     {
-        manager->CreateThread(NewClosure(socket_callback, manager, i));
+        manager->CreateThread(NewStClosure(socket_callback, manager, i));
     }
 
     Manager::StartDaemonThread(manager);

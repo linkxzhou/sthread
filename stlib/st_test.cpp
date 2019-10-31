@@ -7,6 +7,8 @@
 
 #include "st_test.h"
 
+stlib_namespace_using
+
 std::vector<Test> *tests;
 
 StStatus::StStatus(const StStatus &rhs) 

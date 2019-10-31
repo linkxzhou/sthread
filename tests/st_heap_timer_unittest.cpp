@@ -6,15 +6,15 @@ TEST(StStatus, notify)
 {
 	HeapTimer c;
 
-	c.Start(new TimerEntry(), 100);
-	c.Start(new TimerEntry(), 160);
-	c.Start(new TimerEntry(), 1500);
-	c.Start(new TimerEntry(), 99);
-	c.Start(new TimerEntry(), 20);
-	c.Start(new TimerEntry(), 5000);
-	c.Start(new TimerEntry(), 999);
-	c.Start(new TimerEntry(), 900);
-	c.Start(new TimerEntry(), 10000);
+	c.Start(new StTimerEntry(), 100);
+	c.Start(new StTimerEntry(), 160);
+	c.Start(new StTimerEntry(), 1500);
+	c.Start(new StTimerEntry(), 99);
+	c.Start(new StTimerEntry(), 20);
+	c.Start(new StTimerEntry(), 5000);
+	c.Start(new StTimerEntry(), 999);
+	c.Start(new StTimerEntry(), 900);
+	c.Start(new StTimerEntry(), 10000);
 
 	LOG_TRACE("==========================");
 	int count = 10;

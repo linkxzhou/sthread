@@ -1,9 +1,10 @@
 #include "../include/st_server.h"
+#include <gperftools/profiler.h>
 
 ST_NAMESPACE_USING
 
 class StTcpServerConnection : 
-    public StServerConnection<StEventBase>
+    public StServerConnection<StEventSuper>
 {
     virtual int32_t HandleInput(void *buf, int32_t len)
     {
@@ -54,8 +55,18 @@ TEST(StStatus, accept)
     server->Loop();
 }
 
+void gprof_stop(int signum) 
+{
+    if (signum != SIGUSR1) return;
+    ProfilerStop();
+    LOG_DEBUG("==== gprof stop ====");
+}
+
 // 测试所有的功能
 int main(int argc, char* argv[])
 {
+    signal(SIGUSR1, gprof_stop);
+
+    ProfilerStart("server.prof");
     return RUN_ALL_TESTS();
 }

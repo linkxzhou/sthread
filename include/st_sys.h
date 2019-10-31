@@ -2,8 +2,8 @@
  * Copyright (C) zhoulv2000@163.com
  */
 
-#ifndef _ST_SYS_H_INCLUDED_
-#define _ST_SYS_H_INCLUDED_
+#ifndef _ST_SYS_H_
+#define _ST_SYS_H_
 
 #include <dlfcn.h>
 #include "st_util.h"

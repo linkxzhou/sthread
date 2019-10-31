@@ -1,5 +1,5 @@
-#ifndef _ST_LOG_H_INCLUDED_
-#define _ST_LOG_H_INCLUDED_
+#ifndef _ST_LOG_H_
+#define _ST_LOG_H_
 
 #include <stdio.h>
 #include <sys/time.h>
@@ -19,9 +19,9 @@
 #include <limits.h>
 #include <unistd.h>
 #include <assert.h>
-#include "st_public.h"
+#include "ucontext/st_def.h"
 
-ST_NAMESPACE_BEGIN
+stlib_namespace_begin
 
 #define LLOG_EMERG   0      /* system in unusable */
 #define LLOG_ALERT   1      /* action must be taken immediately */
@@ -120,12 +120,10 @@ private:
 
 #define LOG_LEVEL(level)    StLogger::GetInstance().SetLevel(level)
 
-#define TODO_INTO(cls)  LOG_DEBUG("\033[32mrun into %s: %s \033[0m", #cls, __FUNCTION__)
+#define LOG_FUNCMARK(cls)   LOG_DEBUG("<<< mark function(%s: %s) >>>", #cls, __FUNCTION__)
 
-#define TODO_OUT(cls)   LOG_DEBUG("\033[34mrun out %s: %s \033[0m", #cls, __FUNCTION__)
+#define LOG_ASSERT(exp)     assert((exp))
 
-#define ASSERT(exp)     assert((exp))
-
-ST_NAMESPACE_END
+stlib_namespace_end
 
 #endif

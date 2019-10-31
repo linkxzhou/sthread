@@ -2,17 +2,17 @@
  * Copyright (C) zhoulv2000@163.com
  */
 
-#ifndef _ST_CLOSURE_H_INCLUDED_
-#define _ST_CLOSURE_H_INCLUDED_
+#ifndef _ST_CLOSURE_H_
+#define _ST_CLOSURE_H_
 
-#include "st_public.h"
+#define "ucontext/st_def.h"
 
-ST_NAMESPACE_BEGIN
+stlib_namespace_begin
 
-class Closure 
+class StClosure 
 {
 public:
-    virtual ~Closure() 
+    virtual ~StClosure() 
     { }
 
     virtual void Run() = 0;
@@ -20,15 +20,15 @@ public:
 
 // 无参数
 template <class Funct>
-class Closure0 : public Closure 
+class StClosure0 : public StClosure 
 {
 public:
-    Closure0(Funct fun) 
+    StClosure0(Funct fun) 
     {
         m_fun_ = fun;
     }
 
-    virtual ~Closure0() 
+    virtual ~StClosure0() 
     { }
 
     virtual void Run() 
@@ -41,16 +41,16 @@ private:
 }; 
 
 template <class Funct, class Arg1>
-class Closure1 : public Closure 
+class StClosure1 : public StClosure 
 {
 public:
-    Closure1(Funct fun, Arg1 arg1) 
+    StClosure1(Funct fun, Arg1 arg1) 
     {
         m_fun_ = fun;
         m_arg1_ = arg1;
     }
 
-    virtual ~Closure1() 
+    virtual ~StClosure1() 
     { }
 
     virtual void Run() 
@@ -64,17 +64,17 @@ private:
 }; 
 
 template <class Funct, class Arg1, class Arg2>
-class Closure2 : public Closure 
+class StClosure2 : public StClosure 
 {
 public:
-    Closure2(Funct fun, Arg1 arg1, Arg2 arg2) 
+    StClosure2(Funct fun, Arg1 arg1, Arg2 arg2) 
     {
         m_fun_ = fun;
         m_arg1_ = arg1;
         m_arg2_ = arg2;
     }
 
-    virtual ~Closure2() 
+    virtual ~StClosure2() 
     { }
 
     virtual void Run() 
@@ -89,10 +89,10 @@ private:
 }; 
 
 template <class Funct, class Arg1, class Arg2, class Arg3>
-class Closure3: public Closure 
+class StClosure3: public StClosure 
 {
 public:
-    Closure3(Funct fun, Arg1 arg1, Arg2 arg2, Arg3 arg3) 
+    StClosure3(Funct fun, Arg1 arg1, Arg2 arg2, Arg3 arg3) 
     {
         m_fun_ = fun;
         m_arg1_ = arg1;
@@ -100,7 +100,7 @@ public:
         m_arg3_ = arg3;
     }
 
-    virtual ~Closure3() 
+    virtual ~StClosure3() 
     { }
 
     virtual void Run() 
@@ -116,16 +116,16 @@ private:
 }; 
 
 template <class Object, class Funct> 
-class ObjectClosure0 : public Closure 
+class ObjectStClosure0 : public StClosure 
 {
 public:
-    ObjectClosure0(Object* p, Funct fun) 
+    ObjectStClosure0(Object* p, Funct fun) 
     {
         m_p_ = p;
         m_fun_ = fun;
     }
 
-    virtual ~ObjectClosure0() 
+    virtual ~ObjectStClosure0() 
     { }
 
     virtual void Run() 
@@ -139,10 +139,10 @@ private:
 }; 
 
 template <class Object, class Funct, class Arg1> 
-class ObjectClosure1 : public Closure 
+class ObjectStClosure1 : public StClosure 
 {
 public:
-    ObjectClosure1(Object* p, Funct fun, 
+    ObjectStClosure1(Object* p, Funct fun, 
         Arg1 arg1) 
     {
         m_p_ = p;
@@ -150,7 +150,7 @@ public:
         m_arg1_ = arg1;
     }
 
-    virtual ~ObjectClosure1() 
+    virtual ~ObjectStClosure1() 
     { }
 
     virtual void Run() 
@@ -165,10 +165,10 @@ private:
 }; 
 
 template <class Object, class Funct, class Arg1, class Arg2> 
-class ObjectClosure2 : public Closure 
+class ObjectStClosure2 : public StClosure 
 {
 public:
-    ObjectClosure2(Object* p, Funct fun, 
+    ObjectStClosure2(Object* p, Funct fun, 
         Arg1 arg1, Arg2 arg2) 
     {
         m_p_ = p;
@@ -177,7 +177,7 @@ public:
         m_arg2_ = arg2;
     }
 
-    virtual ~ObjectClosure2() 
+    virtual ~ObjectStClosure2() 
     { }
     
     virtual void Run() 
@@ -193,10 +193,10 @@ private:
 };
 
 template <class Object, class Funct, class Arg1, class Arg2, class Arg3> 
-class ObjectClosure3 : public Closure 
+class ObjectStClosure3 : public StClosure 
 {
 public:
-    ObjectClosure3(Object* p, Funct fun, 
+    ObjectStClosure3(Object* p, Funct fun, 
         Arg1 arg1, Arg2 arg2, Arg3 arg3) 
     {
         m_p_ = p;
@@ -206,7 +206,7 @@ public:
         m_arg3_ = arg3;
     }
 
-    virtual ~ObjectClosure3() 
+    virtual ~ObjectStClosure3() 
     { }
     
     virtual void Run() 
@@ -223,67 +223,67 @@ private:
 };
 
 template<class R>
-Closure* NewClosure(R (*fun)()) 
+StClosure* NewStClosure(R (*fun)()) 
 {
-    return new Closure0<R (*)()>(fun);
+    return new StClosure0<R (*)()>(fun);
 }
 
 template<class R, class Arg1>
-Closure* NewClosure(R (*fun)(Arg1), Arg1 arg1) 
+StClosure* NewStClosure(R (*fun)(Arg1), Arg1 arg1) 
 {
-    return new Closure1<R (*)(Arg1), Arg1>(fun, arg1);
+    return new StClosure1<R (*)(Arg1), Arg1>(fun, arg1);
 }
 
 template<class R, class Arg1, class Arg2>
-Closure* NewClosure(R (*fun)(Arg1, Arg2), 
+StClosure* NewStClosure(R (*fun)(Arg1, Arg2), 
     Arg1 arg1, Arg2 arg2) 
 {
-    return new Closure2<R (*)(Arg1, Arg2), 
+    return new StClosure2<R (*)(Arg1, Arg2), 
         Arg1, Arg2>(fun, arg1, arg2);
 }
 
 template<class R, class Arg1, class Arg2, class Arg3>
-Closure* NewClosure(R (*fun)(Arg1, Arg2, Arg3), 
+StClosure* NewStClosure(R (*fun)(Arg1, Arg2, Arg3), 
     Arg1 arg1, Arg2 arg2, Arg3 arg3) 
 {
-    return new Closure3<R (*)(Arg1, Arg2, Arg3), 
+    return new StClosure3<R (*)(Arg1, Arg2, Arg3), 
         Arg1, Arg2, Arg3>(fun, arg1, arg2, arg3);
 }
 
 template<class R, class Object>
-Closure* NewClosure(Object *object, R (Object::* fun)()) 
+StClosure* NewStClosure(Object *object, R (Object::* fun)()) 
 {
-    return new ObjectClosure0<Object, R (Object::* )()>(object, fun);
+    return new ObjectStClosure0<Object, R (Object::* )()>(object, fun);
 }
 
 template<class R, class Object, class Arg1>
-Closure* NewClosure(Object *object, 
+StClosure* NewStClosure(Object *object, 
     R (Object::* fun)(Arg1), Arg1 arg1) 
 {
-    return new ObjectClosure1<Object, 
+    return new ObjectStClosure1<Object, 
         R (Object::* )(Arg1), Arg1>(object, fun, arg1);
 }
 
 template<class R, class Object, class Arg1, class Arg2>
-Closure* NewClosure(Object *object, 
+StClosure* NewStClosure(Object *object, 
     R (Object::* fun)(Arg1, Arg2), 
     Arg1 arg1, Arg2 arg2) 
 {
-    return new ObjectClosure2<Object, 
+    return new ObjectStClosure2<Object, 
         R (Object::*)(Arg1, Arg2), 
         Arg1, Arg2>(object, fun, arg1, arg2);
 }
 
 template<class R, class Object, class Arg1, class Arg2, class Arg3>
-Closure* NewClosure(Object *object, 
+StClosure* NewStClosure(Object *object, 
     R (Object::* fun)(Arg1, Arg2, Arg3), 
     Arg1 arg1, Arg2 arg2, Arg3 arg3) 
 {
-    return new ObjectClosure3<Object, 
+    return new ObjectStClosure3<Object, 
         R (Object::*)(Arg1, Arg2, Arg3), 
         Arg1, Arg2, Arg3>(object, fun, arg1, arg2, arg3);
 }
 
-ST_NAMESPACE_END
+stlib_namespace_end
 
-#endif // _ST_CLOSURE_H_INCLUDED_
+#endif // _ST_CLOSURE_H_

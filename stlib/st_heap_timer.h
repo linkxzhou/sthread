@@ -2,31 +2,30 @@
  * Copyright (C) zhoulv2000@163.com
  */
 
-#ifndef _ST_HEAP_TIMER_H_INCLUDED_
-#define _ST_HEAP_TIMER_H_INCLUDED_
+#ifndef _ST_HEAP_TIMER_H__
+#define _ST_HEAP_TIMER_H__
 
 #include "st_util.h"
 #include "st_heap.h"
 
-ST_NAMESPACE_BEGIN
+stlib_namespace_begin
 
-class HeapTimer;
-class TimerEntry;
+class StHeapTimer;
 
-class TimerEntry : public HeapEntry
+class StTimer : public StHeap
 {
 public:
-    TimerEntry() : 
+    StTimer() : 
         m_time_expired_(-1)
     { }
 
-    virtual ~TimerEntry()
+    virtual ~StTimer()
     { 
         m_time_expired_ = -1;
     }
 
-    virtual void TimerNotify(eEventType type) 
-    { 
+    virtual void Timeout()
+    {
         return ;
     }
 
@@ -45,32 +44,42 @@ public:
         return m_time_expired_;
     }
 
+    inline bool IsExpired()
+    {
+        if (m_time_expired_ < Util::TimeMs())
+        {
+            return true;
+        }
+
+        return false;
+    }
+
 private:
     uint64_t    m_time_expired_;
 };
 
 // 时间控制器
-class HeapTimer
+class StHeapTimer
 {
 public:
-    explicit HeapTimer(uint32_t max_item = 1024)
+    explicit StHeapTimer(uint32_t max_item = 1024)
     {
-        m_heap_ = new HeapList<TimerEntry>(max_item);
+        m_heap_ = new StHeapList<StTimer>(max_item);
     }
     
-    ~HeapTimer()
+    ~StHeapTimer()
     {
         st_safe_delete(m_heap_);
     }
 
-    bool Start(TimerEntry *timerable, int32_t interval)
+    bool Startup(StTimer *timerable, int32_t interval)
     {
         if (!m_heap_ || !timerable)
         {
             return false;
         }
 
-        int64_t now_ms = Util::SysMs();
+        int64_t now_ms = Util::TimeMs();
 
         LOG_TRACE("now_ms + interval = %llu", now_ms + interval);
         
@@ -90,7 +99,7 @@ public:
         return true;
     }
 
-    void Stop(TimerEntry *timerable)
+    void Stop(StTimer *timerable)
     {
         if (!m_heap_ || !timerable)
         {
@@ -110,17 +119,17 @@ public:
             return 0;
         }
 
-        int64_t now = Util::SysMs();
+        int64_t now = Util::TimeMs();
 
         LOG_TRACE("before: now_ms = %llu, size = %d", now, m_heap_->HeapSize());
 
         int32_t count = 0;
-        TimerEntry *timer = any_cast<TimerEntry>(m_heap_->HeapTop());
+        StTimer *timer = any_cast<StTimer>(m_heap_->HeapTop());
         while (timer && (timer->GetExpiredTime() <= now))
         {
             m_heap_->HeapDelete(timer);          // 删除对应的过期时间
-            timer->TimerNotify(eEVENT_TIMEOUT);  // 传递超时事件
-            timer = any_cast<TimerEntry>(m_heap_->HeapTop());
+            timer->Timeout();  // 传递超时事件
+            timer = any_cast<StTimer>(m_heap_->HeapTop());
             count++;
         }
 
@@ -129,9 +138,9 @@ public:
     }
 
 private:
-    HeapList<TimerEntry>    *m_heap_;
+    StHeapList<StTimer>    *m_heap_;
 };
 
-ST_NAMESPACE_END
+stlib_namespace_end
 
 #endif

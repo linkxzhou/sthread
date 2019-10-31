@@ -97,8 +97,8 @@ struct ucontext
 	int		    __spare__[4];
 };
 
-#endif
-
 #ifdef __cplusplus
 }
+#endif
+
 #endif
