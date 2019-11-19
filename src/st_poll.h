@@ -2,25 +2,28 @@
  * Copyright (C) zhoulv2000@163.com
  */
 
-#ifndef _ST_ITEM_H__
-#define _ST_ITEM_H__
+#ifndef _ST_POLL_H_
+#define _ST_POLL_H_
 
 #include "st_util.h"
 #include "st_ucontext.h"
 
 // 选择不同的头文件
 #if defined(__APPLE__) || defined(__OpenBSD__)
-#include "st_kqueue.h"
+#include "stlib/ucontext/st_kqueue.h"
 #else
-#include "st_epoll.h"
+#include "stlib/ucontext/st_epoll.h"
 #endif
 
-#include "st_heap.h"
-#include "st_buffer.h"
-#include "st_netaddr.h"
-#include "st_sys.h"
+#include "stlib/st_heap.h"
+#include "stlib/st_buffer.h"
+#include "stlib/st_netaddr.h"
+#include "stlib/st_sys.h"
 
-ST_NAMESPACE_BEGIN
+using namespace stlib;
+
+namespace sthread 
+{
 
 class StEventItem;
 class StThreadItem;
@@ -30,19 +33,19 @@ typedef CPP_TAILQ_HEAD<StThreadItem>    StThreadItemQueue;
 typedef CPP_TAILQ_ENTRY<StEventItem>    StEventItemNext;
 typedef CPP_TAILQ_ENTRY<StThreadItem>   StThreadItemNext;
 
-class StThreadItem : public StHeapEntry
+class StThreadItem : public StHeap
 {
 public:
     StThreadItem() : 
-        StHeapEntry(),
+        StHeap(),
         m_wakeup_time_(0), 
-        m_flag_(eNOT_INLIST),
         m_type_(eNORMAL), 
         m_state_(eINITIAL), 
         m_callback_(NULL),
         m_stack_(NULL),
         m_private_(NULL),
         m_parent_(NULL), 
+        m_flag_(eNOT_INLIST),
         m_stack_size_(STACK)
     { 
         CPP_TAILQ_INIT(&m_fdset_);
@@ -57,13 +60,12 @@ public:
     virtual void Reset()
     {
         m_wakeup_time_ = 0;
-        m_flag_ = eNOT_INLIST;
         m_type_ = eNORMAL;
         m_state_ = eINITIAL;
         st_safe_delete(m_callback_);
         st_safe_free(m_private_);
 
-        // TODO : 需要处理
+        // TODO : 需要处理(fd全部需要从epoll移除，子线程挂载到daemon线程中)
         CPP_TAILQ_INIT(&m_fdset_);
         CPP_TAILQ_INIT(&m_sub_threadlist_);
         m_parent_ = NULL;
@@ -73,7 +75,7 @@ public:
 
     inline void SetFlag(eThreadFlag flag)
     {
-        m_flag_ = (eThreadFlag)(m_flag_ | flag);
+        m_flag_ = (eThreadState)(m_flag_ | flag);
     }
 
     inline void UnsetFlag(eThreadFlag flag)
@@ -100,8 +102,8 @@ public:
     {
         m_state_ = state;
     }
-
-    inline eThreadState GetState()
+    
+    inline eThreadFlag GetState()
     {
         return m_state_;
     }
@@ -141,7 +143,7 @@ public:
         return m_stack_;
     }
 
-    inline void Clear()
+    inline void ResetFdSet()
     {
         CPP_TAILQ_INIT(&m_fdset_);
     }
@@ -169,8 +171,6 @@ public:
 
     virtual void Add(StEventItem *item)
     {
-        TODO_INTO();
-
         if (CPP_TAILQ_EMPTY(&m_fdset_))
         {
             CPP_TAILQ_INIT(&m_fdset_);
@@ -181,8 +181,6 @@ public:
 
     virtual void Add(StEventItemQueue *fdset)
     {
-        TODO_INTO();
-
         if (CPP_TAILQ_EMPTY(&m_fdset_))
         {
             CPP_TAILQ_INIT(&m_fdset_);
@@ -196,6 +194,7 @@ public:
         return m_parent_;
     }
 
+    // 判断类型
     inline bool IsDaemon(void)
     {
         return (eDAEMON == m_type_);
@@ -279,13 +278,13 @@ protected:
     int64_t         m_wakeup_time_;
     Stack           *m_stack_;       // 堆栈信息
     void            *m_private_;
-    StClosure         *m_callback_;    // 启动函数
+    StClosure       *m_callback_;    // 启动函数
 
 public:
-    StEventItemQueue   m_fdset_;
-    StEventItemeQueue  m_sub_threadlist_;    // 子线程
-    StThreadItem       *m_parent_;           // 父线程
-    StThreadItemNext   m_next_, m_sub_next_;
+    StEventItemQueue    m_fdset_;
+    StThreadItemQueue   m_sub_threadlist_;    // 子线程
+    StThreadItem        *m_parent_;           // 父线程
+    StThreadItemNext    m_next_, m_sub_next_;
     uint32_t            m_stack_size_;
     char                m_name_[64];
 };
@@ -307,21 +306,24 @@ public:
 
     virtual int32_t InputNotify()
     {
-        LOG_TRACE("InputNotify ###, thread: %p", m_thread_);
+        LOG_TRACE("----------------------------------");
+        LOG_TRACE("InputNotify, thread: %p", m_thread_);
 
         return 0;
     }
 
     virtual int32_t OutputNotify()
     {
-        LOG_TRACE("OutputNotify ###, thread: %p", m_thread_);
+        LOG_TRACE("----------------------------------");
+        LOG_TRACE("OutputNotify, thread: %p", m_thread_);
 
         return 0;
     }
 
     virtual int32_t HangupNotify()
     {
-        LOG_TRACE("HangupNotify ###, thread: %p", m_thread_);
+        LOG_TRACE("----------------------------------");
+        LOG_TRACE("HangupNotify, thread: %p", m_thread_);
 
         return 0;
     }
@@ -394,6 +396,7 @@ public:
         m_type_    = eEVENT_UNDEF;
         m_thread_  = NULL;
 
+        // 从队列中移除
         CPP_TAILQ_REMOVE_SELF(this, m_next_);
     }
 
@@ -407,6 +410,6 @@ public:
     StEventItemNext m_next_;
 };
 
-ST_NAMESPACE_END
+}
 
 #endif

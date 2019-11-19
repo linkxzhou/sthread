@@ -2,15 +2,16 @@
  * Copyright (C) zhoulv2000@163.com
  */
 
-#ifndef _ST_BUFFER_H__
-#define _ST_BUFFER_H__
+#ifndef _ST_BUFFER_H_
+#define _ST_BUFFER_H_
 
 #include "st_util.h"
 #include "st_hash_list.h"
 
-#define ST_BUFFER_BUCKET_SIZE  128
+stlib_namespace_begin
 
-ST_NAMESPACE_BEGIN
+#define ST_BUFFER_BUCKET_SIZE   128
+#define ST_MAX_SIZE             128
 
 class StBuffer;
 
@@ -70,7 +71,7 @@ public:
             return -1;
         }
 
-        ASSERT(m_msg_buf_ != NULL);
+        LOG_ASSERT(m_msg_buf_ != NULL);
         memcpy(m_msg_buf_, buf, len);
         m_msg_len_ = len;
 
@@ -110,8 +111,8 @@ public:
 class StBufferBucket : public StHashKey
 {
 public:
-    StBufferBucket(uint32_t buff_size, uint32_t max_free = 512) : 
-        m_max_buf_size_(buff_size), 
+    StBufferBucket(uint32_t buf_size, uint32_t max_free = 512) : 
+        m_max_buf_size_(buf_size), 
         m_max_free_(max_free), 
         m_queue_num_(0)
     {
@@ -184,11 +185,10 @@ private:
     StBufferQueue   m_queue_;
 };
 
-template<uint32_t MAX_FREE = 128>
 class StBufferPool
 {
 public:
-    explicit StBufferPool(uint32_t max_free = MAX_FREE) : 
+    explicit StBufferPool(uint32_t max_free = ST_MAX_SIZE) : 
         m_max_free_(max_free)
     {
         m_hash_bucket_ = new StHashList<StBufferBucket>(ST_BUFFER_BUCKET_SIZE);
@@ -249,7 +249,6 @@ public:
             {
                 m_hash_bucket_->HashRemove(any_cast<StBufferBucket>(hash_item));
                 st_safe_delete(hash_item);
-
                 LOG_ERROR("hash item: %p, msg_bucket: %p impossible, clean it", 
                     hash_item, _bucket);
                 return NULL;
@@ -306,6 +305,6 @@ private:
     StHashList<StBufferBucket>  *m_hash_bucket_;
 };
 
-ST_NAMESPACE_END
+stlib_namespace_end
 
 #endif

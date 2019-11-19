@@ -3,19 +3,19 @@
 stlib_namespace_using
 
 static const char* g_level_cn[12] = {
-        "EMERG", 
-        "ALERT", 
-        "CRIT", 
-        "ERR", 
-        "WARN", 
-        "NOTICE", 
-        "INFO", 
-        "DEBUG", 
-        "VERB", 
-        "VVERB", 
-        "VVVERB", 
-        "PVERB"
-    };
+    "EMERG", 
+    "ALERT", 
+    "CRIT", 
+    "ERR", 
+    "WARN", 
+    "NOTICE", 
+    "INFO", 
+    "DEBUG", 
+    "VERB", 
+    "VVERB", 
+    "VVVERB", 
+    "PVERB"
+};
 
 StLogger::StLogger()
 {

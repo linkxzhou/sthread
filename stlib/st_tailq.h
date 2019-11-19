@@ -24,8 +24,6 @@
         }                                                                   \
     } while (0)
 
-#endif
-
 #ifndef TAILQ_FOREACH_SAFE
 #define TAILQ_FOREACH_SAFE(var, head, field, tvar)                          \
         for ((var) = TAILQ_FIRST((head));                                   \

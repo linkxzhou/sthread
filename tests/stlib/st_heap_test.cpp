@@ -1,8 +1,9 @@
-#include "../include/st_heap.h"
+#include "stlib/st_heap.h"
+#include "stlib/st_test.h"
 
-ST_NAMESPACE_USING
+using namespace stlib;
 
-class TestHeap : public StHeapEntry
+class TestHeap : public StHeap
 {
 public:
 	virtual int64_t HeapValue()

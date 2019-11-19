@@ -5,7 +5,7 @@
 #ifndef _ST_CLOSURE_H_
 #define _ST_CLOSURE_H_
 
-#define "ucontext/st_def.h"
+#include "ucontext/st_def.h"
 
 stlib_namespace_begin
 

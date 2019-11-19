@@ -6,7 +6,7 @@
 #define _ST_SYS_H_
 
 #include <dlfcn.h>
-#include "st_util.h"
+#include "stlib/st_util.h"
 
 #define RENAME_SYS_FUNC(name) name##_func
 
@@ -19,17 +19,17 @@ extern "C"
 // 为空的情况下调用系统函数
 #define HOOK_SYSCALL(name) do                       \
     {                                               \
-        if (!g_syscall_tab.real_##name)             \
+        if (unlikely(!g_syscall.real_##name))       \
         {                                           \
-            g_syscall_tab.real_##name = (name##_func)dlsym(RTLD_NEXT, #name);   \
-        }                                                                       \
+            g_syscall.real_##name = (name##_func)dlsym(RTLD_NEXT, #name);   \
+        }                                                                   \
     } while (0)
 
 // 调用实际的系统函数
-#define REAL_FUNC(name)      g_syscall_tab.real_##name
-#define SET_HOOK_FLAG()      (g_hook_flag = 1)
-#define UNSET_HOOK_FLAG()    (g_hook_flag = 0)
-#define HOOK_ACTIVE()        (g_hook_flag == 1)
+#define REAL_FUNC(name)      g_syscall.real_##name
+#define SET_HOOK_FLAG()      (g_syscall_flag = 1)
+#define UNSET_HOOK_FLAG()    (g_syscall_flag = 0)
+#define HOOK_ACTIVE()        (g_syscall_flag == 1)
 
 typedef int (*RENAME_SYS_FUNC(socket))(int domain, int type, int protocol);
 
@@ -85,20 +85,20 @@ typedef struct
     RENAME_SYS_FUNC(ioctl)      real_ioctl;
     RENAME_SYS_FUNC(sleep)      real_sleep;
     RENAME_SYS_FUNC(accept)     real_accept;
-} SyscallCallbackTab;
+} SyscallCallback;
 
 typedef struct
 {
-    int     sock_flag;
-    int     read_timeout;
-    int     write_timeout;
-} HookFd;
+    int sock_flag;
+    int read_timeout;
+    int write_timeout;
+} SyscallFd;
 
-extern SyscallCallbackTab   g_syscall_tab;
-extern int                  g_hook_flag;
+extern SyscallCallback      g_syscall;
+extern int                  g_syscall_flag;
 extern uint64_t             g_st_threadid;
 
-HookFd* st_find_fd(int fd);
+SyscallFd* st_find_fd(int fd);
 
 void st_new_fd(int fd);
 

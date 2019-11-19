@@ -50,7 +50,7 @@ public:
     {
         return ucontext;
     }
-    void SetStatus(thread_status _status)
+    void SetState(thread_status _status)
     {
         this->_status = _status;
     }

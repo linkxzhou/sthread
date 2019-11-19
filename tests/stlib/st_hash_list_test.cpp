@@ -1,6 +1,7 @@
-#include "../include/st_hash_list.h"
+#include "stlib/st_hash_list.h"
+#include "stlib/st_test.h"
 
-ST_NAMESPACE_USING
+using namespace stlib;
 
 typedef StHashList<> HT;
 

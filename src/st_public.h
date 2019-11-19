@@ -21,23 +21,16 @@
 #include <vector>
 #include <errno.h>
 #include <unistd.h>
-#include "st_test.h"
+#include "stlib/st_test.h"
 
-#define ST_NAMESPACE_BEGIN  namespace sthread {
-#define ST_NAMESPACE_END    }
-#define ST_NAMESPACE_USING  using namespace sthread;
-
-// eThreadType : thread的类型
 typedef enum
 {
     eNORMAL          = 0x1, // 通用的
     ePRIMORDIAL      = 0x2, // 主thread
     eDAEMON          = 0x3, // 调度thread
-    eSUB_THREAD      = 0x4, // 孩子thread
+    eSUB_THREAD      = 0x4, // 子thread
 } eThreadType;
 
-
-// eThreadFlag : 所在线程的列表类型
 typedef enum
 {
     eNOT_INLIST  = 0x0,
@@ -49,7 +42,6 @@ typedef enum
     eSUB_LIST    = 0x20, // 子线程
 } eThreadFlag;
 
-// eThreadState : 线程状态
 typedef enum
 {
     eINITIAL    = 0x0, // 初始化

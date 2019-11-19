@@ -2,8 +2,8 @@
     user : zhoulv2000@163.com
 */
 
-#ifndef _ST_UCONTEXT_H_
-#define _ST_UCONTEXT_H_
+#ifndef _ST_UCONTEXT_C_H_
+#define _ST_UCONTEXT_C_H_
 
 #if defined(__sun__)
 #	define __EXTENSIONS__ 1 /* SunOS */
@@ -14,18 +14,19 @@
 #	endif
 #endif
 
-#define USE_UCONTEXT 1
+#define _UCONTEXT 1
 
 #if defined(__OpenBSD__) || defined(__mips__)
-#undef USE_UCONTEXT
-#define USE_UCONTEXT 0
+#undef _UCONTEXT
+#define _UCONTEXT 0
 #endif
 
 #if defined(__APPLE__)
 #include <AvailabilityMacros.h>
 #if defined(MAC_OS_X_VERSION_10_5)
-#undef USE_UCONTEXT
-#define USE_UCONTEXT 0
+#pragma message("MAC_OS_X_VERSION_10_5 activated!") 
+#undef _UCONTEXT
+#define _UCONTEXT 0
 #endif
 #endif
 
@@ -42,7 +43,6 @@
 #include <signal.h>
 
 #if _UCONTEXT
-#warning "_UCONTEXT"
 #include <ucontext.h>
 #endif
 

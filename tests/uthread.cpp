@@ -21,12 +21,12 @@ void u_thread::star_routine()
     assert(current_uthread);
     
     //回到Scheduler::uthread_create
-    current_uthread->SetStatus(ACTIVED);
+    current_uthread->SetState(ACTIVED);
     ucontext_t &cur_context = current_uthread->GetContext();
     swapcontext(&cur_context,&Scheduler::ucontext);
     
     current_uthread->rable->main_routine();
-    current_uthread->SetStatus(DIE);
+    current_uthread->SetState(DIE);
 }
 void Scheduler::scheduler_init()
 {
@@ -81,7 +81,7 @@ void Scheduler::schedule()
             if(now >= its->second)
             {    
                 u_thread *uthread = its->first;
-                uthread->SetStatus(ACTIVED);
+                uthread->SetState(ACTIVED);
                 activeList.push_back(uthread);
                 sleepList.erase(its);
                 break;
@@ -125,7 +125,7 @@ void Scheduler::sleep(uthread_id utid,int t)
     sleepList.push_back(std::make_pair(threads[utid],now));
     
     //保存当前上下文切换回scheduler
-    threads[utid]->SetStatus(SLEEP);
+    threads[utid]->SetState(SLEEP);
     ucontext_t &cur_context = threads[utid]->GetContext();
     swapcontext(&cur_context,&Scheduler::ucontext);
 }

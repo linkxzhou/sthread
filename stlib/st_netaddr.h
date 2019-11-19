@@ -56,7 +56,7 @@ public:
         he = ::gethostbyname(hostname);
         if (he != NULL)
         {
-            ASSERT(he->h_addrtype == AF_INET && he->h_length == sizeof(uint32_t));
+            LOG_ASSERT(he->h_addrtype == AF_INET && he->h_length == sizeof(uint32_t));
             m_addr_.sin_addr = *reinterpret_cast<struct in_addr*>(he->h_addr);
         }
         else
@@ -122,13 +122,13 @@ public:
 
         if (!m_isipv6_)
         {
-            ASSERT(size >= INET_ADDRSTRLEN);
+            LOG_ASSERT(size >= INET_ADDRSTRLEN);
             const struct sockaddr_in *addr4 = static_cast<const struct sockaddr_in*>(&m_addr_);
             ::inet_ntop(AF_INET, &addr4->sin_addr, buf, static_cast<socklen_t>(size));
         }
         else
         {
-            ASSERT(size >= INET6_ADDRSTRLEN);
+            LOG_ASSERT(size >= INET6_ADDRSTRLEN);
             const struct sockaddr_in6 *addr6 = static_cast<const struct sockaddr_in6*>(&m_addr6_);
             ::inet_ntop(AF_INET6, &addr6->sin6_addr, buf, static_cast<socklen_t>(size));
         }
