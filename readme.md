@@ -1,4 +1,4 @@
-mthread
+sthread
 ---
 
 # 简介

@@ -17,12 +17,8 @@ endif
 CC = g++
 INC = -I. -I./ucontext
 
-all: $(BINARY) 
+all: $(BINARY)
 	@rm -rf *.o
-
-%.o: %.cpp
-	@echo -e Compiling $(GREEN)$<$(RESET) ...$(RED)
-	@$(CC) $(C_ARGS) -c -o $@ $< $(INC) $(CRESET)
 
 %.o: %.c
 	@echo -e Compiling $(GREEN)$<$(RESET) ...$(RED)
@@ -43,7 +39,7 @@ LIBO = st_ucontext.o st_log.o st_test.o st_asm.o
 
 libst.a: $(LIBO)
 	@echo -e Linking $(CYAN)$@$(RESET) ...$(RED)
-	@-rm -f $@ 
+	@rm -f $@
 	@ar crs $@ $^ $(CRESET)
 	@chmod +x $@
 	@mv libst.a ./lib/

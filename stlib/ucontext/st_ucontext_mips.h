@@ -1,13 +1,10 @@
-/* Copyright (c) 2005-2006 Russ Cox, MIT; see COPYRIGHT 
-    user : zhoulv2000@163.com
-*/
+/* Copyright (c) 2005-2006 Russ Cox, MIT; see COPYRIGHT */
 
 #ifndef _ST_UCONTEXT_H_
 #define _ST_UCONTEXT_H_
 
 #ifdef __cplusplus
-extern "C" 
-{
+extern "C" {
 #endif
 
 typedef unsigned long ulong;
@@ -20,8 +17,8 @@ typedef long long vlong;
 typedef struct mcontext mcontext_t;
 typedef struct ucontext ucontext_t;
 
-extern	int		swapcontext(ucontext_t*, const ucontext_t*);
-extern	void	makecontext(ucontext_t*, void(*)(), int, ...);
+extern int swapcontext(ucontext_t *, const ucontext_t *);
+extern void makecontext(ucontext_t *, void (*)(), int, ...);
 
 /*
  * Copyright (c) 1992, 1993
@@ -59,42 +56,40 @@ extern	void	makecontext(ucontext_t*, void(*)(), int, ...);
  * $FreeBSD: src/sys/mips/include/ucontext.h,v 1.2 2010/01/10 19:50:24 imp Exp $
  */
 
-struct	mcontext 
-{
-	/*
-	 * These fields must match the corresponding fields in struct 
-	 * sigcontext which follow 'sc_mask'. That way we can support
-	 * struct sigcontext and ucontext_t at the same time.
-	 */
-	int		mc_onstack;		/* sigstack state to restore */
-	int		mc_pc;			/* pc at time of signal */
-	int		mc_regs[32];	/* processor regs 0 to 31 */
-    int		sr;             /* status register */
-    int		mullo, mulhi;	/* mullo and mulhi registers... */
-	int		mc_fpused;		/* fp has been used */
-	int		mc_fpregs[33];	/* fp regs 0 to 31 and csr */
-	int		mc_fpc_eir;		/* fp exception instruction reg */
-	void	*mc_tls;		/* pointer to TLS area */
-	int	__spare__[8];		/* XXX reserved */ 
+struct mcontext {
+  /*
+   * These fields must match the corresponding fields in struct
+   * sigcontext which follow 'sc_mask'. That way we can support
+   * struct sigcontext and ucontext_t at the same time.
+   */
+  int mc_onstack;    /* sigstack state to restore */
+  int mc_pc;         /* pc at time of signal */
+  int mc_regs[32];   /* processor regs 0 to 31 */
+  int sr;            /* status register */
+  int mullo, mulhi;  /* mullo and mulhi registers... */
+  int mc_fpused;     /* fp has been used */
+  int mc_fpregs[33]; /* fp regs 0 to 31 and csr */
+  int mc_fpc_eir;    /* fp exception instruction reg */
+  void *mc_tls;      /* pointer to TLS area */
+  int __spare__[8];  /* XXX reserved */
 };
 
-struct ucontext 
-{
-	/*
-	 * Keep the order of the first two fields. Also,
-	 * keep them the first two fields in the structure.
-	 * This way we can have a union with struct
-	 * sigcontext and ucontext_t. This allows us to
-	 * support them both at the same time.
-	 * note: the union is not defined, though.
-	 */
-	sigset_t	uc_sigmask;
-	mcontext_t	uc_mcontext;
+struct ucontext {
+  /*
+   * Keep the order of the first two fields. Also,
+   * keep them the first two fields in the structure.
+   * This way we can have a union with struct
+   * sigcontext and ucontext_t. This allows us to
+   * support them both at the same time.
+   * note: the union is not defined, though.
+   */
+  sigset_t uc_sigmask;
+  mcontext_t uc_mcontext;
 
-	struct __ucontext *uc_link;
-	stack_t		uc_stack;
-	int		    uc_flags;
-	int		    __spare__[4];
+  struct __ucontext *uc_link;
+  stack_t uc_stack;
+  int uc_flags;
+  int __spare__[4];
 };
 
 #ifdef __cplusplus

@@ -1,10 +1,10 @@
 CLANG = g++
 
-COMM_DIR = ../..
+COMM_DIR = ..
 COMM_LIB = $(COMM_DIR)/stlib/lib/libst.a
 
 INCLUDE = -I$(COMM_DIR)/ -I. -I$(COMM_DIR)/stlib
-SRC = ../../src
+SRC = ../src
 
 DEBUG = -g2 -DTRACE
 FLAGS = -lpthread -ltcmalloc -lprofiler -ldl \
@@ -12,8 +12,8 @@ FLAGS = -lpthread -ltcmalloc -lprofiler -ldl \
 	-Wno-deprecated-declarations $(DEBUG) \
 	-fsanitize=address -fno-omit-frame-pointer
 
-hash_list:
-	$(CLANG) st_hash_list_test.cpp \
+stlib_hash_list:
+	$(CLANG) st_hash_list_test.cc \
 		$(INCLUDE) $(COMM_LIB) \
 		$(FLAGS) -o st_hash_list_test
 

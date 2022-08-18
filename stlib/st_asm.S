@@ -1,6 +1,5 @@
 /*******************************************************
     Copyright (c) 2005-2006 Russ Cox, MIT; see COPYRIGHT 
-    user : zhoulv2000@163.com
 *******************************************************/
 
 #if defined(__FreeBSD__) && defined(__i386__) && __FreeBSD__ < 5
