@@ -13,8 +13,8 @@ static StExecClientConnection *_get_conn(struct sockaddr_in *dst, int32_t &sock,
                                          eConnType type) {
   StNetAddress addr(*dst);
   StExecClientConnection *conn =
-      GetInstance<StConnectionManager<StExecClientConnection>>()->AllocPtr(
-          type, &addr);
+      Instance<StConnectionManager<StExecClientConnection>>()->AllocPtr(type,
+                                                                        &addr);
   if (NULL == conn) {
     LOG_ERROR("get connection failed, dst[%p]", dst);
     return NULL;
@@ -24,7 +24,7 @@ static StExecClientConnection *_get_conn(struct sockaddr_in *dst, int32_t &sock,
   LOG_TRACE("osfd: %d", osfd);
   if (osfd < 0) {
     LOG_ERROR("create socket failed, ret[%d]", osfd);
-    // GetInstance<
+    // Instance<
     //     StConnectionManager<StExecClientConnection>
     // >()->FreePtr(conn);
     return NULL;
@@ -147,7 +147,7 @@ UDP_SENDRECV_EXIT_LABEL:
 
   // 释放连接
   if (conn != NULL) {
-    // GetInstance<
+    // Instance<
     //     StConnectionManager<StClientConnection>
     // >()->FreePtr(conn);
   }
@@ -237,4 +237,4 @@ void *st_get_private() {
   return NULL;
 }
 
-void st_set_hook_flag() { GetInstance<Manager>()->SetHookFlag(); }
+void st_set_hook_flag() { Instance<Manager>()->SetHookFlag(); }

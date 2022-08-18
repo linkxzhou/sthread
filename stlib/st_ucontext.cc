@@ -123,9 +123,8 @@ void makecontext(ucontext_t *uc, void (*fn)(void), int argc, ...) {
 
 #ifdef NEEDSWAPCONTEXT
 int swapcontext(ucontext_t *oucp, const ucontext_t *ucp) {
-  if (0 == getcontext(oucp)) {
+  if (0 == getcontext(oucp))
     setcontext(ucp);
-  }
   return 0;
 }
 #endif

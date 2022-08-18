@@ -5,11 +5,9 @@
 #ifndef _ST_CONNECTION_H__
 #define _ST_CONNECTION_H__
 
-#include "st_base.h"
-#include "st_buffer.h"
-#include "st_heap_timer.h"
-#include "st_manager.h"
-#include "st_util.h"
+#include "stlib/st_buffer.h"
+#include "stlib/st_heap_timer.h"
+#include "stlib/st_util.h"
 
 using namespace stlib;
 
@@ -18,30 +16,31 @@ public:
   StConnection()
       : m_type_(eUNDEF_CONN), m_osfd_(-1), m_timeout_(30000), m_sendbuf_(NULL),
         m_recvbuf_(NULL), m_item_(NULL) {
-    m_recvbuf_ = GetInstance<StBufferPool<>>()->GetBuffer(ST_SENDRECV_BUFFSIZE);
-    m_sendbuf_ = GetInstance<StBufferPool<>>()->GetBuffer(ST_SENDRECV_BUFFSIZE);
+    m_recvbuf_ = Instance<StBufferPool<>>()->GetBuffer(ST_RECV_BUFFSIZE);
+    m_sendbuf_ = Instance<StBufferPool<>>()->GetBuffer(ST_SEND_BUFFSIZE);
   }
 
-  virtual ~StConnection() { this->Reset(); }
+  virtual ~StConnection() {
+    this->Close();
+    this->Reset();
+  }
 
-  virtual int32_t CreateSocket(const StNetAddress &addr) { return -1; }
+  virtual int32_t Create(const StNetAddr &addr) { return -1; }
 
-  inline void CloseSocket() {
+  void Close() {
     if (m_osfd_ > 0) {
-      st_close(m_osfd_);
+      __close(m_osfd_);
       m_osfd_ = -1;
     }
   }
 
-  inline void SetAddr(const StNetAddress &addr) { m_addr_ = addr; }
+  inline void SetAddr(const StNetAddr &addr) { m_addr_ = addr; }
 
-  inline StNetAddress &GetAddr() { return m_addr_; }
+  inline StNetAddr &GetAddr() { return m_addr_; }
 
-  inline void SetDestAddr(const StNetAddress &destaddr) {
-    m_destaddr_ = destaddr;
-  }
+  inline void SetDestAddr(const StNetAddr &destaddr) { m_destaddr_ = destaddr; }
 
-  inline StNetAddress &GetDestAddr() { return m_destaddr_; }
+  inline StNetAddr &GetDestAddr() { return m_destaddr_; }
 
   inline void SetOsfd(int fd) { m_osfd_ = fd; }
 
@@ -57,8 +56,8 @@ public:
   inline int32_t GetTimeout() { return m_timeout_; }
 
   virtual void Reset() {
-    GetInstance<StBufferPool<>>()->FreeBuffer(m_sendbuf_);
-    GetInstance<StBufferPool<>>()->FreeBuffer(m_recvbuf_);
+    Instance<StBufferPool<>>()->FreeBuffer(m_sendbuf_);
+    Instance<StBufferPool<>>()->FreeBuffer(m_recvbuf_);
 
     m_osfd_ = -1;
     m_sendbuf_ = NULL;
@@ -79,68 +78,58 @@ public:
   int32_t RecvData();
 
   // 处理操作
-  virtual int32_t HandleOutput(void *buf, int32_t &len) { return 0; }
+  virtual int32_t DoOutput(void *buf, int32_t &len) { return 0; }
 
-  virtual int32_t HandleInput(void *buf, int32_t len) { return 0; }
+  virtual int32_t DoInput(void *buf, int32_t len) { return 0; }
 
-  virtual int32_t HandleProcess() { return 0; }
+  virtual int32_t DoProcess() { return 0; }
 
-  virtual int32_t HandleError(int32_t err) { return 0; }
+  virtual int32_t DoError(int32_t err) { return 0; }
 
 protected:
   int m_osfd_;
   StBuffer *m_sendbuf_, *m_recvbuf_;
-  StNetAddress m_addr_, m_destaddr_;
+  StNetAddr m_addr_, m_destaddr_;
   eConnType m_type_;
   int32_t m_timeout_;
   StEventSuper *m_item_;
 };
 
-template <class StEventSuperT> class StServerConnection : public StConnection {
+template <class ConnectionT>
+class StClientConnection : public StConnection, public StTimer {
 public:
-  typedef StEventSuperT ServerStEventSuperT;
-
-  StServerConnection() : StConnection() {}
-};
-
-template <class StEventSuperT>
-class StClientConnection : public StConnection, public StTimerEntry {
-public:
-  typedef StEventSuperT ClientStEventSuperT;
-
   StClientConnection() : StConnection() {}
 
-  virtual int32_t CreateSocket(const StNetAddress &addr) {
+  virtual int32_t Create(const StNetAddr &addr) {
     m_destaddr_ = addr;
 
     int protocol = SOCK_STREAM;
     if (IS_UDP_CONN(m_type_)) {
       protocol = SOCK_DGRAM;
     }
-    m_osfd_ = st_socket(addr.IsIPV6() ? AF_INET6 : AF_INET, protocol, 0);
+
+    m_osfd_ = __socket(addr.IsIPV6() ? AF_INET6 : AF_INET, protocol, 0);
     LOG_TRACE("m_osfd_: %d", m_osfd_);
     if (m_osfd_ < 0) {
       LOG_ERROR("create socket failed, ret[%d]", m_osfd_);
       return -1;
     }
 
-    m_item_ = GetInstance<UtilPtrPool<ClientStEventSuperT>>()->AllocPtr();
+    m_item_ = Instance<UtilPtrPool<ConnectionT>>()->AllocPtr();
     ASSERT(m_item_ != NULL);
 
     m_item_->SetOsfd(m_osfd_);
     m_item_->EnableOutput();
     m_item_->DisableInput();
-    GlobalEventScheduler()->Add(m_item_);
+    GlobalEventScheduler()->Add(m_item_); // TODO:
 
     if (IS_TCP_CONN(m_type_)) {
-      int32_t rc = OpenConnect(addr);
+      int32_t rc = Connect(addr);
       if (rc < 0) {
         LOG_ERROR("connect error, rc: %d", rc);
-
-        GlobalEventScheduler()->Close(m_item_);
+        GlobalEventScheduler()->Close(m_item_); // TODO:
         UtilPtrPoolFree(m_item_);
-        CloseSocket();
-
+        Close();
         return -2;
       }
     }
@@ -148,25 +137,25 @@ public:
     return m_osfd_;
   }
 
-  virtual int32_t OpenConnect(const StNetAddress &addr) {
+  virtual int32_t Connect(const StNetAddr &addr) {
     struct sockaddr *destaddr;
     addr.GetSockAddr(destaddr);
 
     int32_t err = 0;
     int32_t ret =
-        ::_connect(m_osfd_, destaddr, sizeof(struct sockaddr_in), m_timeout_);
+        __connect(m_osfd_, destaddr, sizeof(struct sockaddr_in), m_timeout_);
     if (ret < 0) {
       err = errno;
       if (err == EISCONN) {
         return 0;
       } else {
         if ((err == EINPROGRESS) || (err == EALREADY) || (err == EINTR)) {
-          LOG_ERROR("open connect not ok, sock: %d, errno: %d, strerr: %s",
-                    m_osfd_, err, strerror(err));
+          LOG_ERROR("connect not ok, sock: %d, errno: %d, strerr: %s", m_osfd_,
+                    err, strerror(err));
           return -1;
         } else {
-          LOG_ERROR("open connect not ok, sock: %d, errno: %d, strerr: %s",
-                    m_osfd_, err, strerror(err));
+          LOG_ERROR("connect not ok, sock: %d, errno: %d, strerr: %s", m_osfd_,
+                    err, strerror(err));
           return -2;
         }
       }
@@ -180,9 +169,9 @@ template <class ConnectionT> class StConnectionManager {
 public:
   typedef ConnectionT *ConnectionTPtr;
 
-  ConnectionTPtr AllocPtr(eConnType type, const StNetAddress *destaddr = NULL,
-                          const StNetAddress *srcaddr = NULL) {
-    StNetAddressKey key;
+  ConnectionTPtr AllocPtr(eConnType type, const StNetAddr *destaddr = NULL,
+                          const StNetAddr *srcaddr = NULL) {
+    StNetAddrKey key;
     if (IS_KEEPLIVE(type) && destaddr != NULL) {
       key.SetDestAddr(*destaddr);
     }
@@ -194,23 +183,21 @@ public:
     ConnectionTPtr conn = NULL;
     // 是否保持状态
     if (IS_KEEPLIVE(type)) {
-      conn = (ConnectionTPtr)(m_StHashList_.HashFindData(&key));
+      conn = (ConnectionTPtr)(m_hashlist_.HashFindData(&key));
     }
 
     if (conn == NULL) {
-      conn = GetInstance<UtilPtrPool<ConnectionT>>()->AllocPtr();
+      conn = Instance<UtilPtrPool<ConnectionT>>()->AllocPtr();
       conn->SetConnType(type);
       if (destaddr != NULL) {
         conn->SetDestAddr(*destaddr);
       }
-
       if (srcaddr != NULL) {
         conn->SetAddr(*srcaddr);
       }
-
       if (IS_KEEPLIVE(type)) {
         key.SetDataPtr((void *)conn);
-        int32_t r = m_StHashList_.HashInsert(&key);
+        int32_t r = m_hashlist_.HashInsert(&key);
         ASSERT(r >= 0);
       }
     }
@@ -222,17 +209,16 @@ public:
   void FreePtr(ConnectionTPtr conn) {
     eConnType type = conn->GetConnType();
     if (IS_KEEPLIVE(type)) {
-      StNetAddressKey key;
+      StNetAddrKey key;
       key.SetDestAddr(conn->GetDestAddr());
       key.SetSrcAddr(conn->GetAddr());
-      m_StHashList_.HashRemove(&key);
+      m_hashlist_.HashRemove(&key);
     }
-
     UtilPtrPoolFree(conn);
   }
 
 private:
-  StHashList<StNetAddressKey> m_StHashList_;
+  StHashList<StNetAddrKey> m_hashlist_;
 };
 
 #endif

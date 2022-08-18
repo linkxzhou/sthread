@@ -11,11 +11,16 @@
 #include "st_sys.h"
 #include "st_util.h"
 
+template <class ConnectionT> class StServerConnection : public StConnection {
+public:
+  StServerConnection() : StConnection() {}
+};
+
 template <class ConnetionT, int ServerT = eTCP_CONN> class StServer {
 public:
   StServer() : m_osfd_(-1), m_item_(NULL) {
     m_osfd_ = -1;
-    m_manager_ = GetInstance<Manager>();
+    m_manager_ = Instance<Manager>();
   }
 
   ~StServer() {
@@ -39,9 +44,8 @@ public:
       return -1;
     }
 
-    m_item_ =
-        GetInstance<UtilPtrPool<typename ConnetionT::ServerStEventSuperT>>()
-            ->AllocPtr();
+    m_item_ = Instance<UtilPtrPool<typename ConnetionT::ServerStEventSuperT>>()
+                  ->AllocPtr();
 
     ASSERT(m_item_ != NULL);
     m_item_->SetOsfd(m_osfd_);
@@ -83,7 +87,7 @@ public:
 
       StNetAddress addr(*((struct sockaddr_in *)&clientaddr));
       StConnection *conn =
-          (StConnection *)(GetInstance<StConnectionManager<ConnetionT>>()
+          (StConnection *)(Instance<StConnectionManager<ConnetionT>>()
                                ->AllocPtr((eConnType)ServerT, &addr));
       conn->SetOsfd(connfd);
       conn->SetDestAddr(addr);
@@ -99,7 +103,7 @@ public:
     ASSERT(manager != NULL);
 
     StEventSuper *item =
-        GetInstance<UtilPtrPool<typename ConnetionT::ServerStEventSuperT>>()
+        Instance<UtilPtrPool<typename ConnetionT::ServerStEventSuperT>>()
             ->AllocPtr();
     ASSERT(item != NULL);
 

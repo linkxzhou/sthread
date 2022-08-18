@@ -57,15 +57,12 @@ public:
     if (!data) {
       return -1;
     }
-
     if (!(m_srcaddr_ == data->m_srcaddr_)) {
       return -2;
     }
-
     if (!(m_destaddr_ == data->m_destaddr_)) {
       return -3;
     }
-
     return 0;
   }
 

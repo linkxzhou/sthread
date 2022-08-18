@@ -42,9 +42,7 @@ libst.a: $(LIBO)
 	@rm -f $@
 	@ar crs $@ $^ $(CRESET)
 	@chmod +x $@
-	@mv libst.a ./lib/
 
 libst.so: $(LIBO)
 	@echo -e Linking $(CYAN)$@$(RESET) ...$(RED)
-	@$(CC) -o $@ $^ -shared $(C_ARGS) -Wl $(CRESET)
-	@mv libst.so ./lib/
+	@$(CC) -o $@ $^ -shared $(C_ARGS) $(CRESET)

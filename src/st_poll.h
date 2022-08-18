@@ -5,10 +5,9 @@
 #ifndef _ST_POLL_H_
 #define _ST_POLL_H_
 
-#include "stlib/st_ucontext/st_ucontext.h"
 #include "stlib/st_util.h"
+#include "stlib/ucontext/st_ucontext.h"
 
-// 选择不同的头文件
 #if defined(__APPLE__) || defined(__OpenBSD__)
 #include "stlib/ucontext/st_kqueue.h"
 #else
@@ -50,7 +49,6 @@ public:
     st_safe_delete(m_callback_);
     st_safe_free(m_private_);
 
-    // TODO : 需要处理(fd全部需要从epoll移除，子线程挂载到daemon线程中)
     CPP_TAILQ_INIT(&m_fdset_);
     CPP_TAILQ_INIT(&m_sub_threadlist_);
     m_parent_ = NULL;
@@ -59,7 +57,7 @@ public:
   }
 
   inline void SetFlag(eThreadFlag flag) {
-    m_flag_ = (eThreadState)(m_flag_ | flag);
+    m_flag_ = (eThreadFlag)(m_flag_ | flag);
   }
 
   inline void UnsetFlag(eThreadFlag flag) {
@@ -74,7 +72,7 @@ public:
 
   inline void SetState(eThreadState state) { m_state_ = state; }
 
-  inline eThreadFlag GetState() { return m_state_; }
+  inline eThreadState GetState() { return m_state_; }
 
   inline void SetCallback(StClosure *callback) { m_callback_ = callback; }
 
@@ -204,21 +202,21 @@ public:
 
   virtual ~StEventItem() { this->Reset(); }
 
-  virtual int32_t InputNotify() {
+  virtual int32_t EvInput() {
     LOG_TRACE("----------------------------------");
-    LOG_TRACE("InputNotify, thread: %p", m_thread_);
+    LOG_TRACE("EvInput, thread: %p", m_thread_);
     return 0;
   }
 
-  virtual int32_t OutputNotify() {
+  virtual int32_t EvOutput() {
     LOG_TRACE("----------------------------------");
-    LOG_TRACE("OutputNotify, thread: %p", m_thread_);
+    LOG_TRACE("EvOutput, thread: %p", m_thread_);
     return 0;
   }
 
-  virtual int32_t HangupNotify() {
+  virtual int32_t EvHangup() {
     LOG_TRACE("----------------------------------");
-    LOG_TRACE("HangupNotify, thread: %p", m_thread_);
+    LOG_TRACE("EvHangup, thread: %p", m_thread_);
     return 0;
   }
 

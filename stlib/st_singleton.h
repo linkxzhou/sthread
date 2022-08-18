@@ -26,7 +26,7 @@ protected:
   ~Singleton() {}
 
 public:
-  static T *GetInstance() {
+  static T *Instance() {
 #if __cplusplus < 201103L
     if (NULL == m_pinstance_) {
       pthread_mutex_lock(&m_mutex_);
@@ -101,7 +101,7 @@ private:                                                                       \
 
 #define IMPLEMENT_SINGLETON(ClassName)
 
-template <typename T> T *GetInstance() { return Singleton<T>::GetInstance(); }
+template <typename T> T *Instance() { return Singleton<T>::Instance(); }
 
 } // namespace stlib
 

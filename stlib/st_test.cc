@@ -20,7 +20,6 @@ StStatus &StStatus::operator=(const StStatus &rhs) {
     delete[] m_state_;
     m_state_ = (rhs.m_state_ == NULL) ? NULL : CopyState(rhs.m_state_);
   }
-
   return *this;
 }
 

@@ -53,12 +53,12 @@ public:
 
   int LogAble(int32_t level);
 
-  void _log(const char *file, int32_t line, int32_t panic, const char *fmt,
-            ...);
+  void __log(const char *file, int32_t line, int32_t level, const char *fmt,
+             ...);
 
-  void _loga(const char *fmt, ...);
+  void __loga(const char *fmt, ...);
 
-  inline static StLogger &GetInstance() {
+  inline static StLogger &Instance() {
     static StLogger logger;
     return logger;
   }
@@ -75,52 +75,52 @@ private:
 
 #define LOG_ERROR(...)                                                         \
   do {                                                                         \
-    if (StLogger::GetInstance().LogAble(LLOG_ALERT) != 0) {                    \
-      StLogger::GetInstance()._log(__FILE__, __LINE__, LLOG_ALERT,             \
-                                   ##__VA_ARGS__);                             \
+    if (StLogger::Instance().LogAble(LLOG_ALERT) != 0) {                       \
+      StLogger::Instance().__log(__FILE__, __LINE__, LLOG_ALERT,               \
+                                 ##__VA_ARGS__);                               \
     }                                                                          \
   } while (0)
 
 #define LOG_WARN(...)                                                          \
   do {                                                                         \
-    if (StLogger::GetInstance().LogAble(LLOG_WARN) != 0) {                     \
-      StLogger::GetInstance()._log(__FILE__, __LINE__, LLOG_WARN,              \
-                                   ##__VA_ARGS__);                             \
+    if (StLogger::Instance().LogAble(LLOG_WARN) != 0) {                        \
+      StLogger::Instance().__log(__FILE__, __LINE__, LLOG_WARN,                \
+                                 ##__VA_ARGS__);                               \
     }                                                                          \
   } while (0)
 
 #define LOG_PANIC(...)                                                         \
   do {                                                                         \
-    if (StLogger::GetInstance().LogAble(LLOG_EMERG) != 0) {                    \
-      StLogger::GetInstance()._log(__FILE__, __LINE__, LLOG_EMERG,             \
-                                   ##__VA_ARGS__);                             \
+    if (StLogger::Instance().LogAble(LLOG_EMERG) != 0) {                       \
+      StLogger::Instance().__log(__FILE__, __LINE__, LLOG_EMERG,               \
+                                 ##__VA_ARGS__);                               \
     }                                                                          \
   } while (0)
 
 #define LOG_DEBUG(...)                                                         \
   do {                                                                         \
-    if (StLogger::GetInstance().LogAble(LLOG_VVVERB) != 0) {                   \
-      StLogger::GetInstance()._log(__FILE__, __LINE__, LLOG_VVVERB,            \
-                                   ##__VA_ARGS__);                             \
+    if (StLogger::Instance().LogAble(LLOG_VVVERB) != 0) {                      \
+      StLogger::Instance().__log(__FILE__, __LINE__, LLOG_VVVERB,              \
+                                 ##__VA_ARGS__);                               \
     }                                                                          \
   } while (0)
 
 #define LOG_TRACE(...)                                                         \
   do {                                                                         \
-    if (StLogger::GetInstance().LogAble(LLOG_PVERB) != 0) {                    \
-      StLogger::GetInstance()._log(__FILE__, __LINE__, LLOG_PVERB,             \
-                                   ##__VA_ARGS__);                             \
+    if (StLogger::Instance().LogAble(LLOG_PVERB) != 0) {                       \
+      StLogger::Instance().__log(__FILE__, __LINE__, LLOG_PVERB,               \
+                                 ##__VA_ARGS__);                               \
     }                                                                          \
   } while (0)
 
 #define LOGA(...)                                                              \
   do {                                                                         \
-    if (StLogger::GetInstance().LogAble(LLOG_PVERB) != 0) {                    \
-      StLogger::GetInstance()._loga(##__VA_ARGS__);                            \
+    if (StLogger::Instance().LogAble(LLOG_PVERB) != 0) {                       \
+      StLogger::Instance().__loga(##__VA_ARGS__);                              \
     }                                                                          \
   } while (0)
 
-#define LOG_LEVEL(level) StLogger::GetInstance().SetLevel(level)
+#define LOG_LEVEL(level) StLogger::Instance().SetLevel(level)
 
 #define LOG_FUNCMARK(cls)                                                      \
   LOG_DEBUG("<<< mark function(%s: %s) >>>", #cls, __FUNCTION__)

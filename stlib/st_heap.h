@@ -59,7 +59,6 @@ public:
   virtual ~StHeapList() {
     // 清理元素的数据
     st_safe_free(m_list_);
-
     m_max_ = 0;
     m_count_ = 0;
   }

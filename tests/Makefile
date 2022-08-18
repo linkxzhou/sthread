@@ -1,7 +1,7 @@
 CLANG = g++
 
 COMM_DIR = ..
-COMM_LIB = $(COMM_DIR)/stlib/lib/libst.a
+COMM_LIB = $(COMM_DIR)/stlib/libst.a
 
 INCLUDE = -I$(COMM_DIR)/ -I. -I$(COMM_DIR)/stlib
 SRC = ../src

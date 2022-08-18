@@ -2,143 +2,213 @@
  * Copyright (C) zhoulv2000@163.com
  */
 
-#ifndef _ST_SYS_H_
-#define _ST_SYS_H_
+#ifndef _ST_MANAGER_H__
+#define _ST_MANAGER_H__
 
+#include "st_public.h"
+#include "st_thread.h"
+#include "stlib/st_heap_timer.h"
 #include "stlib/st_util.h"
-#include <dlfcn.h>
 
-#define RENAME_SYS_FUNC(name) name##_func
+namespace sthread {
 
-// 重写系统函数
+class StSysSchedule {
+public:
+  StSysSchedule()
+      : m_daemon_(NULL), m_primo_(NULL), m_heap_timer_(NULL), m_timeout_(1000) {
+    Init(); // 初始化
+  }
+
+  ~StSysSchedule() {
+    st_safe_delete(m_primo_);
+    st_safe_delete(m_daemon_);
+    st_safe_delete(m_heap_timer_);
+  }
+
+  void Init(int max_num = 1024) {
+    int r = GlobalThreadSchedule()->m_sleep_list_.HeapResize(max_num * 2);
+    ASSERT(r >= 0);
+
+    m_heap_timer_ = new StHeapTimer(max_num * 2);
+    ASSERT(m_heap_timer_ != NULL);
+
+    // 获取一个daemon线程(从线程池中分配)
+    m_daemon_ = new Thread();
+    ASSERT(m_daemon_ != NULL);
+
+    m_daemon_->SetType(eDAEMON);
+    m_daemon_->SetState(eRUNABLE);
+    m_daemon_->SetCallback(NewStClosure(StartUp, this));
+    m_daemon_->SetName(THREAD_DAEMON_NAME);
+
+    m_primo_ = new Thread();
+    ASSERT(m_daemon_ != NULL);
+
+    m_primo_->SetType(ePRIMORDIAL);
+    m_primo_->SetState(eRUNNING);
+    m_primo_->SetName(THREAD_PRIMO_NAME);
+
+    GlobalThreadSchedule()->SetDaemonThread(m_daemon_);
+    GlobalThreadSchedule()->SetPrimoThread(m_primo_);
+    GlobalThreadSchedule()->SetActiveThread(m_primo_); // 设置当前的活动线程
+    m_last_clock_ = Util::TimeMs();
+
+    LOG_TRACE("m_last_clock_: %d", m_last_clock_);
+  }
+
+  inline void UpdateLastClock() { m_last_clock_ = Util::TimeMs(); }
+
+  inline int64_t GetLastClock() { return m_last_clock_; }
+
+  inline StHeapTimer *GetStHeapTimer() { return m_heap_timer_; }
+
+  inline void CheckExpired() {
+    int32_t count = 0;
+    if (NULL != m_heap_timer_) {
+      count = m_heap_timer_->CheckExpired();
+    }
+    LOG_TRACE("CheckExpired count: %d", count);
+  }
+
+  inline int64_t GetTimeout() {
+    Thread *thread =
+        dynamic_cast<Thread *>(GlobalThreadSchedule()->m_sleep_list_.HeapTop());
+
+    int64_t now = GetLastClock();
+    if (!thread) {
+      return m_timeout_;
+    } else if (thread->GetWakeupTime() < now) {
+      return 0;
+    } else {
+      return (int64_t)(thread->GetWakeupTime() - now);
+    }
+  }
+
+  int WaitEvents(int fd, int events, int timeout) {
+    int64_t start = GetLastClock();
+    Thread *thread = (Thread *)(GlobalThreadSchedule()->GetActiveThread());
+
+    int64_t now = 0;
+    timeout = (timeout <= -1) ? 0x7fffffff : timeout;
+
+    while (true) {
+      now = GetLastClock();
+      if ((int)(now - start) > timeout) {
+        LOG_TRACE("timeout is over");
+        errno = ETIME;
+        return -1;
+      }
+
+      StEventSuper *item = GlobalEventScheduler()->GetEventItem(fd);
+      if (NULL == item) {
+        LOG_TRACE("item is NULL");
+        return -2;
+      }
+
+      item->SetOwnerThread(thread);
+
+      if (events & ST_READABLE) {
+        item->EnableInput();
+      }
+
+      if (events & ST_WRITEABLE) {
+        item->EnableOutput();
+      }
+
+      int64_t wakeup_timeout = timeout + GetLastClock();
+      bool rc =
+          GlobalEventScheduler()->Schedule(thread, NULL, item, wakeup_timeout);
+      if (!rc) {
+        LOG_ERROR("item schedule failed, errno: %d, strerr: %s", errno,
+                  strerror(errno));
+        // 释放item数据
+        UtilPtrPoolFree(item);
+        return -3;
+      }
+
+      if (item->GetRecvEvents() > 0) {
+        return 0;
+      }
+    }
+  }
+
+  Thread *CreateThread(StClosure *StClosure, bool runable = true) {
+    Thread *thread = AllocThread();
+    if (NULL == thread) {
+      LOG_ERROR("alloc thread failed");
+      return NULL;
+    }
+
+    thread->SetCallback(StClosure);
+    if (runable) {
+      GlobalThreadScheduler()->InsertRunable(thread); // 插入运行线程
+    }
+
+    return thread;
+  }
+
+  inline Thread *AllocThread() {
+    return (Thread *)(Instance<UtilPtrPool<Thread>>()->AllocPtr());
+  }
+
+  static void StartUp(StSysSchedule *schedule) {
+    LOG_ASSERT(schedule != NULL);
+    Thread *daemon = schedule->m_daemon_;
+    EventSchedule *event_schedule = GlobalEventSchedule();
+    ThreadSchedule *thread_schedule = GlobalThreadSchedule();
+    if (NULL == daemon || NULL == event_schedule || NULL == thread_schedule) {
+      LOG_ERROR("daemon: %p, event_schedule: %p, thread_schedule: %p", daemon,
+                event_schedule, thread_schedule);
+      return;
+    }
+
+    LOG_TRACE("--------daemon: %p", daemon);
+
+    do {
+      event_schedule->Wait(schedule->GetTimeout());
+      schedule->UpdateLastClock();
+      int64_t now = schedule->GetLastClock();
+      LOG_TRACE("--------[name:%s]--------- : system ms: %ld",
+                GlobalThreadSchedule()->GetActiveThread()->GetName(), now);
+      // 判断sleep的thread
+      thread_schedule->Wakeup(now);
+      schedule->CheckExpired();
+      // 让出线程
+      thread_schedule->Yield(daemon);
+    } while (true);
+  }
+
+public:
+  Thread *m_daemon_, *m_primo_;
+  StHeapTimer *m_heap_timer_;
+  int64_t m_last_clock_, m_timeout_;
+};
+
+} // namespace sthread
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-// 为空的情况下调用系统函数
-#define HOOK_SYSCALL(name)                                                     \
-  do {                                                                         \
-    if (unlikely(!g_syscall.real_##name)) {                                    \
-      g_syscall.real_##name = (name##_func)dlsym(RTLD_NEXT, #name);            \
-    }                                                                          \
-  } while (0)
+int __sendto(int fd, const void *msg, int len, int flags,
+             const struct sockaddr *to, int tolen, int timeout);
 
-// 调用实际的系统函数
-#define REAL_FUNC(name) g_syscall.real_##name
-#define SET_HOOK_FLAG() (g_syscall_flag = 1)
-#define UNSET_HOOK_FLAG() (g_syscall_flag = 0)
-#define HOOK_ACTIVE() (g_syscall_flag == 1)
+int __recvfrom(int fd, void *buf, int len, int flags, struct sockaddr *from,
+               socklen_t *fromlen, int timeout);
 
-typedef int (*RENAME_SYS_FUNC(socket))(int domain, int type, int protocol);
+int __connect(int fd, const struct sockaddr *addr, int addrlen, int timeout);
 
-typedef int (*RENAME_SYS_FUNC(close))(int fd);
+ssize_t __read(int fd, void *buf, size_t nbyte, int timeout);
 
-typedef int (*RENAME_SYS_FUNC(shutdown))(int fd);
+ssize_t st_write(int fd, const void *buf, size_t nbyte, int timeout);
 
-typedef int (*RENAME_SYS_FUNC(connect))(int socket,
-                                        const struct sockaddr *address,
-                                        socklen_t address_len);
+int __recv(int fd, void *buf, int len, int flags, int timeout);
 
-typedef ssize_t (*RENAME_SYS_FUNC(read))(int fildes, void *buf, size_t nbyte);
+ssize_t __send(int fd, const void *buf, size_t nbyte, int flags, int timeout);
 
-typedef ssize_t (*RENAME_SYS_FUNC(write))(int fildes, const void *buf,
-                                          size_t nbyte);
+void __sleep(int ms);
 
-typedef ssize_t (*RENAME_SYS_FUNC(sendto))(int socket, const void *message,
-                                           size_t length, int flags,
-                                           const struct sockaddr *dest_addr,
-                                           socklen_t dest_len);
-
-typedef ssize_t (*RENAME_SYS_FUNC(recvfrom))(int socket, void *buffer,
-                                             size_t length, int flags,
-                                             struct sockaddr *address,
-                                             socklen_t *address_len);
-
-typedef size_t (*RENAME_SYS_FUNC(send))(int socket, const void *buffer,
-                                        size_t length, int flags);
-
-typedef ssize_t (*RENAME_SYS_FUNC(recv))(int socket, void *buffer,
-                                         size_t length, int flags);
-
-typedef int (*RENAME_SYS_FUNC(setsockopt))(int socket, int level,
-                                           int option_name,
-                                           const void *option_value,
-                                           socklen_t option_len);
-
-typedef int (*RENAME_SYS_FUNC(fcntl))(int fildes, int cmd, ...);
-
-typedef int (*RENAME_SYS_FUNC(ioctl))(int fildes, int request, ...);
-
-typedef int (*RENAME_SYS_FUNC(sleep))(int seconds);
-
-typedef int (*RENAME_SYS_FUNC(accept))(int socket,
-                                       const struct sockaddr *address,
-                                       socklen_t *address_len);
-
-typedef struct {
-  RENAME_SYS_FUNC(socket) real_socket;
-  RENAME_SYS_FUNC(close) real_close;
-  RENAME_SYS_FUNC(shutdown) real_shutdown;
-  RENAME_SYS_FUNC(connect) real_connect;
-  RENAME_SYS_FUNC(read) real_read;
-  RENAME_SYS_FUNC(write) real_write;
-  RENAME_SYS_FUNC(sendto) real_sendto;
-  RENAME_SYS_FUNC(recvfrom) real_recvfrom;
-  RENAME_SYS_FUNC(send) real_send;
-  RENAME_SYS_FUNC(recv) real_recv;
-  RENAME_SYS_FUNC(setsockopt) real_setsockopt;
-  RENAME_SYS_FUNC(fcntl) real_fcntl;
-  RENAME_SYS_FUNC(ioctl) real_ioctl;
-  RENAME_SYS_FUNC(sleep) real_sleep;
-  RENAME_SYS_FUNC(accept) real_accept;
-} SyscallCallback;
-
-typedef struct {
-  int sock_flag;
-  int read_timeout;
-  int write_timeout;
-} SyscallFd;
-
-extern SyscallCallback g_syscall;
-extern int g_syscall_flag;
-extern uint64_t g_st_threadid;
-
-SyscallFd *st_find_fd(int fd);
-
-void st_new_fd(int fd);
-
-void st_free_fd(int fd);
-
-int st_socket(int domain, int type, int protocol);
-
-int st_close(int fd);
-
-int st_showdown(int fd);
-
-int st_connect(int fd, const struct sockaddr *address, socklen_t address_len);
-
-ssize_t st_read(int fd, void *buf, size_t nbyte);
-
-ssize_t st_write(int fd, const void *buf, size_t nbyte);
-
-ssize_t st_sendto(int fd, const void *message, size_t length, int flags,
-                  const struct sockaddr *dest_addr, socklen_t dest_len);
-
-ssize_t st_recvfrom(int fd, void *buffer, size_t length, int flags,
-                    struct sockaddr *address, socklen_t *address_len);
-
-ssize_t st_recv(int fd, void *buffer, size_t length, int flags);
-
-ssize_t st_send(int fd, const void *buf, size_t nbyte, int flags);
-
-int st_setsockopt(int fd, int level, int option_name, const void *option_value,
-                  socklen_t option_len);
-
-int st_fcntl(int fd, int cmd, ...);
-
-int st_ioctl(int fd, uint64_t cmd, ...);
-
-int st_accept(int fd, struct sockaddr *address, socklen_t *address_len);
+int __accept(int fd, struct sockaddr *addr, socklen_t *addrlen);
 
 #ifdef __cplusplus
 }

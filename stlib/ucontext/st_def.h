@@ -71,10 +71,7 @@
 #define ST_WRITEABLE 2 // EPOLLOUT
 #define ST_EVERR 4     // ERR, HUP
 
-#define ST_HOOK_MAX_FD 65535 * 2
-#define ST_FD_FLG_NOUSE 0x0
-#define ST_FD_FLG_INUSE 0x1
-#define ST_FD_FLG_UNBLOCK 0x2
+#define ST_MAX_FD 65535 * 2
 #define ST_LISTEN_LEN 1024
 
 #define ST_DEBUG true
@@ -82,8 +79,12 @@
 #define ST_MAXINT 0x7fffffff
 #define ST_MAXTIME 2177280000
 
-#ifndef ST_SENDRECV_BUFFSIZE
-#define ST_SENDRECV_BUFFSIZE 8192
+#ifndef ST_RECV_BUFFSIZE
+#define ST_RECV_BUFFSIZE 8192
+#endif
+
+#ifndef ST_SEND_BUFFSIZE
+#define ST_SEND_BUFFSIZE 8192
 #endif
 
 #define ST_ALGIN(size) ((size) + (8 - (size) % 8))

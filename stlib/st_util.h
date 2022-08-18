@@ -123,7 +123,9 @@ protected:
 };
 
 template <typename T> void UtilPtrPoolFree(T *ptr) {
-  GetInstance<UtilPtrPool<T>>()->FreePtr(ptr);
+  // clang-format off
+  Instance< UtilPtrPool<T> >()->FreePtr(ptr);
+  // clang-format on
 }
 
 class referenceable {

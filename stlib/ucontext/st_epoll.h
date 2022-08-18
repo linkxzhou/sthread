@@ -24,9 +24,9 @@ typedef struct {
   void *client_data;
 } StFileEvent;
 
-class StApiState {
+class StIOState {
 public:
-  int32_t ApiCreate(int32_t size) {
+  int32_t Create(int32_t size) {
     m_events_ = (struct epoll_event *)malloc(sizeof(struct epoll_event) * size);
     m_file_ = (StFileEvent *)malloc(sizeof(StFileEvent) * size);
     m_fired_ = (StFiredEvent *)malloc(sizeof(StFiredEvent) * size);
@@ -74,7 +74,7 @@ public:
     m_size_ = 0;
   }
 
-  int32_t ApiAddEvent(int32_t fd, int32_t mask) {
+  int32_t AddEvent(int32_t fd, int32_t mask) {
     if (m_file_[fd].mask == mask) {
       return ST_OK;
     }
@@ -99,7 +99,7 @@ public:
     return ST_OK;
   }
 
-  int32_t ApiDelEvent(int32_t fd, int32_t delmask) {
+  int32_t DelEvent(int32_t fd, int32_t delmask) {
     struct epoll_event ee = {0}; /* avoid valgrind warning */
     int32_t mask = m_file_[fd].mask & (~delmask);
 
@@ -127,7 +127,7 @@ public:
     return ST_OK;
   }
 
-  int32_t ApiPoll(struct timeval *tvp = NULL) {
+  int32_t Poll(struct timeval *tvp = NULL) {
     int32_t retval, numevents = 0;
 
     retval = epoll_wait(m_epfd_, m_events_, m_size_,

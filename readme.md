@@ -44,7 +44,7 @@ void func(void *args)
     time_t ttl = 0;
 
     std::vector<int32_t> vc;
-    int ret = GetInstance<DNS>()->dns_lookup(str->c_str(), vc, &ttl);
+    int ret = Instance<DNS>()->dns_lookup(str->c_str(), vc, &ttl);
     if (ret < 0) 
     {
         LOG_ERROR("%s, make dns query failed", str->c_str());
@@ -67,7 +67,7 @@ int main(int argc, char* argv[])
     mt_set_hook_flag();
     mt_set_timeout(200);
 
-    Frame *frame = GetInstance<Frame>();
+    Frame *frame = Instance<Frame>();
 
     // 测试 : 使用协程请求耗时
     LOG_DEBUG("--- start time : %ld", Util::system_ms());

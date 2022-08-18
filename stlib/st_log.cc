@@ -97,8 +97,8 @@ int32_t StLogger::StringLastOf(const char *s, char c) {
   return i;
 }
 
-void StLogger::_log(const char *file, int32_t line, int32_t level,
-                    const char *fmt, ...) {
+void StLogger::__log(const char *file, int32_t line, int32_t level,
+                     const char *fmt, ...) {
   static char buf[LOG_MAX_LEN];
 
   int32_t len, size, errno_save;
@@ -146,7 +146,7 @@ void StLogger::_log(const char *file, int32_t line, int32_t level,
   }
 }
 
-void StLogger::_loga(const char *fmt, ...) {
+void StLogger::__loga(const char *fmt, ...) {
   static char buf[LOG_MAX_LEN];
 
   int32_t len, size, errno_save;

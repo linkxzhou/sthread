@@ -88,20 +88,16 @@ public:
     // 定义两个指针变量
     StBuffer *ptr = NULL;
     StBuffer *temp = NULL;
-
     CPP_TAILQ_FOREACH_SAFE(ptr, &m_queue_, m_next_, temp) {
       CPP_TAILQ_REMOVE(&m_queue_, ptr, m_next_); // 删除对应的数据
       st_safe_delete(ptr);
       m_queue_num_--;
     }
-
-    // 重新初始化
     CPP_TAILQ_INIT(&m_queue_);
   }
 
   StBuffer *GetBuffer() {
     StBuffer *ptr = NULL;
-
     if (!CPP_TAILQ_EMPTY(&m_queue_)) {
       ptr = CPP_TAILQ_FIRST(&m_queue_);
       CPP_TAILQ_REMOVE(&m_queue_, ptr, m_next_);
@@ -109,7 +105,6 @@ public:
     } else {
       ptr = new StBuffer(m_max_buf_size_);
     }
-
     return ptr;
   }
 
@@ -156,7 +151,6 @@ public:
       }
       hash_item = m_hash_bucket_->HashGetFirst();
     }
-
     st_safe_delete(m_hash_bucket_);
   }
 

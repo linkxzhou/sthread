@@ -59,9 +59,9 @@ typedef enum {
 // 规则是最后一位0x1则表示需要保存状态，否则不需要
 typedef enum {
   eUNDEF_CONN = 0x0,                            // 连接错误
-  eUDP_CONN = 0x10,                             // udp 连接
-  eTCP_CONN = 0x20,                             // tcp 短连接
-  eTCP_KEEPLIVE_CONN = (0x10 & KEEPLIVE_VALUE), // keeplive
+  eUDP_CONN = 0x10,                             // UDP 连接
+  eTCP_CONN = 0x20,                             // TCP 短连接
+  eTCP_KEEPLIVE_CONN = (0x10 & KEEPLIVE_VALUE), // KEEPALIVE
   eUDP_UDPSESSION_CONN = (0x20 & KEEPLIVE_VALUE),
 } eConnType;
 
@@ -80,5 +80,12 @@ typedef enum {
 #define eERR_MEMORY_ERROR -11    // 内存异常
 #define eERR_ENCODE_ERROR -12    // encode流程错误
 #define eERR_DEST_ADDR_ERROR -13 // 目标IP异常
+
+#define MEM_PAGE_SIZE 2048
+#define THREAD_DAEMON_NAME "daemon"
+#define THREAD_PRIMO_NAME "primo"
+
+#define GlobalEventSchedule() (Instance<StEventSchedule>())   // 事件调度器
+#define GlobalThreadSchedule() (Instance<StThreadSchedule>()) // 协程调度器
 
 #endif

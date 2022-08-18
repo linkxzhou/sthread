@@ -1,269 +1,450 @@
-/*
- * Copyright (C) zhoulv2000@163.com
- */
-
 #include "st_sys.h"
-#include "st_manager.h"
-#include <stdarg.h>
 
 using namespace sthread;
 
-SyscallCallback g_syscall;
-int g_syscall_flag;
+int __sendto(int fd, const void *msg, int len, int flags,
+             const struct sockaddr *to, int tolen, int timeout) {
+  int64_t start = Util::TimeMs();
+  StThreadItem *thread =
+      (StThreadItem *)(GlobalThreadSchedule()->GetActiveThread());
 
-static SyscallFd g_syscallfd_tab[ST_HOOK_MAX_FD];
+  LOG_TRACE("---------- [name : %s] -----------", thread->GetName());
+  int64_t now = 0;
+  timeout = (timeout <= -1) ? 0x7fffffff : timeout;
 
-SyscallFd *st_find_fd(int fd) {
-  if (unlikely((fd < 0) || (fd >= ST_HOOK_MAX_FD))) {
-    return NULL;
-  }
-  SyscallFd *fd_info = &g_syscallfd_tab[fd];
-  if (fd_info->sock_flag & ST_FD_FLG_INUSE) {
-    return fd_info;
-  } else {
-    return NULL;
-  }
-}
-
-void st_new_fd(int fd) {
-  if (unlikely((fd < 0) || (fd >= ST_HOOK_MAX_FD))) {
-    return;
-  }
-  SyscallFd *fd_info = &g_syscallfd_tab[fd];
-  fd_info->sock_flag = ST_FD_FLG_INUSE;
-  fd_info->read_timeout = 500;  // 设置等待的ms，默认500ms
-  fd_info->write_timeout = 500; // 设置等待的ms，默认500ms
-}
-
-void st_free_fd(int fd) {
-  if (unlikely((fd < 0) || (fd >= ST_HOOK_MAX_FD))) {
-    return;
-  }
-  SyscallFd *fd_info = &g_syscallfd_tab[fd];
-  fd_info->sock_flag = ST_FD_FLG_NOUSE;
-  fd_info->read_timeout = 0;
-  fd_info->write_timeout = 0;
-}
-
-int st_socket(int domain, int type, int protocol) {
-  HOOK_SYSCALL(socket);
-  int fd = REAL_FUNC(socket)(domain, type, protocol);
-  if (fd < 0) {
-    return fd;
-  }
-  // 设置新的FD
-  st_new_fd(fd);
-  // 默认都设置为非阻塞
-  int flags;
-  flags = st_fcntl(fd, F_GETFL, 0);
-  flags |= O_NONBLOCK;
-  st_fcntl(fd, F_SETFL, flags);
-  return fd;
-}
-
-int st_close(int fd) {
-  HOOK_SYSCALL(close);
-  SyscallFd *_fd = st_find_fd(fd);
-  if (!_fd) {
-    return REAL_FUNC(close)(fd);
-  }
-  st_free_fd(fd);
-  return REAL_FUNC(close)(fd);
-}
-
-int st_showdown(int fd) {
-  HOOK_SYSCALL(shutdown);
-  SyscallFd *_fd = st_find_fd(fd);
-  if (!_fd) {
-    return REAL_FUNC(shutdown)(fd);
-  }
-  st_free_fd(fd);
-  return REAL_FUNC(shutdown)(fd);
-}
-
-int st_connect(int fd, const struct sockaddr *address, socklen_t address_len) {
-  HOOK_SYSCALL(connect);
-  SyscallFd *_fd = st_find_fd(fd);
-
-  if (!HOOK_ACTIVE() || !_fd) {
-    return REAL_FUNC(connect)(fd, address, address_len);
-  }
-
-  if (_fd->sock_flag & ST_FD_FLG_UNBLOCK) {
-    return REAL_FUNC(connect)(fd, address, address_len);
-  } else {
-    return ::_connect(fd, address, (int)address_len, _fd->write_timeout);
-  }
-}
-
-ssize_t st_read(int fd, void *buffer, size_t nbyte) {
-  HOOK_SYSCALL(read);
-  SyscallFd *_fd = st_find_fd(fd);
-
-  if (!HOOK_ACTIVE() || !_fd) {
-    return REAL_FUNC(read)(fd, buffer, nbyte);
-  }
-
-  if (_fd->sock_flag & ST_FD_FLG_UNBLOCK) {
-    return REAL_FUNC(read)(fd, buffer, nbyte);
-  } else {
-    return ::_read(fd, buffer, nbyte, _fd->read_timeout);
-  }
-}
-
-ssize_t st_write(int fd, const void *buffer, size_t nbyte) {
-  HOOK_SYSCALL(write);
-  SyscallFd *_fd = st_find_fd(fd);
-  if (!HOOK_ACTIVE() || !_fd) {
-    return REAL_FUNC(write)(fd, buffer, nbyte);
-  }
-  if (_fd->sock_flag & ST_FD_FLG_UNBLOCK) {
-    return REAL_FUNC(write)(fd, buffer, nbyte);
-  } else {
-    return ::_write(fd, buffer, nbyte, _fd->write_timeout);
-  }
-}
-
-ssize_t st_sendto(int fd, const void *buffer, size_t length, int flags,
-                  const struct sockaddr *dest_addr, socklen_t dest_len) {
-  HOOK_SYSCALL(sendto);
-  SyscallFd *_fd = st_find_fd(fd);
-  if (!HOOK_ACTIVE() || !_fd) {
-    return REAL_FUNC(sendto)(fd, buffer, length, flags, dest_addr, dest_len);
-  }
-  if (_fd->sock_flag & ST_FD_FLG_UNBLOCK) {
-    return REAL_FUNC(sendto)(fd, buffer, length, flags, dest_addr, dest_len);
-  } else {
-    return ::_sendto(fd, buffer, (int)length, flags, dest_addr, dest_len,
-                     _fd->write_timeout);
-  }
-}
-
-ssize_t st_recvfrom(int fd, void *buffer, size_t length, int flags,
-                    struct sockaddr *address, socklen_t *address_len) {
-  HOOK_SYSCALL(recvfrom);
-  SyscallFd *_fd = st_find_fd(fd);
-  if (!HOOK_ACTIVE() || !_fd) {
-    return REAL_FUNC(recvfrom)(fd, buffer, length, flags, address, address_len);
-  }
-  if (hook_fd->sock_flag & ST_FD_FLG_UNBLOCK) {
-    return REAL_FUNC(recvfrom)(fd, buffer, length, flags, address, address_len);
-  } else {
-    return ::_recvfrom(fd, buffer, length, flags, address, address_len,
-                       _fd->read_timeout);
-  }
-}
-
-ssize_t st_recv(int fd, void *buffer, size_t length, int flags) {
-  HOOK_SYSCALL(recv);
-  SyscallFd *_fd = st_find_fd(fd);
-  if (!HOOK_ACTIVE() || !_fd) {
-    return REAL_FUNC(recv)(fd, buffer, length, flags);
-  }
-  if (_fd->sock_flag & ST_FD_FLG_UNBLOCK) {
-    return REAL_FUNC(recv)(fd, buffer, length, flags);
-  } else {
-    return ::_recv(fd, buffer, length, flags, _fd->read_timeout);
-  }
-}
-
-ssize_t st_send(int fd, const void *buffer, size_t nbyte, int flags) {
-  HOOK_SYSCALL(send);
-  SyscallFd *_fd = st_find_fd(fd);
-  if (!HOOK_ACTIVE() || !_fd) {
-    return REAL_FUNC(send)(fd, buffer, nbyte, flags);
-  }
-  if (_fd->sock_flag & ST_FD_FLG_UNBLOCK) {
-    return REAL_FUNC(send)(fd, buffer, nbyte, flags);
-  } else {
-    return ::_send(fd, buffer, nbyte, flags, _fd->write_timeout);
-  }
-}
-
-int st_setsockopt(int fd, int level, int option_name, const void *option_value,
-                  socklen_t option_len) {
-  HOOK_SYSCALL(setsockopt);
-  SyscallFd *_fd = st_find_fd(fd);
-  if (!HOOK_ACTIVE() || !_fd) {
-    return REAL_FUNC(setsockopt)(fd, level, option_name, option_value,
-                                 option_len);
-  }
-  if (SOL_SOCKET == level) {
-    struct timeval *val = (struct timeval *)option_value;
-    if (SO_RCVTIMEO == option_name) {
-      _fd->read_timeout = val->tv_sec * 1000 + val->tv_usec / 1000;
-    } else if (SO_SNDTIMEO == option_name) {
-      _fd->write_timeout = val->tv_sec * 1000 + val->tv_usec / 1000;
+  int n = 0;
+  while ((n = st_sendto(fd, msg, len, flags, to, tolen)) < 0) {
+    // 对端关闭
+    if (n == 0) {
+      LOG_ERROR("[n=0]sendto failed, errno: %d, strerr : %s", errno,
+                strerror(errno));
+      return 0;
     }
-  }
-  return REAL_FUNC(setsockopt)(fd, level, option_name, option_value,
-                               option_len);
-}
 
-int st_fcntl(int fd, int cmd, ...) {
-  va_list ap;
-  ::va_start(ap, cmd);
-  void *arg = va_arg(ap, void *);
-  ::va_end(ap);
+    // 判断是否超时
+    now = Util::TimeMs();
+    if ((int)(now - start) > timeout) {
+      errno = ETIME;
+      return -1;
+    }
 
-  HOOK_SYSCALL(fcntl);
-  SyscallFd *_fd = st_find_fd(fd);
-  if (!_fd) {
-    return REAL_FUNC(fcntl)(fd, cmd, arg);
-  }
+    if (errno == EINTR) {
+      continue;
+    }
 
-  if (cmd == F_SETFL) {
-    ::va_start(ap, cmd);
-    int flags = va_arg(ap, int);
-    ::va_end(ap);
+    if ((errno != EAGAIN) && (errno != EWOULDBLOCK)) {
+      LOG_ERROR("sendto failed, errno: %d, strerr : %s", errno,
+                strerror(errno));
+      return -1;
+    }
 
-    if (flags & O_NONBLOCK) {
-      _fd->sock_flag |= ST_FD_FLG_UNBLOCK;
+    StEventSuper *item = GlobalEventSchedule()->GetEventItem(fd);
+    if (item == NULL) {
+      LOG_ERROR("item is NULL, fd: %d", fd);
+      return -2;
+    }
+    item->DisableInput();
+    item->EnableOutput();
+    item->SetOwnerThread(thread);
+    int64_t wakeup_timeout = timeout + Util::TimeMs();
+    if (!(GlobalEventScheduler()->Schedule(thread, NULL, item,
+                                           wakeup_timeout))) {
+      LOG_ERROR("item schedule failed, errno: %d, strerr: %s", errno,
+                strerror(errno));
+      // 释放item数据
+      UtilPtrPoolFree(item);
+      return -3;
     }
   }
 
-  return REAL_FUNC(fcntl)(fd, cmd, arg);
+  return n;
 }
 
-int st_ioctl(int fd, uint64_t cmd, ...) {
-  va_list ap;
-  va_start(ap, cmd);
-  void *arg = va_arg(ap, void *);
-  va_end(ap);
+int _recvfrom(int fd, void *buf, int len, int flags, struct sockaddr *from,
+              socklen_t *fromlen, int timeout) {
+  int64_t start = Util::SysMs();
+  Thread *thread = (Thread *)(GlobalThreadScheduler()->GetActiveThread());
 
-  HOOK_SYSCALL(ioctl);
-  SyscallFd *_fd = st_find_fd(fd);
-  if (!_fd) {
-    return REAL_FUNC(ioctl)(fd, cmd, arg);
+  LOG_TRACE("---------- [name : %s] -----------", thread->GetName());
+  int64_t now = 0;
+  timeout = (timeout <= -1) ? 0x7fffffff : timeout;
+
+  while (true) {
+    now = Util::SysMs();
+    if ((int)(now - start) > timeout) {
+      errno = ETIME;
+      return -1;
+    }
+
+    StEventSuper *item = GlobalEventScheduler()->GetEventItem(fd);
+    if (item == NULL) {
+      LOG_ERROR("item is NULL");
+      return -2;
+    }
+    item->DisableOutput();
+    item->EnableInput();
+    item->SetOwnerThread(thread);
+    int64_t wakeup_timeout = timeout + Util::SysMs();
+    if (!(GlobalEventScheduler()->Schedule(thread, NULL, item,
+                                           wakeup_timeout))) {
+      LOG_ERROR("item schedule failed, errno: %d, strerr: %s", errno,
+                strerror(errno));
+      // 释放item数据
+      UtilPtrPoolFree(item);
+      return -3;
+    }
+
+    int n = st_recvfrom(fd, buf, len, flags, from, fromlen);
+    LOG_TRACE("recvfrom return n: %d, buf: %s, fd: %d, len: %d, flags: %d", n,
+              buf, fd, len, flags);
+    if (n < 0) {
+      if (errno == EINTR) {
+        continue;
+      }
+
+      if ((errno != EAGAIN) && (errno != EWOULDBLOCK)) {
+        LOG_ERROR("recvfrom failed, errno: %d", errno);
+        return -1;
+      }
+    } else if (n == 0) // 对端关闭
+    {
+      LOG_ERROR("[n=0]recvfrom failed, errno: %d", errno);
+      return 0;
+    } else {
+      return n;
+    }
   }
+}
 
-  if (cmd == FIONBIO) {
-    int flags = (arg != NULL) ? *((int *)arg) : 0;
-    if (flags != 0) {
-      _fd->sock_flag |= ST_FD_FLG_UNBLOCK;
+int _connect(int fd, const struct sockaddr *addr, int addrlen, int timeout) {
+  int64_t start = Util::SysMs();
+  Thread *thread = (Thread *)(GlobalThreadScheduler()->GetActiveThread());
+
+  LOG_TRACE("---------- [name : %s] -----------", thread->GetName());
+  int64_t now = 0;
+  timeout = (timeout <= -1) ? 0x7fffffff : timeout;
+
+  int n = 0;
+  while ((n = st_connect(fd, addr, addrlen)) < 0) {
+    LOG_TRACE("connect n: %d, errno: %d, strerror: %s", n, errno,
+              strerror(errno));
+    now = Util::SysMs();
+    LOG_TRACE("now: %ld, start: %ld", now, start);
+    if ((int)(now - start) > timeout) {
+      errno = ETIME;
+      return -1;
+    }
+
+    if (errno == EISCONN) {
+      LOG_WARN("errno = EISCONN");
+      return 0;
+    }
+
+    if (errno == EINTR) {
+      continue;
+    }
+
+    if (!((errno == EAGAIN) || (errno == EINPROGRESS))) {
+      LOG_ERROR("connect failed, errno: %d, strerr: %s", errno,
+                strerror(errno));
+      return -1;
+    }
+
+    StEventSuper *item = GlobalEventScheduler()->GetEventItem(fd);
+    if (item == NULL) {
+      LOG_ERROR("item is NULL");
+      return -2;
+    }
+    item->DisableInput();
+    item->EnableOutput();
+    item->SetOwnerThread(thread);
+    int64_t wakeup_timeout = timeout + Util::SysMs();
+    if (!(GlobalEventScheduler()->Schedule(thread, NULL, item,
+                                           wakeup_timeout))) {
+      LOG_ERROR("item schedule failed, errno: %d, strerr: %s", errno,
+                strerror(errno));
+      // 释放item数据
+      UtilPtrPoolFree(item);
+      return -3;
     }
   }
 
-  return REAL_FUNC(ioctl)(fd, cmd, arg);
+  return n;
 }
 
-int st_accept(int fd, struct sockaddr *address, socklen_t *address_len) {
-  HOOK_SYSCALL(accept);
-  SyscallFd *_fd = st_find_fd(fd);
-  if (!_fd) {
-    return REAL_FUNC(accept)(fd, address, address_len);
+ssize_t _read(int fd, void *buf, size_t nbyte, int timeout) {
+  int64_t start = Util::SysMs();
+  Thread *thread = (Thread *)(GlobalThreadScheduler()->GetActiveThread());
+
+  LOG_TRACE("---------- [name : %s] -----------", thread->GetName());
+  int64_t now = 0;
+  timeout = (timeout <= -1) ? 0x7fffffff : timeout;
+
+  ssize_t n = 0;
+  while ((n = st_read(fd, buf, nbyte)) < 0) {
+    if (n == 0) // 句柄关闭
+    {
+      LOG_ERROR("[n=0]read failed, errno: %d", errno);
+      return 0;
+    }
+
+    now = Util::SysMs();
+    if ((int)(now - start) > timeout) {
+      errno = ETIME;
+      return -1;
+    }
+
+    if (errno == EINTR) {
+      continue;
+    }
+
+    if ((errno != EAGAIN) && (errno != EWOULDBLOCK)) {
+      LOG_ERROR("read failed, errno: %d", errno);
+      return -1;
+    }
+
+    StEventSuper *item = GlobalEventScheduler()->GetEventItem(fd);
+    if (item == NULL) {
+      LOG_ERROR("item is NULL");
+      return -2;
+    }
+    item->DisableOutput();
+    item->EnableInput();
+    item->SetOwnerThread(thread);
+    int64_t wakeup_timeout = timeout + Util::SysMs();
+    if (!(GlobalEventScheduler()->Schedule(thread, NULL, item,
+                                           wakeup_timeout))) {
+      LOG_ERROR("item schedule failed, errno: %d, strerr: %s", errno,
+                strerror(errno));
+      // 释放item数据
+      UtilPtrPoolFree(item);
+      return -3;
+    }
   }
 
-  int at_fd = REAL_FUNC(accept)(fd, address, address_len);
-  st_new_fd(at_fd);
+  return n;
+}
 
-  // 设置为非阻塞
-  if (at_fd > 0) {
-    int flags;
-    flags = st_fcntl(at_fd, F_GETFL, 0);
-    flags |= O_NONBLOCK;
-    st_fcntl(at_fd, F_SETFL, flags);
+ssize_t _write(int fd, const void *buf, size_t nbyte, int timeout) {
+  int64_t start = Util::SysMs();
+  Thread *thread = (Thread *)(GlobalThreadScheduler()->GetActiveThread());
+
+  LOG_TRACE("---------- [name : %s] -----------", thread->GetName());
+  int64_t now = 0;
+  timeout = (timeout <= -1) ? 0x7fffffff : timeout;
+
+  ssize_t n = 0;
+  size_t send_len = 0;
+  while (send_len < nbyte) {
+    now = Util::SysMs();
+    if ((int)(now - start) > timeout) {
+      errno = ETIME;
+      return -1;
+    }
+
+    n = st_write(fd, (char *)buf + send_len, nbyte - send_len);
+    if (n < 0) {
+      if (errno == EINTR) {
+        continue;
+      }
+
+      if ((errno != EAGAIN) && (errno != EWOULDBLOCK)) {
+        LOG_ERROR("write failed, errno: %d", errno);
+        return -1;
+      }
+    } else if (n == 0) // 已经关闭句柄
+    {
+      LOG_ERROR("[n=0]write failed, errno: %d", errno);
+      return 0;
+    } else {
+      send_len += n;
+      if (send_len >= nbyte) {
+        return nbyte;
+      }
+    }
+
+    StEventSuper *item = GlobalEventScheduler()->GetEventItem(fd);
+    if (item == NULL) {
+      LOG_ERROR("item is NULL");
+      return -2;
+    }
+    item->DisableInput();
+    item->EnableOutput();
+    item->SetOwnerThread(thread);
+    int64_t wakeup_timeout = timeout + Util::SysMs();
+    if (!(GlobalEventScheduler()->Schedule(thread, NULL, item,
+                                           wakeup_timeout))) {
+      LOG_ERROR("item schedule failed, errno: %d, strerr: %s", errno,
+                strerror(errno));
+      // 释放item数据
+      UtilPtrPoolFree(item);
+      return -3;
+    }
   }
 
-  return at_fd;
+  return nbyte;
+}
+
+int _recv(int fd, void *buf, int len, int flags, int timeout) {
+  int64_t start = Util::SysMs();
+  Thread *thread = (Thread *)(GlobalThreadScheduler()->GetActiveThread());
+
+  LOG_TRACE("---------- [name: %s] -----------", thread->GetName());
+  int64_t now = 0;
+  timeout = (timeout <= -1) ? 0x7fffffff : timeout;
+
+  while (true) {
+    now = Util::SysMs();
+    LOG_TRACE("now time: %ld, start time: %ld", now, start);
+    if ((int)(now - start) > timeout) {
+      errno = ETIME;
+      return -1;
+    }
+
+    StEventSuper *item = GlobalEventScheduler()->GetEventItem(fd);
+    if (item == NULL) {
+      LOG_ERROR("item is NULL");
+      return -2;
+    }
+    item->DisableOutput();
+    item->EnableInput();
+    item->SetOwnerThread(thread);
+    int64_t wakeup_timeout = timeout + Util::SysMs();
+    if (!(GlobalEventScheduler()->Schedule(thread, NULL, item,
+                                           wakeup_timeout))) {
+      LOG_ERROR("item schedule failed, errno: %d, strerr: %s", errno,
+                strerror(errno));
+      // 释放item数据
+      UtilPtrPoolFree(item);
+      return -3;
+    }
+
+    int n = st_recv(fd, buf, len, flags);
+    LOG_TRACE("recv return n: %d, buf: %s, fd: %d, len: %d, flags: %d", n, buf,
+              fd, len, flags);
+    if (n < 0) {
+      LOG_ERROR("recv failed, errno: %d, strerr: %s", errno, strerror(errno));
+      if (errno == EINTR) {
+        continue;
+      }
+      if ((errno != EAGAIN) && (errno != EWOULDBLOCK)) {
+        return -1;
+      }
+    } else if (n == 0) // 对端关闭连接
+    {
+      LOG_ERROR("[n=0]recv failed, errno: %d, strerr: %s", errno,
+                strerror(errno));
+      return 0;
+    } else {
+      return n;
+    }
+  }
+}
+
+ssize_t _send(int fd, const void *buf, size_t nbyte, int flags, int timeout) {
+  int64_t start = Util::SysMs();
+  Thread *thread = (Thread *)(GlobalThreadScheduler()->GetActiveThread());
+
+  LOG_TRACE("---------- [name : %s] -----------", thread->GetName());
+  int64_t now = 0;
+  timeout = (timeout <= -1) ? 0x7fffffff : timeout;
+
+  ssize_t n = 0;
+  size_t send_len = 0;
+  while (send_len < nbyte) {
+    now = Util::SysMs();
+    if ((int)(now - start) > timeout) {
+      errno = ETIME; // 超时请求
+      return -1;
+    }
+
+    n = st_send(fd, (char *)buf + send_len, nbyte - send_len, flags);
+    LOG_TRACE("send fd: %d, nbyte: %d, send_len: %d, flags: %d, n: %d", fd,
+              nbyte, send_len, flags, n);
+    if (n < 0) {
+      if (errno == EINTR) {
+        continue;
+      }
+
+      if ((errno != EAGAIN) && (errno != EWOULDBLOCK)) {
+        LOG_ERROR("write failed, errno: %d, strerr: %s", errno,
+                  strerror(errno));
+        return -1;
+      }
+    } else if (n == 0) // 对端关闭连接
+    {
+      LOG_ERROR("[n=0]write failed, errno: %d, strerr: %s", errno,
+                strerror(errno));
+      return 0;
+    } else {
+      send_len += n;
+      if (send_len >= nbyte) {
+        LOG_TRACE("send_len : %d", send_len);
+        return nbyte;
+      }
+    }
+
+    StEventSuper *item = GlobalEventScheduler()->GetEventItem(fd);
+    if (item == NULL) {
+      LOG_ERROR("item is NULL");
+      return -2;
+    }
+    item->DisableInput();
+    item->EnableOutput();
+    item->SetOwnerThread(thread);
+    int64_t wakeup_timeout = timeout + Util::SysMs();
+    if (!(GlobalEventScheduler()->Schedule(thread, NULL, item,
+                                           wakeup_timeout))) {
+      LOG_ERROR("item schedule failed, errno: %d, strerr: %s", errno,
+                strerror(errno));
+      // 释放item数据
+      UtilPtrPoolFree(item);
+      return -3;
+    }
+  }
+
+  return nbyte;
+}
+
+void _sleep(int ms) {
+  Thread *thread = (Thread *)(GlobalThreadScheduler()->GetActiveThread());
+  if (thread != NULL) {
+    thread->Sleep(ms);
+    GlobalThreadScheduler()->Sleep(thread);
+  }
+}
+
+int _accept(int fd, struct sockaddr *addr, socklen_t *addrlen) {
+  Thread *thread = (Thread *)(GlobalThreadScheduler()->GetActiveThread());
+
+  int connfd = -1;
+  while ((connfd = st_accept(fd, addr, addrlen)) < 0) {
+    if (errno == EINTR) {
+      continue;
+    }
+
+    if (!((errno == EAGAIN) || (errno == EINPROGRESS))) {
+      LOG_ERROR("accept failed, errno: %d, strerr: %s", errno, strerror(errno));
+      return -1;
+    }
+
+    StEventSuper *item = GlobalEventScheduler()->GetEventItem(fd);
+    if (item == NULL) {
+      LOG_ERROR("item is NULL");
+      return -2;
+    }
+
+    item->DisableOutput();
+    item->EnableInput();
+    item->SetOwnerThread(thread);
+    if (!(GlobalEventScheduler()->Schedule(thread, NULL, item, -1))) {
+      LOG_ERROR("item schedule failed, errno: %d, strerr: %s", errno,
+                strerror(errno));
+      // 释放item数据
+      UtilPtrPoolFree(item);
+      return -3;
+    }
+  }
+
+  return connfd;
 }
