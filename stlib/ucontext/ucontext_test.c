@@ -20,7 +20,7 @@ void fun3(void *arg) {
 void schedule_test() {
   schedule_t *s = uthread_create_schedule();
   int id2 = uthread_create(s, fun2, &s);
-  int id3 = uthread_create(s, fun2, &s);
+  int id3 = uthread_create(s, fun3, &s);
   while (!schedule_finished(s)) {
     uthread_resume(s, id3);
     uthread_resume(s, id2);
