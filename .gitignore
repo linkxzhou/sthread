@@ -6,3 +6,4 @@
 **/libtask
 **/*_test
 **/bazel-*
+**/*.dSYM
