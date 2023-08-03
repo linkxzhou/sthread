@@ -206,7 +206,7 @@ private:
 
     if (s_son != index) {
       this->Swap(index, s_son);
-      this->ReBuildHeap(s_son, len, e); //避免调整之后以max为父节点的子树不是堆
+      this->ReBuildHeap(s_son, len, e); // 避免调整之后以max为父节点的子树不是堆
     }
   }
 

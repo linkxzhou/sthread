@@ -50,17 +50,21 @@ public:
     if (!m_heap_ || !timerable) {
       return false;
     }
+
     int64_t now_ms = Util::TimeMs();
     LOG_TRACE("now_ms + interval = %llu", now_ms + interval);
     timerable->SetExpiredTime(now_ms + interval);
+
     int32_t ret = m_heap_->HeapPush(timerable);
     if (ret < 0) {
       LOG_ERROR("HeapPush ret = %d", ret);
       return false;
     }
+
     if (ST_DEBUG) {
       m_heap_->HeapForeach();
     }
+
     return true;
   }
 
@@ -68,6 +72,7 @@ public:
     if (!m_heap_ || !timerable) {
       return;
     }
+
     m_heap_->HeapDelete(timerable);
     return;
   }
@@ -78,7 +83,8 @@ public:
       return 0;
     }
     int64_t now = Util::TimeMs();
-    LOG_TRACE("before: now_ms = %llu, size = %d", now, m_heap_->HeapSize());
+    LOG_TRACE("[1]now: now_ms = %llu, size = %d", now, m_heap_->HeapSize());
+
     int32_t count = 0;
     StTimer *timer = any_cast<StTimer>(m_heap_->HeapTop());
     while (timer && (timer->GetExpiredTime() <= now)) {
@@ -87,7 +93,7 @@ public:
       timer = any_cast<StTimer>(m_heap_->HeapTop());
       count++;
     }
-    LOG_TRACE("after: size = %d", m_heap_->HeapSize());
+    LOG_TRACE("[2]now: size = %d", m_heap_->HeapSize());
     return count;
   }
 

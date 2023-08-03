@@ -1,6 +1,8 @@
-./scp.sh
-./**/*.a
-./**/*.so
-./**/*.o
-./**/*dSYM
-./**/libtask
+**/scp.sh
+**/*.a
+**/*.so
+**/*.o
+**/*.dSYM
+**/libtask
+**/*_test
+**/bazel-*

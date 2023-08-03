@@ -132,7 +132,7 @@ public:
   }
 
   ~StEventSchedule() {
-    m_iostate_->ApiFree(); // 释放链接
+    m_iostate_->Free(); // 释放链接
     st_safe_delete(m_iostate_);
     st_safe_delete_array(m_event_);
   }

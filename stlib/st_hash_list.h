@@ -94,9 +94,11 @@ public:
     if (!key || !m_buckets_) {
       return ST_ERROR;
     }
+
     if ((key->m_hash_value_ != 0) || (key->m_next_ptr_ != NULL)) {
       return ST_ERROR;
     }
+
     key->m_hash_value_ = key->HashValue();
     int32_t idx = (key->m_hash_value_) % m_max_;
     // 如果为空，初始化m_buckets_
@@ -105,9 +107,9 @@ public:
       m_buckets_[idx]->m_next_ptr_ = NULL;
       m_buckets_[idx]->m_hash_value_ = 0;
     }
+
     pointer _next = any_cast<value_type>(m_buckets_[idx]->m_next_ptr_);
-    LOG_TRACE("m_buckets_ : %p, next_item : %p, idx : %d", m_buckets_, _next,
-              idx);
+    LOG_TRACE("buckets : %p, next : %p, idx : %d", m_buckets_, _next, idx);
     // 第一个元素不存储任何对象，只存储当前开链列表中的list的个数到hash_value_中
     m_buckets_[idx]->m_next_ptr_ = key;
     key->m_next_ptr_ = _next;
@@ -128,11 +130,13 @@ public:
     if (!key || !m_buckets_) {
       return NULL;
     }
+
     uint32_t hash = key->HashValue();
     int32_t idx = hash % m_max_;
     if (NULL == m_buckets_[idx]) {
       return NULL;
     }
+
     pointer item = any_cast<value_type>(m_buckets_[idx]->m_next_ptr_);
     for (; item != NULL; item = any_cast<value_type>(item->m_next_ptr_)) {
       if (item->m_hash_value_ != hash) {
@@ -142,6 +146,7 @@ public:
         break;
       }
     }
+
     return item;
   }
 
@@ -149,20 +154,22 @@ public:
     pointer item = HashFind(key);
     if (!item) {
       return NULL;
-    } else {
-      return item->m_data_ptr_;
     }
+
+    return item->m_data_ptr_;
   }
 
   void HashRemove(pointer key) {
     if (!key || !m_buckets_) {
       return;
     }
+
     uint32_t hash = key->HashValue();
     int32_t idx = hash % m_max_;
     if (NULL == m_buckets_[idx]) {
       return;
     }
+
     pointer prev = m_buckets_[idx];
     pointer item = any_cast<value_type>(prev->m_next_ptr_);
     while (item != NULL) {
@@ -184,6 +191,7 @@ public:
     if (!m_buckets_) {
       return;
     }
+
     for (int32_t i = 0; i < m_max_; i++) {
       pointer item = m_buckets_[i];
       for (; item != NULL; item = item->m_next_ptr_) {
@@ -196,11 +204,13 @@ public:
     if (!m_buckets_) {
       return NULL;
     }
+
     for (int32_t i = 0; i < m_max_; i++) {
       if (m_buckets_[i]) {
         return m_buckets_[i];
       }
     }
+
     return NULL;
   }
 
