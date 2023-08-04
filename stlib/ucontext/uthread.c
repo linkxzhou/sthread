@@ -82,9 +82,10 @@ int uthread_create(schedule_t *schedule, uthread_fun func, void *arg) {
   t->ctx.uc_stack.ss_size = DEFAULT_STACK_SZIE;
   t->ctx.uc_stack.ss_flags = 0;
   t->ctx.uc_link = &(schedule->main);
+
   schedule->running_thread = id;
 
-  makecontext(&(t->ctx), (void (*)(void))(uthread_body), 1, schedule);
+  makecontext(&(t->ctx), (void (*)(void))(uthread_body), 2, schedule, NULL);
   swapcontext(&(schedule->main), &(t->ctx));
 
   return id;

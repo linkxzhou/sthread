@@ -39,8 +39,7 @@ void makecontext(ucontext_t *ucp, void (*func)(void), int argc, ...) {
   va_list va;
 
   memset(&ucp->uc_mcontext, 0, sizeof ucp->uc_mcontext);
-  if (argc != 2)
-    *(int *)0 = 0;
+  assert(argc == 2);
   va_start(va, argc);
   ucp->uc_mcontext.mc_rdi = va_arg(va, int);
   ucp->uc_mcontext.mc_rsi = va_arg(va, int);

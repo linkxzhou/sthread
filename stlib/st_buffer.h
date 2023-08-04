@@ -74,7 +74,6 @@ private:
 public:
   StBufferNext m_next_;
 };
-
 class StBufferBucket : public StHashKey {
 public:
   StBufferBucket(uint32_t buf_size, uint32_t max_free = 512)
@@ -128,7 +127,6 @@ private:
   uint32_t m_max_free_, m_max_buf_size_, m_queue_num_;
   StBufferQueue m_queue_;
 };
-
 class StBufferPool {
 public:
   explicit StBufferPool(uint32_t max_free = ST_MAX_SIZE)
