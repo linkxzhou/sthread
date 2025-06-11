@@ -2,8 +2,6 @@
 **/*.a
 **/*.so
 **/*.o
-**/*.dSYM
 **/libtask
 **/*_test
 **/bazel-*
-**/*.dSYM
