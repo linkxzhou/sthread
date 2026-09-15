@@ -53,7 +53,7 @@ Linux / x86_64 上应能做真实 IO 冒烟（待 CI 或本机验证）。
 
 | 项 | 状态 |
 | --- | --- |
-| L4 keepalive (`eTCP_KEEPLIVE_CONN`) | 未修（按既定） |
+| L4 keepalive (`eTCP_KEEPLIVE_CONN`) | **已修**（`|` + `Keeplive()`） |
 | arm64 真实 `ucontext` / `asm` | **已落地**（`NEEDARM64CONTEXT` + `libthread_makecontext`） |
 | 完整恢复历史 `mt_action` 多路 poll 客户端 | 用精简 `st_action` 替代 |
 | 高并发 1万+ 协程实测 | 待测（底层切换已通） |

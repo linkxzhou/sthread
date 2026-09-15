@@ -5,9 +5,9 @@ LIB = $(ST_ROOT)/libmthread.a
 INCLUDE = $(ST_INC)
 FLAGS = $(ST_CXXFLAGS) $(ST_LDFLAGS) $(ST_LDLIBS)
 
-.PHONY: all clean run singleton base thread manager connection session c main server ucontext
+.PHONY: all clean run singleton base thread manager connection session keepalive c main server ucontext
 
-all: singleton base thread manager connection session main
+all: singleton base thread manager connection session keepalive main
 
 # Network-ish / heavier targets kept separate
 extra: c server
@@ -30,6 +30,9 @@ connection: st_connection_unittest.cpp
 session: st_session_unittest.cpp
 	$(CC) $< $(INCLUDE) $(FLAGS) $(LIB) -o st_session_unittest
 
+keepalive: st_keepalive_unittest.cpp
+	$(CC) $< $(INCLUDE) $(FLAGS) $(LIB) -o st_keepalive_unittest
+
 c: st_c_unittest.cpp
 	$(CC) $< $(INCLUDE) $(FLAGS) $(LIB) -o st_c_unittest
 
@@ -46,7 +49,7 @@ run: all
 	@set -e; \
 	for t in st_singleton_unittest st_base_unittest st_thread_unittest \
 	         st_manager_unittest st_connection_unittest st_session_unittest \
-	         st_main_unittest; do \
+	         st_keepalive_unittest st_main_unittest; do \
 	  echo "=== run $$t ==="; \
 	  ./$$t; \
 	done

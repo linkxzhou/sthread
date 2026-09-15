@@ -75,8 +75,8 @@ public:
     m_timeout_ = 30000;
   }
 
-  // 判断是否支持keeplive
-  inline bool Keeplive() { return false; }
+  // 判断是否支持 keepalive（与 eConnType 末位 0x1 规则一致）
+  inline bool Keeplive() { return IS_KEEPLIVE(m_type_); }
 
   inline StBuffer *GetSendBuffer() { return m_sendbuf_; }
 
@@ -178,7 +178,7 @@ public:
 
 /* 用途：连接池；对 IS_KEEPLIVE 类型用 StHashList 按地址复用。
  * 线程模型：线程局部 Instance 使用。
- * 所有权：AllocPtr/FreePtr 配对。注意：keepalive 当前不可用（L4），勿依赖复用语义。 */
+ * 所有权：AllocPtr/FreePtr 配对；IS_KEEPLIVE 类型按地址走 hash 复用。 */
 template <class ConnectionT> class StConnectionManager {
 public:
   typedef ConnectionT *ConnectionTPtr;
