@@ -18,6 +18,9 @@ private:                                                                       \
   Class(const Class &);                                                        \
   Class &operator=(const Class &);
 
+/* 用途：线程局部单例；Instance<T>() 是其入口。
+ * 线程模型：每 OS 线程一份（pthread_key 析构）；这是「协程不可跨线程」的根源。
+ * 所有权：进程内按线程创建；InstanceDestroy 可显式销毁当前线程实例。 */
 template <class T> class Singleton {
 
 protected:

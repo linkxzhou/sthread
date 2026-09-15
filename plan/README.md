@@ -4,9 +4,14 @@
 
 > 阅读顺序建议：先读本文「关键结论」与「硬约束」，再按「执行顺序」逐份阅读 01～05。
 
-> **进度**：`01` 已实现（`stlib/` 已是绿色基线，根 `makefile` 已存在，D1/D2/D5/D6 已落地）——详见 [`01-foundation-build-style.md` 第 10 节](01-foundation-build-style.md#10-落地记录plan01-实现结果)。`02`～`05` 未开工。
+> **进度**：`01`～`04` 已实现并合入或可开 PR；`05` 文档收尾见本分支。
+> - `01`：stlib 绿基线、根 makefile、D1/D2/D5/D6（COPYRIGHT）——[`01` 第 10 节](01-foundation-build-style.md#10-落地记录plan01-实现结果)
+> - `02`：协程调度可编译（PR #4）
+> - `03`：IO/网络与 `libmthread`（PR #5）
+> - `04`：apps/tests 可编译 + 回归清单（分支 `impl-plan-04-apps-tests`）
+> - `05`：README / AGENTS / 关键类三件套注释（本阶段）
 >
-> 各份文档的正文都保留为当初的计划原文，**没有随实现改写**；只有明显失实的地方补了「实现期更正」，以及决策点补了拍板结果。所以读到「当前……」这类描述时，请以 01 的落地记录为准。
+> 各份 `0x-*.md` 正文多为当初计划原文；读「当前状态」时以 README、AGENTS 与 `04-regression-checklist.md` 为准。
 
 ---
 
@@ -78,10 +83,10 @@
 | 序号 | 文档 | 范围 | 出口条件（Definition of Done） |
 | --- | --- | --- | --- |
 | 01 ✅ | [`01-foundation-build-style.md`](01-foundation-build-style.md) | 构建、目录、C++98、代码风格、libmthread 产物定义 | `stlib` 四个测试在 Linux + macOS 均编译通过并运行通过；`.clang-format` 与 style 约定一致；仓库无新增二进制 |
-| 02 | [`02-coroutine-scheduler.md`](02-coroutine-scheduler.md) | ucontext、`StThreadItem`/`StThread`、`StThreadSchedule`、`StHeap`/`StHeapTimer` | `src/st_thread.cc` 编译通过；协程 create/yield/sleep/wakeup 单测通过 |
-| 03 | [`03-io-multiplexing-net.md`](03-io-multiplexing-net.md) | `StIOState`(epoll/kqueue)、`StEventSchedule`、`StConnection`、`StServer`、sys hook | `libmthread.a` / `libmthread.so` 实际产出；TCP/UDP 回环收发通过 |
-| 04 | [`04-apps-tests-compat.md`](04-apps-tests-compat.md) | `app/st_dns`、`app/st_memcacheclient`、`app/st_wrk`、`tests/` | 三个 app 编译通过；DNS / HTTP 示例可跑；回归清单全绿 |
-| 05 | [`05-docs-agents-readme.md`](05-docs-agents-readme.md) | `readme.md`、代码注释、`AGENTS.md` | readme 示例与真实 API 一致且可复制运行；`AGENTS.md` 生效 |
+| 02 ✅ | [`02-coroutine-scheduler.md`](02-coroutine-scheduler.md) | ucontext、`StThreadItem`/`StThread`、`StThreadSchedule`、`StHeap`/`StHeapTimer` | `src/st_thread.cc` 编译通过；协程 create/yield/sleep/wakeup 单测通过 |
+| 03 ✅ | [`03-io-multiplexing-net.md`](03-io-multiplexing-net.md) | `StIOState`(epoll/kqueue)、`StEventSchedule`、`StConnection`、`StServer`、sys hook | `libmthread.a` / `libmthread.so` 实际产出；TCP/UDP 回环收发通过 |
+| 04 ✅ | [`04-apps-tests-compat.md`](04-apps-tests-compat.md) | `app/st_dns`、`app/st_memcacheclient`、`app/st_wrk`、`tests/` | 三个 app 编译通过；DNS / HTTP 示例可跑；回归清单全绿 |
+| 05 ✅ | [`05-docs-agents-readme.md`](05-docs-agents-readme.md) | `readme.md`、代码注释、`AGENTS.md` | readme 示例与真实 API 一致且可复制运行；`AGENTS.md` 生效 |
 
 ---
 

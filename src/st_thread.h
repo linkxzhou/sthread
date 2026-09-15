@@ -16,6 +16,9 @@ using namespace stlib;
 
 class StThread;
 
+/* 用途：协程调度器——维护 run/io/pend/sleep 队列，负责 Yield/Wakeup/切换。
+ * 线程模型：Instance 线程局部；每 OS 线程一份；协程不可跨线程迁移。
+ * 所有权：惰性创建并持有 daemon/primo；普通 StThread 经 AllocThread/对象池分配。 */
 class StThreadSchedule {
 public:
   StThreadSchedule() : m_active_thread_(NULL), m_daemon_(NULL), m_primo_(NULL) {
@@ -103,6 +106,9 @@ public:
   StThreadItem *m_active_thread_, *m_daemon_, *m_primo_;
 };
 
+/* 用途：事件调度器——fd→StEventItem 索引、与 StIOState（epoll/kqueue）交互、Schedule/Wait。
+ * 线程模型：线程局部单例；m_event_ 容量默认到 m_maxfd_（65535）。
+ * 所有权：持有 StIOState；item 指针不独占所有权（由连接/池管理）。 */
 class StEventSchedule {
 public:
   typedef StEventItem *StEventItemPtr;
@@ -182,6 +188,9 @@ protected:
   StThreadSchedule *m_thread_schedule_;
 };
 
+/* 用途：可切换的协程实现（栈 + ucontext + Run）。
+ * 线程模型：仅在所属 OS 线程的调度器内切换；InitContext 将 Stack* 拆成 ty/tx 再拼回（makecontext 限制）。
+ * 所有权：栈由 malloc；FreeStack 释放；对象本身由 UtilPtrPool<StThread> / 调度器管理。 */
 class StThread : public StThreadItem {
 public:
   StThread() : StThreadItem() {

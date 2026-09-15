@@ -18,6 +18,9 @@ class StBuffer;
 typedef CPP_TAILQ_ENTRY<StBuffer> StBufferNext;
 typedef CPP_TAILQ_HEAD<StBuffer> StBufferQueue;
 
+/* 用途：收发缓冲区；尺寸与 ST_RECV_BUFFSIZE / ST_SEND_BUFFSIZE 相关。
+ * 线程模型：随连接在单 OS 线程内使用。
+ * 所有权：通常由 StBufferPool 出借，Reset 时归还。 */
 class StBuffer : public referenceable {
 public:
   StBuffer(uint32_t max_len)
@@ -127,6 +130,9 @@ private:
   uint32_t m_max_free_, m_max_buf_size_, m_queue_num_;
   StBufferQueue m_queue_;
 };
+/* 用途：按尺寸分桶的缓冲池。
+ * 线程模型：常配合线程局部 Instance。
+ * 所有权：Get/Release（或等价接口）配对，避免泄漏到连接外。 */
 class StBufferPool {
 public:
   explicit StBufferPool(uint32_t max_free = ST_MAX_SIZE)

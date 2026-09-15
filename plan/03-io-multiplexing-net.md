@@ -7,7 +7,7 @@
 1. 不改变现有功能行为；对外 API 语义兼容。基准为「代码表达的语义意图」，详见 [`README.md`](README.md#对不改变现有功能行为这条约束的必要澄清)。
 2. C++98。禁止 C++11+ 语言特性；`__thread` / `__builtin_expect` 等 GNU 扩展可用。
 3. Linux + macOS 双平台可编译。**本阶段是双平台差异的集中地**：epoll vs kqueue。
-4. Google C++ Style（见决策点 D1）。
+4. 本仓库代码风格（LLVM 基线 + `m_x_`，见决策点 D1）。
 5. **零第三方运行时依赖**。本阶段产出 `libmthread`，是这条约束的最终验证点（`ldd` / `otool -L` 只应含系统库）。
 6. 协程调度 + epoll/kqueue；**业务同步写法、框架内部异步**；非阻塞 TCP/UDP 客户端；链接 `libmthread.a`/`.so` 即可使用。
 
