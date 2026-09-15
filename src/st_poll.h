@@ -6,12 +6,12 @@
 #define _ST_POLL_H_
 
 #include "stlib/st_util.h"
-#include "stlib/ucontext/st_ucontext.h"
+#include "stlib/ucontext/ucontext.h"
 
 #if defined(__APPLE__) || defined(__OpenBSD__)
-#include "stlib/ucontext/st_kqueue.h"
+#include "stlib/st_kqueue.h"
 #else
-#include "stlib/ucontext/st_epoll.h"
+#include "stlib/st_epoll.h"
 #endif
 
 #include "stlib/st_buffer.h"

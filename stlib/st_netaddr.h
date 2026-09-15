@@ -5,8 +5,8 @@
 #ifndef _ST_NETADDR_H_
 #define _ST_NETADDR_H_
 
+#include "st_def.h"
 #include "st_log.h"
-#include "ucontext/st_def.h"
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <netinet/in.h>

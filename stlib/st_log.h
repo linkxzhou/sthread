@@ -1,7 +1,7 @@
 #ifndef _ST_LOG_H_
 #define _ST_LOG_H_
 
-#include "ucontext/st_def.h"
+#include "st_def.h"
 #include <assert.h>
 #include <ctype.h>
 #include <errno.h>
