@@ -4,6 +4,10 @@
 
 > 阅读顺序建议：先读本文「关键结论」与「硬约束」，再按「执行顺序」逐份阅读 01～05。
 
+> **进度**：`01` 已实现（`stlib/` 已是绿色基线，根 `makefile` 已存在，D1/D2/D5/D6 已落地）——详见 [`01-foundation-build-style.md` 第 10 节](01-foundation-build-style.md#10-落地记录plan01-实现结果)。`02`～`05` 未开工。
+>
+> 各份文档的正文都保留为当初的计划原文，**没有随实现改写**；只有明显失实的地方补了「实现期更正」，以及决策点补了拍板结果。所以读到「当前……」这类描述时，请以 01 的落地记录为准。
+
 ---
 
 ## 关键结论（先看这个）
@@ -56,7 +60,7 @@
 1. **不改变现有功能行为；对外 API 语义兼容。** 基准为「代码表达的语义意图」，口径见上一节。
 2. **C++98。** 不使用 C++11 及以后的语言特性（`auto`、`nullptr`、右值引用、`>>` 模板闭合、range-for、`std::unique_ptr` 等一律禁止）。注意：`__thread`、`__builtin_expect`、语句表达式属于 GNU 扩展而非 C++11 特性，现有代码已在用，可继续使用。
 3. **Linux + macOS 双平台可编译。** Linux 走 epoll，macOS 走 kqueue，分支只允许出现在 `stlib/st_epoll.h` / `stlib/st_kqueue.h` 与少量 `#if defined(__APPLE__)` 处，不得渗透到业务层。
-4. **Google C++ Style。** 仓库已有 `.clang-format`，但**实测其内容是 LLVM 基线而非 Google 基线**（见「决策点 D1」），需先解决该矛盾。
+4. **本仓库 style：LLVM 基线 + `m_x_` 成员命名。** `.clang-format` 是唯一权威。~~Google C++ Style~~ —— D1 已拍板保留 LLVM，不切 Google。
 5. **零第三方运行时依赖。** 最终 `libmthread.a` / `libmthread.so` 不得链接任何第三方库。`gperftools`（tcmalloc/profiler）与 ASan 只能是可选的开发期开关，默认关闭。
 6. **协程调度 + epoll/kqueue；业务层同步写法，框架内部异步。** 非阻塞 TCP/UDP 客户端；使用方只需链接 `libmthread.a` 或 `libmthread.so`。
 
@@ -73,7 +77,7 @@
 
 | 序号 | 文档 | 范围 | 出口条件（Definition of Done） |
 | --- | --- | --- | --- |
-| 01 | [`01-foundation-build-style.md`](01-foundation-build-style.md) | 构建、目录、C++98、Google style、libmthread 产物定义 | `stlib` 四个测试在 Linux + macOS 均编译通过并运行通过；`.clang-format` 与 style 约定一致；仓库无新增二进制 |
+| 01 ✅ | [`01-foundation-build-style.md`](01-foundation-build-style.md) | 构建、目录、C++98、代码风格、libmthread 产物定义 | `stlib` 四个测试在 Linux + macOS 均编译通过并运行通过；`.clang-format` 与 style 约定一致；仓库无新增二进制 |
 | 02 | [`02-coroutine-scheduler.md`](02-coroutine-scheduler.md) | ucontext、`StThreadItem`/`StThread`、`StThreadSchedule`、`StHeap`/`StHeapTimer` | `src/st_thread.cc` 编译通过；协程 create/yield/sleep/wakeup 单测通过 |
 | 03 | [`03-io-multiplexing-net.md`](03-io-multiplexing-net.md) | `StIOState`(epoll/kqueue)、`StEventSchedule`、`StConnection`、`StServer`、sys hook | `libmthread.a` / `libmthread.so` 实际产出；TCP/UDP 回环收发通过 |
 | 04 | [`04-apps-tests-compat.md`](04-apps-tests-compat.md) | `app/st_dns`、`app/st_memcacheclient`、`app/st_wrk`、`tests/` | 三个 app 编译通过；DNS / HTTP 示例可跑；回归清单全绿 |
@@ -88,14 +92,14 @@
 | # | 风险 | 影响 | 概率 | 缓解 | 详见 |
 | --- | --- | --- | --- | --- | --- |
 | R1 | **新旧命名混杂**导致「修好一处、错开三处」，改动面失控 | 高 | 高 | 先冻结命名映射表并一次性机械替换，不边改边设计 | 02 |
-| R2 | **`libmthread` 根本无法产出**：`src/makefile` 的 10 个 `mt_*.o` 源文件全不存在 | 高 | 已发生 | 按真实文件名重写 `LIB_O`，并新增根 `makefile` | 01 / 03 |
+| R2 | **`libmthread` 根本无法产出**：`src/makefile` 的 10 个 `mt_*.o` 源文件全不存在 | 高 | 已发生 | 按真实文件名重写 `LIB_O`，并新增根 `makefile` | 01 ✅ 源文件清单与产物路径已修好，链接仍阻塞于 02/03 |
 | R3 | **两套同名 `extern "C" __*` 符号**（`src/st_sys.h` 带 timeout 版 vs `app/st_sys.h` POSIX 版）签名冲突 | 高 | 高 | 拆分命名空间：框架内部 API 与 syscall hook 必须改为不同前缀 | 03 |
-| R4 | **macOS 无法验证**：本计划的实测只在 Linux + g++ 13 上做过，kqueue 路径与 `MAC_OS_X_VERSION_10_5` 下 `USE_UCONTEXT 0` 分支完全未验证 | 高 | 中 | 01 阶段就接入 macOS 验证手段，不留到最后 | 01 / 03 |
+| R4 | **macOS 无法验证**：本计划的实测只在 Linux + g++ 13 上做过，kqueue 路径与 `MAC_OS_X_VERSION_10_5` 下 `USE_UCONTEXT 0` 分支完全未验证 | 高 | 中 | 01 阶段就接入 macOS 验证手段，不留到最后 | 01 ⚠️ 已加 GitHub Actions（ubuntu + macos）跑 stlib 测试；但 `stlib/ucontext` 没有 arm64 分支，Apple Silicon 上 `make stlib` 仍编不过 → 02 |
 | R5 | **协程栈与上下文切换**属未定义行为高发区（`MEM_PAGE_SIZE 2048`、`ss_sp + 8`、`ss_size - 64`、32/64 位指针拆分） | 高 | 中 | 该处按「原样保留 + 加注释 + 加断言」，不做优化 | 02 |
 | R6 | `StEventSchedule::m_thread_schedule_` 在构造函数中未初始化，且 `Init()` 里赋值用的是不存在的 `ThreadSchedule` | 中 | 已发生 | 随 R1 命名统一一并修复，并补 NULL 断言 | 03 |
-| R7 | `.clang-format` 全量格式化会产生巨大 diff，淹没真实改动 | 中 | 高 | 格式化独立成一个「纯格式」提交，并登记到 `.git-blame-ignore-revs` | 01 / 05 |
-| R8 | `thirdparty/gperftools` 是 gitlink 但**无 `.gitmodules`**，新 clone 得到空目录且 `git submodule status` 直接报错 | 中 | 已发生 | 需用户决策后处理 | 决策点 D2 |
-| R9 | 仓库内已跟踪二进制与垃圾文件（`.DS_Store`、`app/st_wrk/wrk` 等） | 低 | 已发生 | 补 `.gitignore` 并 `git rm --cached` | 01 |
+| R7 | `.clang-format` 全量格式化会产生巨大 diff，淹没真实改动 | 中 | 高 | 格式化独立成一个「纯格式」提交，并登记到 `.git-blame-ignore-revs` | 01 ✅ 改为只覆盖本仓库自己写的代码（`FORMAT_SRC`），实际只有 6 个文件 15 增 14 删，未做全库格式化，也就不需要 `.git-blame-ignore-revs`；`app/`、`tests/` 与 vendor 代码留给 04/05 |
+| R8 | `thirdparty/gperftools` 是 gitlink 但**无 `.gitmodules`**，新 clone 得到空目录且 `git submodule status` 直接报错 | 中 | 已发生 | 需用户决策后处理 | D2 ✅ 已移除 gitlink（01） |
+| R9 | 仓库内已跟踪二进制与垃圾文件（`.DS_Store`、`app/st_wrk/wrk` 等） | 低 | 已发生 | 补 `.gitignore` 并 `git rm --cached` | 01 ✅ 已完成（`memcache.pcap` 有意保留） |
 | R10 | `readme.md` 通篇是已不存在的旧 API（`mt_init_frame`、`Frame`、`IMtAction`…），照做必然失败 | 中 | 已发生 | 05 阶段重写，且示例须真实编译过 | 05 |
 
 ---
@@ -151,6 +155,17 @@
 ## 需用户确认的决策点
 
 以下 6 项**阻塞**对应阶段的开工，需要仓库维护者拍板。每项都给了推荐选项与理由。
+
+### 拍板结果一览
+
+| 决策点 | 结论 | 状态 |
+| --- | --- | --- |
+| D1 `.clang-format` 基线 | **(a)** 保留 LLVM + `m_x_` 命名，只把 `Standard: Latest` → `Cpp03`；文档不再声称 Google Style | ✅ 已落地（`plan/01`） |
+| D2 `thirdparty/gperftools` | **(a)** 移除 gitlink，`-ltcmalloc` / `-lprofiler` 默认关、可选开 | ✅ 已落地（`plan/01`） |
+| D3 新旧命名 / namespace | 统一到**新名**；**不加 namespace**（不把裸类塞进 `namespace`，即不采纳 (a) 里「把 `StConnection`/`StServer` 移入 `namespace sthread`」那部分）；不加 `typedef` 兼容层 | ⏳ 待 `plan/02` 执行 |
+| D4 `extern "C"` 符号拆分 | 待定 | ⏳ 待 `plan/03` |
+| D5 Bazel | **(a)** 移除残留（`WORKSPACE`、`stlib/ucontext/BUILD`、空 `stlib/tests/build.bzl`），构建只用 makefile | ✅ 已落地（`plan/01`） |
+| D6 第三方示例代码定性 | 补 Russ Cox `COPYRIGHT` 与来源说明；**不**代选本仓库自身的 license；**不**删 `stlib/tests/ucontext/` 与 `stlib/tiny/`（即 (a)，不取 (b)） | ✅ 许可部分已落地（`plan/01`）；本仓库 license 仍待仓库所有者决定（`plan/05`） |
 
 ### D1. `.clang-format` 到底对齐哪个 style？（阻塞 01）
 
