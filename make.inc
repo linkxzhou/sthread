@@ -41,11 +41,20 @@ ST_CXXFLAGS = -std=c++98 -fPIC \
 ST_LDFLAGS =
 ST_LDLIBS  = -lpthread -ldl
 
+ST_UNAME_M := $(shell uname -m)
+
+# -m32 / -m64 只对 x86 有意义。arm64（Apple Silicon、aarch64）上 clang 会直接
+# 报 "unsupported option '-m64'"，所以那里不加。历史上各 makefile 无条件写
+# -m64，在 x86 上行为不变。
 ifeq ($(ARCH),32)
-ST_CXXFLAGS += -march=pentium4 -m32 -pthread
+ST_CXXFLAGS += -march=pentium4 -m32
 else
-ST_CXXFLAGS += -m64 -pthread
+ifneq ($(filter x86_64 amd64 i386 i686,$(ST_UNAME_M)),)
+ST_CXXFLAGS += -m64
 endif
+endif
+
+ST_CXXFLAGS += -pthread
 
 ifneq ($(TRACE),0)
 ST_CXXFLAGS += -DTRACE
