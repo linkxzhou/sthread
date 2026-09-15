@@ -8,7 +8,7 @@
 #define CR                  (uint8_t) 13
 #define CRLF                "\x0d\x0a"
 #define CRLF_LEN            (sizeof("\x0d\x0a") - 1)
-#define NOT_REACHED()       // ASSERT(0)
+#define NOT_REACHED()       // LOG_ASSERT(0)
 
 #define LOG_ERROR
 

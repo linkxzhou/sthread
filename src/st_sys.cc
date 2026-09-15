@@ -38,7 +38,7 @@ int __sendto(int fd, const void *msg, int len, int flags,
       return -1;
     }
 
-    StEventSuper *item = GlobalEventSchedule()->GetEventItem(fd);
+    StEventItem *item = GlobalEventSchedule()->GetEventItem(fd);
     if (item == NULL) {
       LOG_ERROR("item is NULL, fd: %d", fd);
       return -2;
@@ -47,7 +47,7 @@ int __sendto(int fd, const void *msg, int len, int flags,
     item->EnableOutput();
     item->SetOwnerThread(thread);
     int64_t wakeup_timeout = timeout + Util::TimeMs();
-    if (!(GlobalEventScheduler()->Schedule(thread, NULL, item,
+    if (!(GlobalEventSchedule()->Schedule(thread, NULL, item,
                                            wakeup_timeout))) {
       LOG_ERROR("item schedule failed, errno: %d, strerr: %s", errno,
                 strerror(errno));
@@ -63,7 +63,7 @@ int __sendto(int fd, const void *msg, int len, int flags,
 int _recvfrom(int fd, void *buf, int len, int flags, struct sockaddr *from,
               socklen_t *fromlen, int timeout) {
   int64_t start = Util::SysMs();
-  Thread *thread = (Thread *)(GlobalThreadScheduler()->GetActiveThread());
+  StThread *thread = (StThread *)(GlobalThreadSchedule()->GetActiveThread());
 
   LOG_TRACE("---------- [name : %s] -----------", thread->GetName());
   int64_t now = 0;
@@ -76,7 +76,7 @@ int _recvfrom(int fd, void *buf, int len, int flags, struct sockaddr *from,
       return -1;
     }
 
-    StEventSuper *item = GlobalEventScheduler()->GetEventItem(fd);
+    StEventItem *item = GlobalEventSchedule()->GetEventItem(fd);
     if (item == NULL) {
       LOG_ERROR("item is NULL");
       return -2;
@@ -85,7 +85,7 @@ int _recvfrom(int fd, void *buf, int len, int flags, struct sockaddr *from,
     item->EnableInput();
     item->SetOwnerThread(thread);
     int64_t wakeup_timeout = timeout + Util::SysMs();
-    if (!(GlobalEventScheduler()->Schedule(thread, NULL, item,
+    if (!(GlobalEventSchedule()->Schedule(thread, NULL, item,
                                            wakeup_timeout))) {
       LOG_ERROR("item schedule failed, errno: %d, strerr: %s", errno,
                 strerror(errno));
@@ -118,7 +118,7 @@ int _recvfrom(int fd, void *buf, int len, int flags, struct sockaddr *from,
 
 int _connect(int fd, const struct sockaddr *addr, int addrlen, int timeout) {
   int64_t start = Util::SysMs();
-  Thread *thread = (Thread *)(GlobalThreadScheduler()->GetActiveThread());
+  StThread *thread = (StThread *)(GlobalThreadSchedule()->GetActiveThread());
 
   LOG_TRACE("---------- [name : %s] -----------", thread->GetName());
   int64_t now = 0;
@@ -150,7 +150,7 @@ int _connect(int fd, const struct sockaddr *addr, int addrlen, int timeout) {
       return -1;
     }
 
-    StEventSuper *item = GlobalEventScheduler()->GetEventItem(fd);
+    StEventItem *item = GlobalEventSchedule()->GetEventItem(fd);
     if (item == NULL) {
       LOG_ERROR("item is NULL");
       return -2;
@@ -159,7 +159,7 @@ int _connect(int fd, const struct sockaddr *addr, int addrlen, int timeout) {
     item->EnableOutput();
     item->SetOwnerThread(thread);
     int64_t wakeup_timeout = timeout + Util::SysMs();
-    if (!(GlobalEventScheduler()->Schedule(thread, NULL, item,
+    if (!(GlobalEventSchedule()->Schedule(thread, NULL, item,
                                            wakeup_timeout))) {
       LOG_ERROR("item schedule failed, errno: %d, strerr: %s", errno,
                 strerror(errno));
@@ -174,7 +174,7 @@ int _connect(int fd, const struct sockaddr *addr, int addrlen, int timeout) {
 
 ssize_t _read(int fd, void *buf, size_t nbyte, int timeout) {
   int64_t start = Util::SysMs();
-  Thread *thread = (Thread *)(GlobalThreadScheduler()->GetActiveThread());
+  StThread *thread = (StThread *)(GlobalThreadSchedule()->GetActiveThread());
 
   LOG_TRACE("---------- [name : %s] -----------", thread->GetName());
   int64_t now = 0;
@@ -203,7 +203,7 @@ ssize_t _read(int fd, void *buf, size_t nbyte, int timeout) {
       return -1;
     }
 
-    StEventSuper *item = GlobalEventScheduler()->GetEventItem(fd);
+    StEventItem *item = GlobalEventSchedule()->GetEventItem(fd);
     if (item == NULL) {
       LOG_ERROR("item is NULL");
       return -2;
@@ -212,7 +212,7 @@ ssize_t _read(int fd, void *buf, size_t nbyte, int timeout) {
     item->EnableInput();
     item->SetOwnerThread(thread);
     int64_t wakeup_timeout = timeout + Util::SysMs();
-    if (!(GlobalEventScheduler()->Schedule(thread, NULL, item,
+    if (!(GlobalEventSchedule()->Schedule(thread, NULL, item,
                                            wakeup_timeout))) {
       LOG_ERROR("item schedule failed, errno: %d, strerr: %s", errno,
                 strerror(errno));
@@ -227,7 +227,7 @@ ssize_t _read(int fd, void *buf, size_t nbyte, int timeout) {
 
 ssize_t _write(int fd, const void *buf, size_t nbyte, int timeout) {
   int64_t start = Util::SysMs();
-  Thread *thread = (Thread *)(GlobalThreadScheduler()->GetActiveThread());
+  StThread *thread = (StThread *)(GlobalThreadSchedule()->GetActiveThread());
 
   LOG_TRACE("---------- [name : %s] -----------", thread->GetName());
   int64_t now = 0;
@@ -263,7 +263,7 @@ ssize_t _write(int fd, const void *buf, size_t nbyte, int timeout) {
       }
     }
 
-    StEventSuper *item = GlobalEventScheduler()->GetEventItem(fd);
+    StEventItem *item = GlobalEventSchedule()->GetEventItem(fd);
     if (item == NULL) {
       LOG_ERROR("item is NULL");
       return -2;
@@ -272,7 +272,7 @@ ssize_t _write(int fd, const void *buf, size_t nbyte, int timeout) {
     item->EnableOutput();
     item->SetOwnerThread(thread);
     int64_t wakeup_timeout = timeout + Util::SysMs();
-    if (!(GlobalEventScheduler()->Schedule(thread, NULL, item,
+    if (!(GlobalEventSchedule()->Schedule(thread, NULL, item,
                                            wakeup_timeout))) {
       LOG_ERROR("item schedule failed, errno: %d, strerr: %s", errno,
                 strerror(errno));
@@ -287,7 +287,7 @@ ssize_t _write(int fd, const void *buf, size_t nbyte, int timeout) {
 
 int _recv(int fd, void *buf, int len, int flags, int timeout) {
   int64_t start = Util::SysMs();
-  Thread *thread = (Thread *)(GlobalThreadScheduler()->GetActiveThread());
+  StThread *thread = (StThread *)(GlobalThreadSchedule()->GetActiveThread());
 
   LOG_TRACE("---------- [name: %s] -----------", thread->GetName());
   int64_t now = 0;
@@ -301,7 +301,7 @@ int _recv(int fd, void *buf, int len, int flags, int timeout) {
       return -1;
     }
 
-    StEventSuper *item = GlobalEventScheduler()->GetEventItem(fd);
+    StEventItem *item = GlobalEventSchedule()->GetEventItem(fd);
     if (item == NULL) {
       LOG_ERROR("item is NULL");
       return -2;
@@ -310,7 +310,7 @@ int _recv(int fd, void *buf, int len, int flags, int timeout) {
     item->EnableInput();
     item->SetOwnerThread(thread);
     int64_t wakeup_timeout = timeout + Util::SysMs();
-    if (!(GlobalEventScheduler()->Schedule(thread, NULL, item,
+    if (!(GlobalEventSchedule()->Schedule(thread, NULL, item,
                                            wakeup_timeout))) {
       LOG_ERROR("item schedule failed, errno: %d, strerr: %s", errno,
                 strerror(errno));
@@ -343,7 +343,7 @@ int _recv(int fd, void *buf, int len, int flags, int timeout) {
 
 ssize_t _send(int fd, const void *buf, size_t nbyte, int flags, int timeout) {
   int64_t start = Util::SysMs();
-  Thread *thread = (Thread *)(GlobalThreadScheduler()->GetActiveThread());
+  StThread *thread = (StThread *)(GlobalThreadSchedule()->GetActiveThread());
 
   LOG_TRACE("---------- [name : %s] -----------", thread->GetName());
   int64_t now = 0;
@@ -384,7 +384,7 @@ ssize_t _send(int fd, const void *buf, size_t nbyte, int flags, int timeout) {
       }
     }
 
-    StEventSuper *item = GlobalEventScheduler()->GetEventItem(fd);
+    StEventItem *item = GlobalEventSchedule()->GetEventItem(fd);
     if (item == NULL) {
       LOG_ERROR("item is NULL");
       return -2;
@@ -393,7 +393,7 @@ ssize_t _send(int fd, const void *buf, size_t nbyte, int flags, int timeout) {
     item->EnableOutput();
     item->SetOwnerThread(thread);
     int64_t wakeup_timeout = timeout + Util::SysMs();
-    if (!(GlobalEventScheduler()->Schedule(thread, NULL, item,
+    if (!(GlobalEventSchedule()->Schedule(thread, NULL, item,
                                            wakeup_timeout))) {
       LOG_ERROR("item schedule failed, errno: %d, strerr: %s", errno,
                 strerror(errno));
@@ -407,15 +407,15 @@ ssize_t _send(int fd, const void *buf, size_t nbyte, int flags, int timeout) {
 }
 
 void _sleep(int ms) {
-  Thread *thread = (Thread *)(GlobalThreadScheduler()->GetActiveThread());
+  StThread *thread = (StThread *)(GlobalThreadSchedule()->GetActiveThread());
   if (thread != NULL) {
     thread->Sleep(ms);
-    GlobalThreadScheduler()->Sleep(thread);
+    GlobalThreadSchedule()->Sleep(thread);
   }
 }
 
 int _accept(int fd, struct sockaddr *addr, socklen_t *addrlen) {
-  Thread *thread = (Thread *)(GlobalThreadScheduler()->GetActiveThread());
+  StThread *thread = (StThread *)(GlobalThreadSchedule()->GetActiveThread());
 
   int connfd = -1;
   while ((connfd = st_accept(fd, addr, addrlen)) < 0) {
@@ -428,7 +428,7 @@ int _accept(int fd, struct sockaddr *addr, socklen_t *addrlen) {
       return -1;
     }
 
-    StEventSuper *item = GlobalEventScheduler()->GetEventItem(fd);
+    StEventItem *item = GlobalEventSchedule()->GetEventItem(fd);
     if (item == NULL) {
       LOG_ERROR("item is NULL");
       return -2;
@@ -437,7 +437,7 @@ int _accept(int fd, struct sockaddr *addr, socklen_t *addrlen) {
     item->DisableOutput();
     item->EnableInput();
     item->SetOwnerThread(thread);
-    if (!(GlobalEventScheduler()->Schedule(thread, NULL, item, -1))) {
+    if (!(GlobalEventSchedule()->Schedule(thread, NULL, item, -1))) {
       LOG_ERROR("item schedule failed, errno: %d, strerr: %s", errno,
                 strerror(errno));
       // 释放item数据

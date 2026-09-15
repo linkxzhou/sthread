@@ -14,6 +14,8 @@ namespace sthread {
 
 using namespace stlib;
 
+class StThread;
+
 class StThreadSchedule {
 public:
   StThreadSchedule() : m_active_thread_(NULL), m_daemon_(NULL), m_primo_(NULL) {
@@ -33,26 +35,10 @@ public:
   // 启动函数入口
   static void Startup(StThreadSchedule *ss);
 
-  inline StThreadItem *DaemonThread(void) {
-    if (m_daemon_ == NULL) {
-      m_daemon_ = new StThread();
-      m_daemon_->SetType(eDAEMON);
-      m_daemon_->SetState(eRUNABLE);
-      m_daemon_->SetCallback(NewStClosure(Startup, this));
-      m_daemon_->SetName(THREAD_DAEMON_NAME);
-    }
-    return m_daemon_;
-  }
+  StThreadItem *DaemonThread(void);
 
-  inline StThreadItem *PrimoThread(void) {
-    if (m_primo_ == NULL) {
-      m_primo_ = new StThread();
-      m_primo_->SetType(ePRIMORDIAL);
-      m_primo_->SetState(eRUNNING);
-      m_primo_->SetName(THREAD_PRIMO_NAME);
-    }
-    return m_primo_;
-  }
+  StThreadItem *PrimoThread(void);
+
 
   inline void ResetHeapSize(int32_t max_num) {
     m_sleep_list_.HeapResize(max_num);
@@ -101,9 +87,7 @@ public:
   StThread *CreateThread(StClosure *closure, bool runable = true);
 
   // 创建线程
-  inline StThread *AllocThread() {
-    return (StThread *)(Instance<UtilPtrPool<StThread> >()->AllocPtr());
-  }
+  StThread *AllocThread();
 
   // !debug print
   inline void ForeachPrint() {
@@ -172,6 +156,14 @@ public:
 
   void Wait(int32_t timeout); // 等待毫秒数
 
+  // Init 失败路径的清理（对应历史 Reset；m_event_ 由 malloc 分配）
+  inline void Reset() {
+    if (m_iostate_ != NULL) {
+      m_iostate_->Free();
+    }
+    st_safe_free(m_event_);
+  }
+
   inline void ClearItem(StEventItem *item) {
     Delete(item);
     int osfd = item->GetOsfd();
@@ -206,8 +198,6 @@ public:
     m_wakeup_time_ = now + ms;
     LOG_TRACE("now: %ld, m_wakeup_time_: %ld", now, m_wakeup_time_);
   }
-
-  virtual void RestoreContext(StThreadItem *switch_thread);
 
   void WakeupParent();
 
@@ -293,17 +283,20 @@ protected:
               t->m_id_);
     StThread *thread = (StThread *)(t->m_private_);
     StThreadSchedule *thread_schedule = Instance<StThreadSchedule>();
-    if (NULL != thread) {
-      LOG_TRACE("---------- [\\\name: %s\\\] -----------", thread->GetName());
-      if (NULL != thread->m_callback_) {
-        thread->m_callback_->Run();
-      }
-      // 判断当前线程是否有子线程
-      if (thread->IsSubThread()) {
-        thread_schedule->WakeupParent(thread);
-      }
-      thread_schedule->Yield(thread);
+    if (NULL == thread) {
+      LOG_ERROR("ActiveThreadStartUp: thread is NULL");
+      context_exit(0);
+      return;
     }
+    LOG_TRACE("---------- [name: %s] -----------", thread->GetName());
+    if (NULL != thread->m_callback_) {
+      thread->m_callback_->Run();
+    }
+    // 判断当前线程是否有子线程
+    if (thread->IsSubStThread()) {
+      thread_schedule->WakeupParent(thread);
+    }
+    thread_schedule->Yield(thread);
     LOG_TRACE("---------- [///name: %s///] -----------", thread->GetName());
     if (thread == thread_schedule->DaemonThread()) {
       thread_schedule->SwitchThread(thread_schedule->PrimoThread(), thread);
@@ -313,6 +306,33 @@ protected:
     context_exit(0);
   }
 };
+
+
+inline StThreadItem *StThreadSchedule::DaemonThread(void) {
+  if (m_daemon_ == NULL) {
+    m_daemon_ = new StThread();
+    m_daemon_->SetType(eDAEMON);
+    m_daemon_->SetState(eRUNABLE);
+    m_daemon_->SetCallback(NewStClosure(Startup, this));
+    m_daemon_->SetName(THREAD_DAEMON_NAME);
+  }
+  return m_daemon_;
+}
+
+inline StThreadItem *StThreadSchedule::PrimoThread(void) {
+  if (m_primo_ == NULL) {
+    m_primo_ = new StThread();
+    m_primo_->SetType(ePRIMORDIAL);
+    m_primo_->SetState(eRUNNING);
+    m_primo_->SetName(THREAD_PRIMO_NAME);
+  }
+  return m_primo_;
+}
+
+inline StThread *StThreadSchedule::AllocThread() {
+  return (StThread *)(Instance<UtilPtrPool<StThread> >()->AllocPtr());
+}
+
 
 } // namespace sthread
 

@@ -11,7 +11,7 @@ using namespace stlib;
 // 获取连接的句柄信息
 static StExecClientConnection *_get_conn(struct sockaddr_in *dst, int32_t &sock,
                                          eConnType type) {
-  StNetAddress addr(*dst);
+  StNetAddr addr(*dst);
   StExecClientConnection *conn =
       Instance<StConnectionManager<StExecClientConnection>>()->AllocPtr(type,
                                                                         &addr);
@@ -215,9 +215,9 @@ TCP_SENDRECV_EXIT_LABEL:
 
 // 设置私有数据
 void st_set_private(void *data) {
-  Thread *athread = (Thread *)(GlobalThreadScheduler()->GetActiveThread());
-  ASSERT(athread == NULL);
-  Thread *thread = (Thread *)(athread->GetRootThread());
+  StThread *athread = (StThread *)(GlobalThreadSchedule()->GetActiveThread());
+  LOG_ASSERT(athread == NULL);
+  StThread *thread = (StThread *)(athread->GetRootStThread());
 
   if (thread != NULL) {
     thread->SetPrivate(data);
@@ -226,9 +226,9 @@ void st_set_private(void *data) {
 
 // 获取私有数据
 void *st_get_private() {
-  Thread *athread = (Thread *)(GlobalThreadScheduler()->GetActiveThread());
-  ASSERT(athread == NULL);
-  Thread *thread = (Thread *)(athread->GetRootThread());
+  StThread *athread = (StThread *)(GlobalThreadSchedule()->GetActiveThread());
+  LOG_ASSERT(athread == NULL);
+  StThread *thread = (StThread *)(athread->GetRootStThread());
 
   if (thread != NULL) {
     return thread->GetPrivate();

@@ -92,7 +92,7 @@ protected:
   StNetAddr m_addr_, m_destaddr_;
   eConnType m_type_;
   int32_t m_timeout_;
-  StEventSuper *m_item_;
+  StEventItem *m_item_;
 };
 
 template <class ConnectionT>
@@ -116,18 +116,18 @@ public:
     }
 
     m_item_ = Instance<UtilPtrPool<ConnectionT> >()->AllocPtr();
-    ASSERT(m_item_ != NULL);
+    LOG_ASSERT(m_item_ != NULL);
 
     m_item_->SetOsfd(m_osfd_);
     m_item_->EnableOutput();
     m_item_->DisableInput();
-    GlobalEventScheduler()->Add(m_item_); // TODO:
+    GlobalEventSchedule()->Add(m_item_); // TODO:
 
     if (IS_TCP_CONN(m_type_)) {
       int32_t rc = Connect(addr);
       if (rc < 0) {
         LOG_ERROR("connect error, rc: %d", rc);
-        GlobalEventScheduler()->Close(m_item_); // TODO:
+        GlobalEventSchedule()->Close(m_item_); // TODO:
         UtilPtrPoolFree(m_item_);
         Close();
         return -2;
@@ -198,11 +198,11 @@ public:
       if (IS_KEEPLIVE(type)) {
         key.SetDataPtr((void *)conn);
         int32_t r = m_hashlist_.HashInsert(&key);
-        ASSERT(r >= 0);
+        LOG_ASSERT(r >= 0);
       }
     }
 
-    ASSERT(conn != NULL);
+    LOG_ASSERT(conn != NULL);
     return conn;
   }
 

@@ -7,6 +7,8 @@
 
 #include "stlib/st_util.h"
 #include "stlib/ucontext/ucontext.h"
+#include "stlib/st_context.h"
+#include "src/st_public.h"
 
 #if defined(__APPLE__) || defined(__OpenBSD__)
 #include "stlib/st_kqueue.h"
@@ -29,6 +31,75 @@ typedef CPP_TAILQ_HEAD<StEventItem> StEventItemQueue;
 typedef CPP_TAILQ_HEAD<StThreadItem> StThreadItemQueue;
 typedef CPP_TAILQ_ENTRY<StEventItem> StEventItemNext;
 typedef CPP_TAILQ_ENTRY<StThreadItem> StThreadItemNext;
+
+class StEventItem : public referenceable {
+public:
+  explicit StEventItem(int32_t fd = -1)
+      : m_fd_(fd), m_events_(0), m_revents_(0), m_thread_(NULL) {}
+
+  virtual ~StEventItem() { this->Reset(); }
+
+  virtual int32_t EvInput() {
+    LOG_TRACE("----------------------------------");
+    LOG_TRACE("EvInput, thread: %p", m_thread_);
+    return 0;
+  }
+
+  virtual int32_t EvOutput() {
+    LOG_TRACE("----------------------------------");
+    LOG_TRACE("EvOutput, thread: %p", m_thread_);
+    return 0;
+  }
+
+  virtual int32_t EvHangup() {
+    LOG_TRACE("----------------------------------");
+    LOG_TRACE("EvHangup, thread: %p", m_thread_);
+    return 0;
+  }
+
+  inline void EnableInput() { m_events_ |= ST_READABLE; }
+
+  inline void EnableOutput() { m_events_ |= ST_WRITEABLE; }
+
+  inline void DisableInput() { m_events_ &= ~ST_READABLE; }
+
+  inline void DisableOutput() { m_events_ &= ~ST_WRITEABLE; }
+
+  inline int32_t GetOsfd() { return m_fd_; }
+
+  inline void SetOsfd(int32_t fd) { m_fd_ = fd; }
+
+  inline int32_t GetEvents() { return m_events_; }
+
+  inline void SetEvents(int32_t events) { m_events_ = events; }
+
+  inline void SetRecvEvents(int32_t revents) { m_revents_ = revents; }
+
+  inline int32_t GetRecvEvents() { return m_revents_; }
+
+  inline void SetOwnerThread(StThreadItem *thread) { m_thread_ = thread; }
+
+  inline StThreadItem *GetOwnerStThread() { return m_thread_; }
+
+  virtual void Reset() {
+    m_fd_ = -1;
+    m_events_ = 0;
+    m_revents_ = 0;
+    m_thread_ = NULL;
+
+    // 从队列中移除
+    CPP_TAILQ_REMOVE_SELF(this, m_next_);
+  }
+
+protected:
+  int32_t m_fd_;      // 监听句柄
+  int32_t m_events_;  // 事件
+  int32_t m_revents_; // recv事件
+  StThreadItem *m_thread_;
+
+public:
+  StEventItemNext m_next_;
+};
 
 class StThreadItem : public StHeap {
 public:
@@ -131,11 +202,11 @@ public:
 
   inline bool IsPrimo(void) { return (ePRIMORDIAL == m_type_); }
 
-  inline bool IsSubThread(void) { return (eSUB_THREAD == m_type_); }
+  inline bool IsSubStThread(void) { return (eSUB_THREAD == m_type_); }
 
   inline void SetParent(StThreadItem *parent) { m_parent_ = parent; }
 
-  inline void AddSubThread(StThreadItem *sub) {
+  inline void AddSubStThread(StThreadItem *sub) {
     if (!sub->HasFlag(eSUB_LIST)) {
       CPP_TAILQ_INSERT_TAIL(&m_sub_threadlist_, sub, m_sub_next_);
       sub->m_parent_ = this;
@@ -143,7 +214,7 @@ public:
     sub->SetFlag(eSUB_LIST);
   }
 
-  inline void RemoveSubThread(StThreadItem *sub) {
+  inline void RemoveSubStThread(StThreadItem *sub) {
     if (sub->HasFlag(eSUB_LIST)) {
       CPP_TAILQ_REMOVE(&m_sub_threadlist_, sub, m_sub_next_);
       sub->m_parent_ = NULL;
@@ -151,7 +222,7 @@ public:
     sub->UnsetFlag(eSUB_LIST);
   }
 
-  inline bool HasNoSubThread() { return CPP_TAILQ_EMPTY(&m_sub_threadlist_); }
+  inline bool HasNoSubStThread() { return CPP_TAILQ_EMPTY(&m_sub_threadlist_); }
 
   inline const char *GetName() { return m_name_; }
 
@@ -159,7 +230,7 @@ public:
     strncpy(m_name_, name, sizeof(m_name_) - 1);
   }
 
-  StThreadItem *GetRootThread() {
+  StThreadItem *GetRootStThread() {
     eThreadType type = GetType();
     StThreadItem *thread = this;
     StThreadItem *parent = thread;
@@ -193,76 +264,6 @@ public:
   StThreadItemNext m_next_, m_sub_next_;
   uint32_t m_stack_size_;
   char m_name_[64];
-};
-
-class StEventItem : public referenceable {
-public:
-  explicit StEventItem(int32_t fd = -1)
-      : m_fd_(fd), m_events_(0), m_revents_(0), m_thread_(NULL) {}
-
-  virtual ~StEventItem() { this->Reset(); }
-
-  virtual int32_t EvInput() {
-    LOG_TRACE("----------------------------------");
-    LOG_TRACE("EvInput, thread: %p", m_thread_);
-    return 0;
-  }
-
-  virtual int32_t EvOutput() {
-    LOG_TRACE("----------------------------------");
-    LOG_TRACE("EvOutput, thread: %p", m_thread_);
-    return 0;
-  }
-
-  virtual int32_t EvHangup() {
-    LOG_TRACE("----------------------------------");
-    LOG_TRACE("EvHangup, thread: %p", m_thread_);
-    return 0;
-  }
-
-  inline void EnableInput() { m_events_ |= ST_READABLE; }
-
-  inline void EnableOutput() { m_events_ |= ST_WRITEABLE; }
-
-  inline void DisableInput() { m_events_ &= ~ST_READABLE; }
-
-  inline void DisableOutput() { m_events_ &= ~ST_WRITEABLE; }
-
-  inline int32_t GetOsfd() { return m_fd_; }
-
-  inline void SetOsfd(int32_t fd) { m_fd_ = fd; }
-
-  inline int32_t GetEvents() { return m_events_; }
-
-  inline void SetEvents(int32_t events) { m_events_ = events; }
-
-  inline void SetRecvEvents(int32_t revents) { m_revents_ = revents; }
-
-  inline int32_t GetRecvEvents() { return m_revents_; }
-
-  inline void SetOwnerThread(StThreadItem *thread) { m_thread_ = thread; }
-
-  inline StThreadItem *GetOwnerThread() { return m_thread_; }
-
-  virtual void Reset() {
-    m_fd_ = -1;
-    m_events_ = 0;
-    m_revents_ = 0;
-    m_type_ = eEVENT_UNDEF;
-    m_thread_ = NULL;
-
-    // 从队列中移除
-    CPP_TAILQ_REMOVE_SELF(this, m_next_);
-  }
-
-protected:
-  int32_t m_fd_;      // 监听句柄
-  int32_t m_events_;  // 事件
-  int32_t m_revents_; // recv事件
-  StThreadItem *m_thread_;
-
-public:
-  StEventItemNext m_next_;
 };
 
 } // namespace sthread

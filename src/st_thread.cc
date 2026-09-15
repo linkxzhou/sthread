@@ -3,6 +3,7 @@
  */
 
 #include "st_thread.h"
+#include "st_sys.h"
 
 using namespace stlib;
 using namespace sthread;
@@ -49,7 +50,7 @@ int32_t StThreadSchedule::Sleep(StThreadItem *thread) {
   return 0;
 }
 
-uint32_t StThreadSchedule::Pend(StThreadItem *thread) {
+int32_t StThreadSchedule::Pend(StThreadItem *thread) {
   if (unlikely(NULL == thread)) {
     LOG_ERROR("thread NULL, (%p)", thread);
     return -1;
@@ -104,7 +105,7 @@ int32_t StThreadSchedule::InsertIOWait(StThreadItem *thread) {
     LOG_ERROR("active thread NULL, (%p)", thread);
     return -1;
   }
-  thread->SetState(eIO_LIST);
+  thread->SetFlag(eIO_LIST);
   thread->SetState(eIOWAIT);
   CPP_TAILQ_INSERT_TAIL(&m_io_list_, thread, m_next_);
   InsertSleep(thread);
@@ -117,7 +118,7 @@ int32_t StThreadSchedule::InsertRunable(StThreadItem *thread) {
     LOG_ERROR("active thread NULL, (%p)", thread);
     return -1;
   }
-  thread->SetState(eRUN_LIST);
+  thread->SetFlag(eRUN_LIST);
   thread->SetState(eRUNABLE);
   CPP_TAILQ_INSERT_TAIL(&m_run_list_, thread, m_next_);
   ForeachPrint();
@@ -129,14 +130,14 @@ int32_t StThreadSchedule::RemoveRunable(StThreadItem *thread) {
     LOG_ERROR("active thread NULL, (%p)", thread);
     return -1;
   }
-  thread->UnsetState(eRUN_LIST);
+  thread->UnsetFlag(eRUN_LIST);
   CPP_TAILQ_REMOVE(&m_run_list_, thread, m_next_);
   ForeachPrint();
   return 0;
 }
 
 int32_t StThreadSchedule::RemoveSleep(StThreadItem *thread) {
-  thread->UnsetState(eSLEEP_LIST);
+  thread->UnsetFlag(eSLEEP_LIST);
   // 如果HeapSize < 0 则不需要处理
   if (m_sleep_list_.HeapSize() <= 0) {
     return -1;
@@ -152,7 +153,7 @@ int32_t StThreadSchedule::RemoveSleep(StThreadItem *thread) {
 }
 
 int32_t StThreadSchedule::InsertSleep(StThreadItem *thread) {
-  thread->SetState(eSLEEP_LIST);
+  thread->SetFlag(eSLEEP_LIST);
   thread->SetState(eSLEEPING);
   m_sleep_list_.HeapPush(thread);
   ForeachPrint();
@@ -163,7 +164,7 @@ StThreadItem *StThreadSchedule::PopRunable() {
   StThreadItem *thread = NULL;
   CPP_TAILQ_POP(&m_run_list_, thread, m_next_);
   if (unlikely(thread != NULL)) {
-    thread->UnsetState(eRUN_LIST);
+    thread->UnsetFlag(eRUN_LIST);
   }
   ForeachPrint();
   return thread;
@@ -172,8 +173,8 @@ StThreadItem *StThreadSchedule::PopRunable() {
 void StThreadSchedule::WakeupParent(StThreadItem *thread) {
   StThreadItem *parent = dynamic_cast<StThread *>(thread->GetParent());
   if (parent) {
-    parent->RemoveSubThread(thread);
-    if (parent->HasNoSubThread()) {
+    parent->RemoveSubStThread(thread);
+    if (parent->HasNoSubStThread()) {
       this->Unpend(parent);
     }
   }
@@ -184,7 +185,7 @@ void StThreadSchedule::Wakeup(int64_t now) {
   LOG_TRACE("thread GetWakeupTime: %ld",
             (thread ? thread->GetWakeupTime() : 0));
   while (thread && (thread->GetWakeupTime() <= now)) {
-    if (thread->HasState(eIO_LIST)) {
+    if (thread->HasFlag(eIO_LIST)) {
       RemoveIOWait(thread);
     } else {
       RemoveSleep(thread);
@@ -195,14 +196,13 @@ void StThreadSchedule::Wakeup(int64_t now) {
   ForeachPrint();
 }
 
-StThread *StThreadSchedule::CreateThread(StClosure *StClosure,
-                                         bool runable = true) {
+StThread *StThreadSchedule::CreateThread(StClosure *closure, bool runable) {
   StThread *thread = AllocThread();
   if (NULL == thread) {
     LOG_ERROR("alloc thread failed");
     return NULL;
   }
-  thread->SetCallback(StClosure);
+  thread->SetCallback(closure);
   if (runable)
     GlobalThreadSchedule()->InsertRunable(thread); // 插入运行线程
   return thread;
@@ -237,7 +237,7 @@ int StEventSchedule::Init(int max_num) {
     }
   }
 
-  m_thread_schedule_ = Instance<ThreadSchedule>();
+  m_thread_schedule_ = Instance<StThreadSchedule>();
   LOG_ASSERT(m_thread_schedule_ != NULL);
 
 INIT_EXIT_LABEL:
@@ -434,8 +434,8 @@ void StEventSchedule::Dispatch(int fdnum) {
       continue;
     }
 
-    StThreadItem *thread = item->GetOwnerThread();
-    ASSERT(thread != NULL);
+    StThreadItem *thread = item->GetOwnerStThread();
+    LOG_ASSERT(thread != NULL);
 
     item->SetRecvEvents(revents); // 设置收到的事件
     if (revents & ST_EVERR) {
@@ -543,4 +543,16 @@ bool StEventSchedule::Schedule(StThreadItem *thread, StEventItemQueue *fdset,
   }
   LOG_TRACE("recv_num: %d", recv_num);
   return true;
+}
+
+void StThreadSchedule::Startup(StThreadSchedule *ss) {
+  (void)ss;
+  // Precondition: StSysSchedule must have been constructed so Init rebound
+  // the daemon callback to StSysSchedule::StartUp. Forward to that loop.
+  StSysSchedule *sys = Instance<StSysSchedule>();
+  if (NULL == sys) {
+    LOG_ERROR("StSysSchedule instance is NULL");
+    return;
+  }
+  StSysSchedule::StartUp(sys);
 }

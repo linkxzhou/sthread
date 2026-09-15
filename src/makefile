@@ -40,6 +40,7 @@ SRC_O = st_connection.o st_sys.o st_thread.o
 
 STLIB_O = $(ST_ROOT)/stlib/st_log.o \
 	$(ST_ROOT)/stlib/st_test.o \
+	$(ST_ROOT)/stlib/st_context.o \
 	$(ST_ROOT)/stlib/ucontext/ucontext.o \
 	$(ST_ROOT)/stlib/ucontext/asm.o
 
