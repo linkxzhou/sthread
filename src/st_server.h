@@ -23,6 +23,9 @@ public:
   StServerConnection() : StConnection() {}
 };
 
+/* 用途：TCP/UDP 服务端；Listen 后 Loop 每接受一个连接创建一个协程。
+ * 线程模型：在调用 Loop 的 OS 线程内运行；依赖 StSysSchedule。
+ * 所有权：监听 fd 与 accept 出的连接由本对象/连接池管理；Hook 经 st_set_hook_flag。 */
 template <class ConnetionT, int ServerT = eTCP_CONN> class StServer {
 public:
   StServer() : m_osfd_(-1), m_item_(NULL), m_schedule_(NULL) {

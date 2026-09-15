@@ -25,6 +25,9 @@ typedef struct {
   void *client_data;
 } StFileEvent;
 
+/* 用途：macOS/OpenBSD kqueue 后端；与 st_epoll.h 中同名类公开接口必须一致。
+ * 线程模型：仅服务本线程 StEventSchedule。
+ * 所有权：Create/Free 管理内部结构；勿只改一边接口。 */
 class StIOState {
 public:
   int32_t Create(int32_t size) {

@@ -73,6 +73,9 @@ public:
 };
 
 // 对象池
+/* 用途：简单对象池；AllocPtr / FreePtr（或 UtilPtrPoolFree）配对。
+ * 线程模型：通常配合 Instance<UtilPtrPool<T>> 做线程局部池。
+ * 所有权：池持有空闲对象；调用方持有已分配对象直至 Free。 */
 template <typename ValueType> class UtilPtrPool {
 public:
   typedef typename std::queue<ValueType *> QueuePtr;

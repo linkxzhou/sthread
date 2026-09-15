@@ -12,6 +12,9 @@
 
 namespace sthread {
 
+/* 用途：系统级调度入口；Init 绑定 daemon 回调，StartUp 为 daemon 事件循环。
+ * 线程模型：线程局部；与 GlobalThreadSchedule/GlobalEventSchedule 同 OS 线程。
+ * 所有权：持有 StHeapTimer；daemon/primo 仅别名调度器持有对象，勿 delete。 */
 class StSysSchedule {
 public:
   StSysSchedule()

@@ -25,6 +25,9 @@ typedef struct {
   void *client_data;
 } StFileEvent;
 
+/* 用途：Linux epoll 后端；与 st_kqueue.h 中同名类公开接口必须一致。
+ * 线程模型：仅服务本线程 StEventSchedule。
+ * 所有权：Create/Free 管理内部数组；m_file_[fd].mask 为本地事件掩码缓存。 */
 class StIOState {
 public:
   int32_t Create(int32_t size) {

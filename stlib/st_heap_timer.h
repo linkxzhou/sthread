@@ -38,6 +38,9 @@ private:
 };
 
 // 时间控制器
+/* 用途：基于最小堆的定时器轮询；CheckExpired 处理到期回调。
+ * 线程模型：由所属 OS 线程的 StSysSchedule/daemon 驱动。
+ * 所有权：定时器节点由调用方/堆管理；注意过期键与 HeapValue 符号语义。 */
 class StHeapTimer {
 public:
   explicit StHeapTimer(uint32_t max_item = 1024) {

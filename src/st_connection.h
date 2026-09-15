@@ -16,6 +16,9 @@
 using namespace stlib;
 using namespace sthread;
 
+/* 用途：连接基类；SendData/RecvData 对业务是同步语义，内部可能 Yield。
+ * 线程模型：绑定当前 OS 线程的事件/协程调度器。
+ * 所有权：收发 StBuffer 从池借用，Reset() 归还；派生类勿泄漏 buffer。 */
 class StConnection : public referenceable {
 public:
   StConnection()
@@ -102,6 +105,9 @@ protected:
 };
 
 template <class ConnectionT>
+/* 用途：客户端连接；Create 建 socket、注册事件，TCP 时 connect。
+ * 线程模型：同 StConnection；兼 StTimer 可入定时器堆。
+ * 所有权：通常经 StConnectionManager 分配/复用（仅 keepalive 类型走 hash）。 */
 class StClientConnection : public StConnection, public StTimer {
 public:
   StClientConnection() : StConnection() {}
@@ -170,6 +176,9 @@ public:
   }
 };
 
+/* 用途：连接池；对 IS_KEEPLIVE 类型用 StHashList 按地址复用。
+ * 线程模型：线程局部 Instance 使用。
+ * 所有权：AllocPtr/FreePtr 配对。注意：keepalive 当前不可用（L4），勿依赖复用语义。 */
 template <class ConnectionT> class StConnectionManager {
 public:
   typedef ConnectionT *ConnectionTPtr;

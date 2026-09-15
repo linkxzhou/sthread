@@ -32,6 +32,9 @@ typedef CPP_TAILQ_HEAD<StThreadItem> StThreadItemQueue;
 typedef CPP_TAILQ_ENTRY<StEventItem> StEventItemNext;
 typedef CPP_TAILQ_ENTRY<StThreadItem> StThreadItemNext;
 
+/* 用途：一个 fd 上的可读/可写/挂起事件载体，虚回调 EvInput/EvOutput/EvHangup 供派生覆盖。
+ * 线程模型：仅在创建它的 OS 线程的 StEventSchedule 内使用；勿跨线程传递。
+ * 所有权：通常由 UtilPtrPool<StEventItem> 池化；ClearItem/UtilPtrPoolFree 归还。 */
 class StEventItem : public referenceable {
 public:
   explicit StEventItem(int32_t fd = -1)
@@ -101,6 +104,9 @@ public:
   StEventItemNext m_next_;
 };
 
+/* 用途：协程的数据抽象（状态/标志/回调/父子关系）；具体切换在 StThread。
+ * 线程模型：绑定所属 StThreadSchedule（线程局部）；m_state_ 是枚举值，m_flag_ 是位掩码，勿混用。
+ * 所有权：由调度器/对象池管理；m_callback_（StClosure*）在 Reset() 中 delete。 */
 class StThreadItem : public StHeap {
 public:
   StThreadItem()

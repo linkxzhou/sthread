@@ -9,6 +9,9 @@
 
 namespace stlib {
 
+/* 用途：C++98 下的可调用封装（替代 lambda）；NewStClosure 为工厂。
+ * 线程模型：在创建它的协程/线程内调用。
+ * 所有权：NewStClosure 返回堆对象，由 StThread::Reset 等路径 delete。 */
 class StClosure {
 public:
   virtual ~StClosure() {}
