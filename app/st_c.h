@@ -5,10 +5,10 @@
 #ifndef _ST_C_H__
 #define _ST_C_H__
 
-#include "st_connection.h"
-#include "st_manager.h"
-#include "st_thread.h"
-#include "st_util.h"
+#include "src/st_connection.h"
+#include "src/st_manager.h"
+#include "src/st_thread.h"
+#include "stlib/st_util.h"
 #include <netinet/in.h>
 #include <vector>
 

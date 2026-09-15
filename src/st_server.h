@@ -6,6 +6,9 @@
 #define _ST_SERVER_H__
 
 #include "st_connection.h"
+#include "st_public.h"
+#include "st_connection.h"
+#include "st_poll.h"
 #include "st_manager.h"
 #include "st_netaddr.h"
 #include "st_sys.h"

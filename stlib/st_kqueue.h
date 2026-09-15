@@ -2,10 +2,11 @@
  * Copyright (C) zhoulv2000@163.com
  */
 
-#ifndef _ST_EVENT_H_
-#define _ST_EVENT_H_
+#ifndef _ST_KQUEUE_H_
+#define _ST_KQUEUE_H_
 
 #include "st_def.h"
+#include <fcntl.h>
 #include <sys/event.h>
 #include <sys/time.h>
 #include <sys/types.h>

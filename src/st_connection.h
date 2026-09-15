@@ -8,16 +8,21 @@
 #include "stlib/st_buffer.h"
 #include "stlib/st_heap_timer.h"
 #include "stlib/st_util.h"
+#include "st_public.h"
+#include "st_poll.h"
+#include "st_thread.h"
+#include "app/st_sys.h"
 
 using namespace stlib;
+using namespace sthread;
 
 class StConnection : public referenceable {
 public:
   StConnection()
       : m_type_(eUNDEF_CONN), m_osfd_(-1), m_timeout_(30000), m_sendbuf_(NULL),
         m_recvbuf_(NULL), m_item_(NULL) {
-    m_recvbuf_ = Instance<StBufferPool<> >()->GetBuffer(ST_RECV_BUFFSIZE);
-    m_sendbuf_ = Instance<StBufferPool<> >()->GetBuffer(ST_SEND_BUFFSIZE);
+    m_recvbuf_ = Instance<StBufferPool >()->GetBuffer(ST_RECV_BUFFSIZE);
+    m_sendbuf_ = Instance<StBufferPool >()->GetBuffer(ST_SEND_BUFFSIZE);
   }
 
   virtual ~StConnection() {
@@ -27,9 +32,10 @@ public:
 
   virtual int32_t Create(const StNetAddr &addr) { return -1; }
 
+
   void Close() {
     if (m_osfd_ > 0) {
-      __close(m_osfd_);
+      sys_close(m_osfd_);
       m_osfd_ = -1;
     }
   }
@@ -56,8 +62,8 @@ public:
   inline int32_t GetTimeout() { return m_timeout_; }
 
   virtual void Reset() {
-    Instance<StBufferPool<> >()->FreeBuffer(m_sendbuf_);
-    Instance<StBufferPool<> >()->FreeBuffer(m_recvbuf_);
+    Instance<StBufferPool >()->FreeBuffer(m_sendbuf_);
+    Instance<StBufferPool >()->FreeBuffer(m_recvbuf_);
 
     m_osfd_ = -1;
     m_sendbuf_ = NULL;
@@ -108,7 +114,7 @@ public:
       protocol = SOCK_DGRAM;
     }
 
-    m_osfd_ = __socket(addr.IsIPV6() ? AF_INET6 : AF_INET, protocol, 0);
+    m_osfd_ = sys_socket(addr.IsIPV6() ? AF_INET6 : AF_INET, protocol, 0);
     LOG_TRACE("m_osfd_: %d", m_osfd_);
     if (m_osfd_ < 0) {
       LOG_ERROR("create socket failed, ret[%d]", m_osfd_);
@@ -127,7 +133,7 @@ public:
       int32_t rc = Connect(addr);
       if (rc < 0) {
         LOG_ERROR("connect error, rc: %d", rc);
-        GlobalEventSchedule()->Close(m_item_); // TODO:
+        GlobalEventSchedule()->ClearItem(m_item_); // TODO:
         UtilPtrPoolFree(m_item_);
         Close();
         return -2;
@@ -138,12 +144,11 @@ public:
   }
 
   virtual int32_t Connect(const StNetAddr &addr) {
-    struct sockaddr *destaddr;
-    addr.GetSockAddr(destaddr);
+    struct sockaddr *destaddr = addr.GetSockAddr();
 
     int32_t err = 0;
     int32_t ret =
-        __connect(m_osfd_, destaddr, sizeof(struct sockaddr_in), m_timeout_);
+        st_connect(m_osfd_, destaddr, sizeof(struct sockaddr_in), m_timeout_);
     if (ret < 0) {
       err = errno;
       if (err == EISCONN) {

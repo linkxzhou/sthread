@@ -2,10 +2,11 @@
  * Copyright (C) zhoulv2000@163.com
  */
 
-#ifndef _ST_EVENT_H_
-#define _ST_EVENT_H_
+#ifndef _ST_EPOLL_H_
+#define _ST_EPOLL_H_
 
 #include "st_def.h"
+#include <fcntl.h>
 #include <sys/epoll.h>
 
 namespace stlib {
@@ -93,7 +94,7 @@ public:
       return ST_ERROR;
     }
 
-    m_file_events_[fd].mask = mask;
+    m_file_[fd].mask = mask;
 
     return ST_OK;
   }
