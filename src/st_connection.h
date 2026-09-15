@@ -184,19 +184,17 @@ public:
 
   ConnectionTPtr AllocPtr(eConnType type, const StNetAddr *destaddr = NULL,
                           const StNetAddr *srcaddr = NULL) {
-    StNetAddrKey key;
+    StNetAddrKey probe;
     if (IS_KEEPLIVE(type) && destaddr != NULL) {
-      key.SetDestAddr(*destaddr);
+      probe.SetDestAddr(*destaddr);
     }
-
     if (IS_KEEPLIVE(type) && srcaddr != NULL) {
-      key.SetSrcAddr(*srcaddr);
+      probe.SetSrcAddr(*srcaddr);
     }
 
     ConnectionTPtr conn = NULL;
-    // 是否保持状态
     if (IS_KEEPLIVE(type)) {
-      conn = (ConnectionTPtr)(m_hashlist_.HashFindData(&key));
+      conn = (ConnectionTPtr)(m_hashlist_.HashFindData(&probe));
     }
 
     if (conn == NULL) {
@@ -209,8 +207,16 @@ public:
         conn->SetAddr(*srcaddr);
       }
       if (IS_KEEPLIVE(type)) {
-        key.SetDataPtr((void *)conn);
-        int32_t r = m_hashlist_.HashInsert(&key);
+        /* HashInsert stores the key pointer; must be heap-owned. */
+        StNetAddrKey *key = new StNetAddrKey();
+        if (destaddr != NULL) {
+          key->SetDestAddr(*destaddr);
+        }
+        if (srcaddr != NULL) {
+          key->SetSrcAddr(*srcaddr);
+        }
+        key->SetDataPtr((void *)conn);
+        int32_t r = m_hashlist_.HashInsert(key);
         LOG_ASSERT(r >= 0);
       }
     }
@@ -222,10 +228,10 @@ public:
   void FreePtr(ConnectionTPtr conn) {
     eConnType type = conn->GetConnType();
     if (IS_KEEPLIVE(type)) {
-      StNetAddrKey key;
-      key.SetDestAddr(conn->GetDestAddr());
-      key.SetSrcAddr(conn->GetAddr());
-      m_hashlist_.HashRemove(&key);
+      StNetAddrKey probe;
+      probe.SetDestAddr(conn->GetDestAddr());
+      probe.SetSrcAddr(conn->GetAddr());
+      m_hashlist_.HashRemove(&probe);
     }
     UtilPtrPoolFree(conn);
   }

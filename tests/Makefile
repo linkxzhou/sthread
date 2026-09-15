@@ -5,12 +5,17 @@ LIB = $(ST_ROOT)/libmthread.a
 INCLUDE = $(ST_INC)
 FLAGS = $(ST_CXXFLAGS) $(ST_LDFLAGS) $(ST_LDLIBS)
 
-.PHONY: all clean run singleton base thread manager connection session keepalive c main server ucontext
+.PHONY: all clean run extra coverage coverage-report \
+	singleton base thread manager connection session keepalive c main server ucontext \
+	util buffer heap hash scheduler connmgr loopback context accept \
+	sysapi connio logbuf harvest httpserver
 
-all: singleton base thread manager connection session keepalive main
+# Primary suite (used by make -C tests run and coverage)
+all: singleton base thread manager connection session keepalive main \
+	util buffer heap hash scheduler connmgr loopback context server accept \
+	sysapi connio logbuf harvest httpserver
 
-# Network-ish / heavier targets kept separate
-extra: c server
+extra: c
 
 singleton: st_singleton_unittest.cpp
 	$(CC) $< $(INCLUDE) $(FLAGS) $(LIB) -o st_singleton_unittest
@@ -45,14 +50,99 @@ server: st_server_unittest.cpp
 ucontext: st_ucontext_unittest.cpp
 	$(CC) $< $(INCLUDE) $(FLAGS) $(LIB) -o st_ucontext_unittest
 
+util: st_util_netaddr_unittest.cpp
+	$(CC) $< $(INCLUDE) $(FLAGS) $(LIB) -o st_util_netaddr_unittest
+
+buffer: st_buffer_unittest.cpp
+	$(CC) $< $(INCLUDE) $(FLAGS) $(LIB) -o st_buffer_unittest
+
+heap: st_heap_unittest.cpp
+	$(CC) $< $(INCLUDE) $(FLAGS) $(LIB) -o st_heap_unittest
+
+hash: st_hash_unittest.cpp
+	$(CC) $< $(INCLUDE) $(FLAGS) $(LIB) -o st_hash_unittest
+
+scheduler: st_scheduler_unittest.cpp
+	$(CC) $< $(INCLUDE) $(FLAGS) $(LIB) -o st_scheduler_unittest
+
+connmgr: st_conn_manager_unittest.cpp
+	$(CC) $< $(INCLUDE) $(FLAGS) $(LIB) -o st_conn_manager_unittest
+
+loopback: st_loopback_unittest.cpp
+	$(CC) $< $(INCLUDE) $(FLAGS) $(LIB) -o st_loopback_unittest
+
+context: st_context_unittest.cpp
+	$(CC) $< $(INCLUDE) $(FLAGS) $(LIB) -o st_context_unittest
+
+accept: st_accept_unittest.cpp
+	$(CC) $< $(INCLUDE) $(FLAGS) $(LIB) -o st_accept_unittest
+
+sysapi: st_sys_api_unittest.cpp
+	$(CC) $< $(INCLUDE) $(FLAGS) $(LIB) -o st_sys_api_unittest
+
+connio: st_conn_io_unittest.cpp
+	$(CC) $< $(INCLUDE) $(FLAGS) $(LIB) -o st_conn_io_unittest
+
+logbuf: st_log_buffer_extra_unittest.cpp
+	$(CC) $< $(INCLUDE) $(FLAGS) $(LIB) -o st_log_buffer_extra_unittest
+
+harvest: st_harvest_unittest.cpp
+	$(CC) $< $(INCLUDE) $(FLAGS) $(LIB) -o st_harvest_unittest
+
+httpserver: st_http_server_unittest.cpp
+	$(CC) $< $(INCLUDE) $(FLAGS) $(LIB) -o st_http_server_unittest
+
+RUN_TESTS = \
+	st_singleton_unittest st_base_unittest st_thread_unittest \
+	st_manager_unittest st_connection_unittest st_session_unittest \
+	st_keepalive_unittest st_main_unittest st_server_unittest \
+	st_util_netaddr_unittest st_buffer_unittest st_heap_unittest \
+	st_hash_unittest st_scheduler_unittest st_conn_manager_unittest \
+	st_loopback_unittest st_context_unittest st_accept_unittest \
+	st_sys_api_unittest st_conn_io_unittest st_log_buffer_extra_unittest \
+	st_harvest_unittest \
+	st_http_server_unittest
+
 run: all
 	@set -e; \
-	for t in st_singleton_unittest st_base_unittest st_thread_unittest \
-	         st_manager_unittest st_connection_unittest st_session_unittest \
-	         st_keepalive_unittest st_main_unittest; do \
+	for t in $(RUN_TESTS); do \
 	  echo "=== run $$t ==="; \
 	  ./$$t; \
 	done
+
+# LLVM source coverage. Requires COVERAGE=1 rebuild of lib + tests.
+# Default gate: line cover of src/ + stlib/ (exclude vendor ucontext + app demos).
+COV_DIR ?= /tmp/sthread_cov
+PROFDATA ?= $(COV_DIR)/merged.profdata
+LLVM_PROFDATA ?= llvm-profdata
+LLVM_COV ?= llvm-cov
+COV_IGNORE ?= (stlib/ucontext/|stlib/st_epoll\.h|stlib/st_test\.|/usr/|/opt/|tests/|app/)
+COV_THRESHOLD ?= 65  # interim; long-term target remains ~80
+
+coverage: all
+	@mkdir -p $(COV_DIR)
+	@rm -f $(COV_DIR)/*.profraw $(PROFDATA)
+	@set -e; \
+	for t in $(RUN_TESTS); do \
+	  echo "=== cov $$t ==="; \
+	  LLVM_PROFILE_FILE="$(COV_DIR)/$${t}.%p.profraw" ./$$t \
+	    >$(COV_DIR)/$${t}.out 2>$(COV_DIR)/$${t}.err; \
+	done
+	@$(LLVM_PROFDATA) merge -sparse $(COV_DIR)/*.profraw -o $(PROFDATA)
+	@$(MAKE) coverage-report
+
+coverage-report:
+	@objs=""; first=1; \
+	for t in $(RUN_TESTS); do \
+	  if [ $$first -eq 1 ]; then objs="./$$t"; first=0; \
+	  else objs="$$objs -object ./$$t"; fi; \
+	done; \
+	$(LLVM_COV) report $$objs -instr-profile=$(PROFDATA) \
+	  --ignore-filename-regex='$(COV_IGNORE)' | tee $(COV_DIR)/report.txt; \
+	pct=`$(LLVM_COV) report $$objs -instr-profile=$(PROFDATA) \
+	  --ignore-filename-regex='$(COV_IGNORE)' | awk '/^TOTAL/ {print $$10}' | tr -d '%'`; \
+	echo "LINE_COVER=$$pct THRESHOLD=$(COV_THRESHOLD)"; \
+	awk -v p="$$pct" -v t="$(COV_THRESHOLD)" 'BEGIN { exit (p+0 >= t+0) ? 0 : 1 }'
 
 clean:
 	@rm -rf st_*_unittest uthread_unittest server_unittest *.dSYM *.o

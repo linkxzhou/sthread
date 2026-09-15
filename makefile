@@ -30,7 +30,7 @@ help:
 	@echo "  make test          构建并运行 stlib/tests 的四个测试"
 	@echo "  make lib           构建 libmthread.a / libmthread.so（仓库根目录）"
 	@echo "                     [阻塞于 plan/02、plan/03]"
-	@echo "  make apps          构建 app/st_dns、app/st_memcacheclient、app/st_wrk"
+	@echo "  make apps          构建 app/st_dns、st_memcacheclient、st_wrk、st_httpserver"
 	@echo "                     [阻塞于 plan/04]"
 	@echo "  make tests         构建 tests/ 下的 unittest [阻塞于 plan/04]"
 	@echo "  make format        对本仓库自己的代码跑 clang-format -i"
@@ -57,6 +57,7 @@ apps: lib
 	@$(MAKE) -C app/st_dns
 	@$(MAKE) -C app/st_memcacheclient
 	@$(MAKE) -C app/st_wrk
+	@$(MAKE) -C app/st_httpserver
 
 tests: lib
 	@$(MAKE) -C tests
@@ -81,6 +82,7 @@ clean:
 	@$(MAKE) -C app/st_dns clean
 	@$(MAKE) -C app/st_memcacheclient clean
 	@$(MAKE) -C app/st_wrk clean
+	@$(MAKE) -C app/st_httpserver clean
 	@rm -f libmthread.a libmthread.so
 	@rm -f app/st_wrk/wrk
 	@rm -rf *.dSYM

@@ -53,6 +53,10 @@ public:
       LOG_ERROR("create socket failed, ret[%d]", m_osfd_);
       return -1;
     }
+    {
+      int yes = 1;
+      ::setsockopt(m_osfd_, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
+    }
 
     m_item_ = Instance<UtilPtrPool<StEventItem> >()->AllocPtr();
     LOG_ASSERT(m_item_ != NULL);

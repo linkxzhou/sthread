@@ -15,6 +15,7 @@
 **/*_unittest
 app/st_dns/main
 app/st_memcacheclient/main
+app/st_httpserver/main
 app/st_wrk/wrk
 
 # 运行期日志

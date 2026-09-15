@@ -12,6 +12,7 @@
 #                  （需要 __sanitizer_start_switch_fiber 之类的标注），故默认关闭。
 #   TCMALLOC=0|1   默认 0。链接 -ltcmalloc，需自行安装 gperftools。
 #   PROFILER=0|1   默认 0。链接 -lprofiler，需自行安装 gperftools。
+#   COVERAGE=0|1   默认 0。LLVM -fprofile-instr-generate/-fcoverage-mapping。
 #   ARCH=32|64     默认 64。
 #
 # 硬约束：C++98。libmthread 不得链接任何第三方库，因此 TCMALLOC / PROFILER
@@ -26,6 +27,7 @@ DEBUG    ?= 1
 ASAN     ?= 0
 TCMALLOC ?= 0
 PROFILER ?= 0
+COVERAGE ?= 0
 ARCH     ?= 64
 
 # include 根只有仓库根目录一个。跨目录引用一律写从仓库根出发的路径
@@ -75,4 +77,10 @@ endif
 
 ifneq ($(PROFILER),0)
 ST_LDLIBS += -lprofiler
+endif
+
+# LLVM source-based coverage（clang / Apple clang / Homebrew llvm）
+ifneq ($(COVERAGE),0)
+ST_CXXFLAGS += -fprofile-instr-generate -fcoverage-mapping -O0
+ST_LDFLAGS  += -fprofile-instr-generate
 endif

@@ -17,7 +17,7 @@ sthread
 6. 跨平台；在内存与句柄足够时可以创建大量协程（见下方「性能」）
 7. 使用简单，只需链接一个 `libmthread.a` 或 `libmthread.so`
 
-示例应用：`app/st_dns`、`app/st_memcacheclient`、`app/st_wrk`。
+示例应用：`app/st_dns`、`app/st_memcacheclient`、`app/st_wrk`、`app/st_httpserver`。
 
 # 环境要求
 
@@ -41,6 +41,7 @@ sthread
 | 项 | 状态 |
 | --- | --- |
 | `make lib` / `make -C tests run` | 通过（含 `st_thread_unittest` `Wait(10)`、`st_keepalive_unittest`） |
+| `st_httpserver` | 样例：`app/st_httpserver`，默认 `:8765`，可与 `st_wrk` / curl 联调 |
 | `st_wrk` | **通过**：`./wrk -n 3 -c 3 -d 2s http://127.0.0.1:8765/` → 3 requests，约 832 req/s |
 | `st_memcacheclient` | **通过**：本机 memcached `:11211`，可见 `STORED` / `VALUE k1`（有同 fd `item conflict` 告警） |
 | `st_dns` | **部分通过**：150 协程进 IO wait、切换正常；默认 `www.2000–2149.com` 为合成域名，查询超时属预期；`Frame::Loop(true)` 不退出，需手动结束进程 |
@@ -55,9 +56,13 @@ sthread
 
 ```bash
 make lib                 # 产出 libmthread.a 与 libmthread.so（仓库根）
-make apps                # 编译 app/st_dns、st_memcacheclient、st_wrk
+make apps                # 编译 app/st_dns、st_memcacheclient、st_wrk、st_httpserver
 make tests               # 编译 tests/ 下的 unittest
 make -C tests run        # 运行核心单测（含 keepalive）
+make -C tests coverage TRACE=0 COVERAGE=1 \
+  LLVM_PROFDATA=/opt/homebrew/opt/llvm/bin/llvm-profdata \
+  LLVM_COV=/opt/homebrew/opt/llvm/bin/llvm-cov
+                         # 行覆盖率门禁（默认阈值80%；需 Homebrew llvm）
 make clean
 make help                # 目标与开关一览
 ```
@@ -78,6 +83,17 @@ ldd libmthread.so
 # macOS
 otool -L libmthread.so
 ```
+
+## HTTP server 样例
+
+```bash
+make lib && make -C app/st_httpserver
+./app/st_httpserver/main          # 监听 0.0.0.0:8765
+curl http://127.0.0.1:8765/
+# 另开终端可压测：./app/st_wrk/wrk -n 1000 -c 50 -d 5s http://127.0.0.1:8765/
+```
+
+详见 [`app/st_httpserver/README.md`](app/st_httpserver/README.md)。
 
 ## 最小使用轮廓
 
