@@ -1,7 +1,25 @@
 **/scp.sh
+
+# 构建产物
 **/*.a
 **/*.so
 **/*.o
+**/*.dSYM
+/libmthread.a
+/libmthread.so
 **/libtask
+
+# 测试与示例可执行文件
+# 注意：源文件是 *_test.cc / *_unittest.cpp，带扩展名，不会被下面两条匹配到
 **/*_test
-**/bazel-*
+**/*_unittest
+app/st_dns/main
+app/st_memcacheclient/main
+app/st_wrk/wrk
+
+# 运行期日志
+*.log
+
+# 编辑器 / 系统垃圾
+.DS_Store
+**/.DS_Store
