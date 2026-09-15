@@ -30,7 +30,7 @@ public:
 
   inline void SetHookFlag() { m_manager_->SetHookFlag(); }
 
-  int32_t CreateSocket(const StNetAddress &addr) {
+  int32_t CreateSocket(const StNetAddr &addr) {
     m_addr_ = addr;
 
     int protocol = SOCK_STREAM;
@@ -44,14 +44,14 @@ public:
       return -1;
     }
 
-    m_item_ = Instance<UtilPtrPool<typename ConnetionT::ServerStEventSuperT>>()
+    m_item_ = Instance<UtilPtrPool<typename ConnetionT::ServerStEventSuperT> >()
                   ->AllocPtr();
 
-    ASSERT(m_item_ != NULL);
+    LOG_ASSERT(m_item_ != NULL);
     m_item_->SetOsfd(m_osfd_);
     m_item_->EnableOutput();
     m_item_->DisableInput();
-    GlobalEventScheduler()->Add(m_item_);
+    GlobalEventSchedule()->Add(m_item_);
 
     struct sockaddr *servaddr;
     m_addr_.GetSockAddr(servaddr);
@@ -72,7 +72,7 @@ public:
   }
 
   void Loop() {
-    ASSERT(m_manager_ != NULL);
+    LOG_ASSERT(m_manager_ != NULL);
 
     int connfd = -1;
     while (true) {
@@ -85,9 +85,9 @@ public:
         continue;
       }
 
-      StNetAddress addr(*((struct sockaddr_in *)&clientaddr));
+      StNetAddr addr(*((struct sockaddr_in *)&clientaddr));
       StConnection *conn =
-          (StConnection *)(Instance<StConnectionManager<ConnetionT>>()
+          (StConnection *)(Instance<StConnectionManager<ConnetionT> >()
                                ->AllocPtr((eConnType)ServerT, &addr));
       conn->SetOsfd(connfd);
       conn->SetDestAddr(addr);
@@ -100,21 +100,21 @@ public:
   static void CallBack(StConnection *conn,
                        StServer<ConnetionT, ServerT> *server) {
     Manager *manager = server->m_manager_;
-    ASSERT(manager != NULL);
+    LOG_ASSERT(manager != NULL);
 
-    StEventSuper *item =
-        Instance<UtilPtrPool<typename ConnetionT::ServerStEventSuperT>>()
+    StEventItem *item =
+        Instance<UtilPtrPool<typename ConnetionT::ServerStEventSuperT> >()
             ->AllocPtr();
-    ASSERT(item != NULL);
+    LOG_ASSERT(item != NULL);
 
     item->SetOsfd(conn->GetOsfd());
-    StThreadSuper *thread = GlobalThreadScheduler()->GetActiveThread();
+    StThreadItem *thread = GlobalThreadSchedule()->GetActiveThread();
 
     int32_t ret = 0;
     do {
       item->EnableInput();
       item->DisableOutput();
-      GlobalEventScheduler()->Add(item);
+      GlobalEventSchedule()->Add(item);
       LOG_TRACE("CallBack ==========[name:%s]========== %p", thread->GetName(),
                 item);
 
@@ -139,7 +139,7 @@ public:
 
   CALLBACK_EXIT1:
     // 清理句柄数据
-    GlobalEventScheduler()->Close(item);
+    GlobalEventSchedule()->Close(item);
     conn->CloseSocket();
     UtilPtrPoolFree(item);
   }
@@ -147,8 +147,8 @@ public:
 private:
   Manager *m_manager_;
   int m_osfd_;
-  StNetAddress m_addr_;
-  StEventSuper *m_item_;
+  StNetAddr m_addr_;
+  StEventItem *m_item_;
 };
 
 #endif

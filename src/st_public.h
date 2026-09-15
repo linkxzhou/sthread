@@ -54,7 +54,7 @@ typedef enum {
 #define IS_TCP_CONN(type)                                                      \
   (((type) == eTCP_CONN) || ((type) == eTCP_KEEPLIVE_CONN))
 #define KEEPLIVE_VALUE 0x1
-#define IS_KEEPLIVE(type) (((type)&KEEPLIVE_VALUE) == KEEPLIVE_VALUE)
+#define IS_KEEPLIVE(type) (((type) & KEEPLIVE_VALUE) == KEEPLIVE_VALUE)
 
 // 规则是最后一位0x1则表示需要保存状态，否则不需要
 typedef enum {

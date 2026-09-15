@@ -5,7 +5,7 @@
 #ifndef _ST_SINGLETON_H__
 #define _ST_SINGLETON_H__
 
-#include "ucontext/st_def.h"
+#include "st_def.h"
 #include <assert.h>
 #include <new>
 #include <pthread.h>
@@ -42,7 +42,7 @@ public:
     return m_pinstance_;
 #else
     // Use C++ 11 style to implement singleton
-    static __THREAD T t;
+    static __thread T t;
     return &t;
 #endif
   }
@@ -71,12 +71,12 @@ public:
   };
 
 private:
-  static __THREAD T *m_pinstance_;
+  static __thread T *m_pinstance_;
   static pthread_mutex_t m_mutex_;
   static Deleter m_deleter_;
 };
 
-template <typename T> __THREAD T *Singleton<T>::m_pinstance_ = NULL;
+template <typename T> __thread T *Singleton<T>::m_pinstance_ = NULL;
 template <typename T>
 pthread_mutex_t Singleton<T>::m_mutex_ = PTHREAD_MUTEX_INITIALIZER;
 template <typename T> typename Singleton<T>::Deleter Singleton<T>::m_deleter_;

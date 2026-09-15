@@ -1,0 +1,108 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  # plan/01 的绿色基线：stlib 在 -std=c++98 下编译、四个测试运行通过。
+  # Linux 是硬门禁。
+  stlib-linux:
+    name: stlib (ubuntu, epoll)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 编译器版本
+        run: g++ --version
+
+      - name: C++98 语法检查（唯一 include 根 -I.）
+        run: |
+          set -e
+          for f in stlib/tests/*.cc; do
+            echo "-- $f"
+            g++ -std=c++98 -fsyntax-only -I. "$f"
+          done
+
+      - name: 构建 stlib（libst.a / libst.so）
+        run: make stlib
+
+      - name: 构建并运行 stlib 的四个测试
+        run: make test
+
+      - name: make clean 之后工作区必须干净
+        run: |
+          make clean
+          git status --porcelain
+          test -z "$(git status --porcelain)"
+
+      # src/ 还编不过（plan/02、plan/03），但 plan/01 要求「src/makefile 的
+      # LIB_O 只引用真实存在的源文件」。`make -n` 会为每个目标文件解析出
+      # 编译命令；只要有一个源文件不存在，make 就会报 No rule to make target。
+      - name: src/makefile 的 LIB_O 只引用存在的源文件
+        run: |
+          if ! out="$(make -C src -n 2>&1)"; then
+            echo "$out"
+            exit 1
+          fi
+          echo "$out"
+          if echo "$out" | grep -q 'No rule to make target'; then
+            exit 1
+          fi
+
+  # macOS：kqueue 与 Apple 自带 asm 的那条分支从未被验证过。
+  # 当前只把 stlib 的四个测试作为硬门禁——它们只依赖 st_log.cc / st_test.cc，
+  # 不碰 ucontext。`make stlib` 在 Apple Silicon 上会失败：
+  # stlib/ucontext/ucontext.h 在非 i386/x86_64 的 __APPLE__ 下会落到
+  # ucontext-power.h（PowerPC），asm.S 也没有 arm64 分支。
+  # 这属 plan/02 的范围，所以先设为非阻塞步骤，保留信号但不拦 PR。
+  stlib-macos:
+    name: stlib (macos, kqueue)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 编译器与架构
+        run: |
+          g++ --version
+          uname -m
+
+      - name: C++98 语法检查（唯一 include 根 -I.）
+        run: |
+          set -e
+          for f in stlib/tests/*.cc; do
+            echo "-- $f"
+            g++ -std=c++98 -fsyntax-only -I. "$f"
+          done
+
+      - name: 构建并运行 stlib 的四个测试
+        run: make test
+
+      - name: make clean 之后工作区必须干净
+        run: |
+          make clean
+          git status --porcelain
+          test -z "$(git status --porcelain)"
+
+      - name: '[非阻塞] 构建 stlib（ucontext 的 arm64 支持缺失，见 plan/02）'
+        continue-on-error: true
+        run: make stlib
+
+  format:
+    name: clang-format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # 格式化结果与 clang-format 版本强相关，所以钉死大版本。
+      - name: 安装 clang-format-18
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format-18
+
+      # 检查范围是根 makefile 的 FORMAT_SRC（本仓库自己写的代码）。
+      # vendor 代码与 app/、tests/ 下的历史代码不在范围内，见 plan/04、plan/05。
+      - name: make format-check
+        run: make format-check CLANG_FORMAT=clang-format-18

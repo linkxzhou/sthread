@@ -1,16 +1,20 @@
-CLANG = g++
+ST_ROOT = ..
+include $(ST_ROOT)/make.inc
 
-COMM_DIR = ..
+# NOTE 本目录的 target 列表整体还对不上真实文件（引用了大量不存在的
+# st_*.cpp / st_manager.cpp / st_asm.S 等），属 plan/04 范围。
+# plan/01 只把编译开关接到 make.inc：-ltcmalloc / -lprofiler / ASan
+# 一律默认关闭，需要时 `make TCMALLOC=1 PROFILER=1 ASAN=1`。
+
+CLANG = $(CC)
+
+COMM_DIR = $(ST_ROOT)
 COMM_LIB = $(COMM_DIR)/stlib/libst.a
 
-INCLUDE = -I$(COMM_DIR)/ -I. -I$(COMM_DIR)/stlib
+INCLUDE = $(ST_INC)
 SRC = ../src
 
-DEBUG = -g2 -DTRACE
-FLAGS = -lpthread -ltcmalloc -lprofiler -ldl \
-	-Wno-backslash-newline-escape -Wno-format \
-	-Wno-deprecated-declarations $(DEBUG) \
-	-fsanitize=address -fno-omit-frame-pointer
+FLAGS = $(ST_CXXFLAGS) $(ST_LDFLAGS) $(ST_LDLIBS)
 
 stlib_hash_list:
 	$(CLANG) st_hash_list_test.cc \

@@ -45,7 +45,6 @@ public:
 
     memset(m_file_, 0, sizeof(StFileEvent) * size);
     memset(m_fired_, 0, sizeof(StFiredEvent) * size);
-    memset(m_file_.data, 0, sizeof(void *) * DATA_SIZE);
 
     fcntl(m_epfd_, F_SETFD, FD_CLOEXEC);
 

@@ -20,37 +20,26 @@ public:
   }
 
   ~StSysSchedule() {
-    st_safe_delete(m_primo_);
-    st_safe_delete(m_daemon_);
+    // daemon/primo owned by StThreadSchedule; do not delete
     st_safe_delete(m_heap_timer_);
   }
 
   void Init(int max_num = 1024) {
     int r = GlobalThreadSchedule()->m_sleep_list_.HeapResize(max_num * 2);
-    ASSERT(r >= 0);
+    LOG_ASSERT(r >= 0);
 
     m_heap_timer_ = new StHeapTimer(max_num * 2);
-    ASSERT(m_heap_timer_ != NULL);
+    LOG_ASSERT(m_heap_timer_ != NULL);
 
-    // 获取一个daemon线程(从线程池中分配)
-    m_daemon_ = new Thread();
-    ASSERT(m_daemon_ != NULL);
-
-    m_daemon_->SetType(eDAEMON);
-    m_daemon_->SetState(eRUNABLE);
+    // D3(B): schedule owns daemon/primo via lazy getters; we only alias + rebind callback.
+    m_daemon_ = dynamic_cast<StThread *>(GlobalThreadSchedule()->DaemonThread());
+    LOG_ASSERT(m_daemon_ != NULL);
     m_daemon_->SetCallback(NewStClosure(StartUp, this));
-    m_daemon_->SetName(THREAD_DAEMON_NAME);
 
-    m_primo_ = new Thread();
-    ASSERT(m_daemon_ != NULL);
+    m_primo_ = dynamic_cast<StThread *>(GlobalThreadSchedule()->PrimoThread());
+    LOG_ASSERT(m_primo_ != NULL);
 
-    m_primo_->SetType(ePRIMORDIAL);
-    m_primo_->SetState(eRUNNING);
-    m_primo_->SetName(THREAD_PRIMO_NAME);
-
-    GlobalThreadSchedule()->SetDaemonThread(m_daemon_);
-    GlobalThreadSchedule()->SetPrimoThread(m_primo_);
-    GlobalThreadSchedule()->SetActiveThread(m_primo_); // 设置当前的活动线程
+    GlobalThreadSchedule()->SetActiveThread(m_primo_);
     m_last_clock_ = Util::TimeMs();
 
     LOG_TRACE("m_last_clock_: %d", m_last_clock_);
@@ -71,8 +60,8 @@ public:
   }
 
   inline int64_t GetTimeout() {
-    Thread *thread =
-        dynamic_cast<Thread *>(GlobalThreadSchedule()->m_sleep_list_.HeapTop());
+    StThread *thread =
+        dynamic_cast<StThread *>(GlobalThreadSchedule()->m_sleep_list_.HeapTop());
 
     int64_t now = GetLastClock();
     if (!thread) {
@@ -86,7 +75,7 @@ public:
 
   int WaitEvents(int fd, int events, int timeout) {
     int64_t start = GetLastClock();
-    Thread *thread = (Thread *)(GlobalThreadSchedule()->GetActiveThread());
+    StThread *thread = (StThread *)(GlobalThreadSchedule()->GetActiveThread());
 
     int64_t now = 0;
     timeout = (timeout <= -1) ? 0x7fffffff : timeout;
@@ -99,7 +88,7 @@ public:
         return -1;
       }
 
-      StEventSuper *item = GlobalEventScheduler()->GetEventItem(fd);
+      StEventItem *item = GlobalEventSchedule()->GetEventItem(fd);
       if (NULL == item) {
         LOG_TRACE("item is NULL");
         return -2;
@@ -117,7 +106,7 @@ public:
 
       int64_t wakeup_timeout = timeout + GetLastClock();
       bool rc =
-          GlobalEventScheduler()->Schedule(thread, NULL, item, wakeup_timeout);
+          GlobalEventSchedule()->Schedule(thread, NULL, item, wakeup_timeout);
       if (!rc) {
         LOG_ERROR("item schedule failed, errno: %d, strerr: %s", errno,
                   strerror(errno));
@@ -132,30 +121,30 @@ public:
     }
   }
 
-  Thread *CreateThread(StClosure *StClosure, bool runable = true) {
-    Thread *thread = AllocThread();
+  StThread *CreateThread(StClosure *closure, bool runable = true) {
+    StThread *thread = AllocThread();
     if (NULL == thread) {
       LOG_ERROR("alloc thread failed");
       return NULL;
     }
 
-    thread->SetCallback(StClosure);
+    thread->SetCallback(closure);
     if (runable) {
-      GlobalThreadScheduler()->InsertRunable(thread); // 插入运行线程
+      GlobalThreadSchedule()->InsertRunable(thread); // 插入运行线程
     }
 
     return thread;
   }
 
-  inline Thread *AllocThread() {
-    return (Thread *)(Instance<UtilPtrPool<Thread>>()->AllocPtr());
+  inline StThread *AllocThread() {
+    return (StThread *)(Instance<UtilPtrPool<StThread> >()->AllocPtr());
   }
 
   static void StartUp(StSysSchedule *schedule) {
     LOG_ASSERT(schedule != NULL);
-    Thread *daemon = schedule->m_daemon_;
-    EventSchedule *event_schedule = GlobalEventSchedule();
-    ThreadSchedule *thread_schedule = GlobalThreadSchedule();
+    StThread *daemon = schedule->m_daemon_;
+    StEventSchedule *event_schedule = GlobalEventSchedule();
+    StThreadSchedule *thread_schedule = GlobalThreadSchedule();
     if (NULL == daemon || NULL == event_schedule || NULL == thread_schedule) {
       LOG_ERROR("daemon: %p, event_schedule: %p, thread_schedule: %p", daemon,
                 event_schedule, thread_schedule);
@@ -179,7 +168,7 @@ public:
   }
 
 public:
-  Thread *m_daemon_, *m_primo_;
+  StThread *m_daemon_, *m_primo_;
   StHeapTimer *m_heap_timer_;
   int64_t m_last_clock_, m_timeout_;
 };

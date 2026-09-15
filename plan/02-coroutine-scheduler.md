@@ -500,3 +500,42 @@ T5 的 `GetRootThread()` 需注意：它的循环 `while (eSUB_THREAD == type)` 
 | L7 | `m_reclaim_list_` 是预留还是死代码 | 记录，不删 |
 | L8 | `StTimer::m_time_expired_` 的 `uint64_t` 初值 `-1` 与 `HeapValue()` 返回 `int64_t` 语义相反 | 记录，不改；05 阶段文档化 |
 | L9 | 协程对象不回收（`// TODO: 回收sthread`） | 记录为已知问题，独立排期 |
+
+
+## 10. 实现期更正（本地分支 impl-plan-02-scheduler，2026-09-15）
+
+### 10.1 context_switch / context_exit / Stack / STACK 研究结论
+
+| 符号 | 来源 | 处理 |
+| --- | --- | --- |
+| `STACK` | 历史 `stlib/ucontext/st_ucontext.h`：早期 `131072`，`478d209` 为 **`260096`（256K）** | 恢复为 `260096` |
+| `Context` / `Stack` | 同上历史头文件 | 恢复 |
+| `context_switch` / `context_exit` / `context_init` | 历史 `stlib/st_ucontext.cc`（`swapcontext` 封装） | 恢复实现到 `stlib/st_context.cc` |
+
+厂商 `stlib/ucontext/ucontext.{h,c,asm.S}` 只提供 get/set/swap/makecontext；调度器面向的 Stack/context_switch 是项目层封装，在 ucontext 更新提交中被摘丢。本阶段新增：
+
+- `stlib/st_context.h`
+- `stlib/st_context.cc`
+
+并编入 `stlib/makefile` 与 `src/makefile` 的 `libmthread`。
+
+### 10.2 其它落地
+
+- `src/st_poll.h`：补 `st_public.h` + `st_context.h`；`StEventItem` 调到 `StThreadItem` 之前；删除孤儿 `m_type_ = eEVENT_UNDEF`
+- `st_epoll.h` / `st_kqueue.h`：删除非法 `memset(m_file_.data, …)`（已被整块 `memset(m_file_,0,…)` 覆盖）
+- D3(A) 命名统一到 `St*` / `Global*Schedule` / `LOG_ASSERT`
+- D3(B)：`StSysSchedule` 通过 getter 别名 daemon/primo，析构不再 delete；`StThreadSchedule::Startup` 转发 `StSysSchedule::StartUp`
+- `app/thread.h` 改为转发 `src/st_thread.h`
+- `ActiveThreadStartUp` NULL 检查改为早退
+- flag/state：列表成员用 `SetFlag`/`UnsetFlag`/`HasFlag`，生命周期用 `SetState`
+
+### 10.3 验证
+
+- `g++ -std=c++98 -fsyntax-only -I. src/st_thread.cc` → **0 error**（本机 Apple clang；arm64 仍会走到 `ucontext-power.h` 警告，属已知限制）
+
+### 10.4 遗留（交 03+）
+
+- D4：`src/st_sys` 与 `app/st_sys` 双套 `extern "C"` 符号冲突
+- Apple Silicon arm64 汇编缺失
+- 协程单测 T1–T8 尚未在本机完整跑通（优先保证 `st_thread.cc` 可编译）
+- L4 keepalive `&`→`|` 单独阶段

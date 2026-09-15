@@ -8,7 +8,7 @@
 ST_NAMESPACE_USING
 
 int32_t StConnection::SendData() {
-  ASSERT(m_sendbuf_ != NULL);
+  LOG_ASSERT(m_sendbuf_ != NULL);
 
   int32_t len = m_sendbuf_->GetMaxLen();
   int ret = HandleOutput(m_sendbuf_->GetBuffer(), len);
@@ -56,7 +56,7 @@ int32_t StConnection::SendData() {
 }
 
 int32_t StConnection::RecvData() {
-  ASSERT(m_recvbuf_ != NULL);
+  LOG_ASSERT(m_recvbuf_ != NULL);
 
   char *buf = (char *)m_recvbuf_->GetBuffer();
   int buf_maxlen = m_recvbuf_->GetMaxLen();
@@ -75,7 +75,7 @@ int32_t StConnection::RecvData() {
     ret = ::_sendto(m_osfd_, (char *)buf + have_recv_len,
                     buf_maxlen - have_recv_len, 0, &clientaddr, addrlen,
                     m_timeout_);
-    m_destaddr_ = StNetAddress(*((struct sockaddr_in *)&clientaddr));
+    m_destaddr_ = StNetAddr(*((struct sockaddr_in *)&clientaddr));
   } else {
     ret = ::_recv(m_osfd_, (char *)buf + have_recv_len,
                   buf_maxlen - have_recv_len, 0, m_timeout_);

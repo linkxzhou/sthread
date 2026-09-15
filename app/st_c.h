@@ -14,7 +14,7 @@
 
 using namespace stlib;
 
-class StExecClientConnection : public StClientConnection<StEventSuper> {};
+class StExecClientConnection : public StClientConnection<StEventItem> {};
 
 #ifdef __cplusplus
 extern "C" {
