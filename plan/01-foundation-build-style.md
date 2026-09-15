@@ -425,7 +425,7 @@ git rm --cached app/st_dns/test.log
 ## 7. 验收
 
 - [x] `stlib/tests` 四个测试在 Linux 编译通过并运行通过（退出码 0）
-- [x] 同上，在 macOS 编译通过并运行通过 —— 由 CI 的 `stlib-macos` job 守；**注意 `make stlib` 在 Apple Silicon 上仍编不过**（见第 10 节遗留项 L3）
+- [x] 同上，在 macOS 编译通过并运行通过 —— 由 CI 的 `stlib-macos` job 守，实测环境 `macos-26-arm64` / Apple clang 21，四个测试输出 `ALL STLIB TESTS PASSED`；**注意 `make stlib` 在 Apple Silicon 上仍编不过**（见第 10 节遗留项 L3）
 - [x] `-std=c++98` 下 `stlib` 零 error
 - [x] 步骤 2 的 MISSING 脚本在 `stlib/` + `src/st_poll.h` 范围内输出为空
 - [x] `make -C stlib` 产出 `libst.a` / `libst.so`
@@ -544,7 +544,8 @@ make format-check CLANG_FORMAT=clang-format-18
 | --- | --- | --- |
 | L1 | `src/` 编译不过：旧名无定义（`Thread` / `ThreadSchedule` / `StEventSuper` …）、`Stack` / `STACK` / `eThreadType` 未声明、`st_manager.h` 文件不存在 | `plan/02` |
 | L2 | `stlib/st_test.h` 的 `StTester` 断言失败时 `exit(0)`。改它会动到测试框架语义，本阶段只用输出内容绕开 | `plan/02` |
-| L3 | `stlib/ucontext` 没有 arm64 分支：`ucontext.h` 在非 i386/x86_64 的 `__APPLE__` 下落到 `ucontext-power.h`（PowerPC），`asm.S` 同理。**Apple Silicon 上 `make stlib` 编不过**，CI 里该步骤设为非阻塞 | `plan/02` |
+| L3 | `stlib/ucontext` 没有 arm64 分支：`ucontext.h` 在非 i386/x86_64 的 `__APPLE__` 下落到 `ucontext-power.h`（PowerPC），`asm.S` 同理。**Apple Silicon 上 `make stlib` 编不过**，CI 里该步骤设为非阻塞。已由 CI 实测坐实（`macos-26-arm64` / Apple clang 21）：`ucontext-power.h` 的 `#pragma message("ucontext power")` 被触发，随后 `asm.S:149` 起报 `unrecognized instruction mnemonic: mflr r0 / mfcr r5 / mfctr r6 / mfxer r7`——确实在拿 PowerPC 汇编喂 arm64 汇编器 | `plan/02` |
+| L3b | `CC = g++` 会把 `ucontext/ucontext.c` 当 C++ 编译（clang 已就此报 `treating 'c' input as 'c++' when in C++ mode, this behavior is deprecated`）。后果是 `makecontext` / `swapcontext` 拿到 C++ 修饰名，而 `asm.S` 提供的是未修饰的 `_getmcontext` / `_setmcontext`。Linux 上这两个文件展开为空目标文件所以无影响，**Apple 分支上会是真实的链接问题** | `plan/02` |
 | L4 | `ld` 对 `ucontext/asm.o` 报 `missing .note.GNU-stack section implies executable stack`。Linux 上 `asm.S` 本来展开为空目标文件，暂不处理（修法要么改 vendor 汇编，要么加平台相关的 `-Wa,--noexecstack`） | `plan/02` |
 | L5 | `stlib/st_epoll.h` 两处硬错误：`m_file_` 是指针却当结构体用（`.data`）、`m_file_events_` 未声明 | `plan/03` |
 | L6 | `src/st_sys.h` 与 `app/st_sys.h` 用相同名字声明签名不同的 `extern "C"` 符号，`libmthread` 归档里还会出现两个同名成员 `st_sys.o`。**链接期必然冲突**，必须先拆前缀（D4） | `plan/03` |
