@@ -30,7 +30,7 @@ sthread
 | 运行时依赖 | 无（仅系统库：libc / libstdc++ 或 libc++ / libpthread / libdl） |
 | 可选开发期依赖 | gperftools（tcmalloc / profiler），默认关闭；见 [`thirdparty/readme.md`](thirdparty/readme.md) |
 
-**Apple Silicon（arm64）说明**：`stlib/ucontext/asm.S` 尚含 arm64 实现，当前使用 stub。库与示例可以**编译**，但协程上下文切换不可用，依赖 Yield 的真实 IO 冒烟会失败。x86_64 macOS / Linux 可做端到端验证。详见 [`plan/04-regression-checklist.md`](plan/04-regression-checklist.md)。
+**Apple Silicon（arm64）说明**：已落地真实 `ucontext`/`asm`（`NEEDARM64CONTEXT`，`libthread_makecontext` 避开系统 `makecontext`）。协程切换可用；端到端 IO 冒烟见 [`plan/04-regression-checklist.md`](plan/04-regression-checklist.md)。
 
 # 快速开始
 
@@ -130,7 +130,7 @@ Frame::Loop(true);
 
 ```bash
 make -C app/st_dns
-# 需要可用的协程切换（非 arm64 stub）与外网 DNS
+# 需要外网 DNS（arm64 真实 ucontext 已可用）
 ./app/st_dns/main
 ```
 
@@ -222,11 +222,12 @@ MEM_PAGE_SIZE * 2 + (STACK / MEM_PAGE_SIZE + 1) * MEM_PAGE_SIZE
 | --- | --- |
 | 单协程栈占用 | 上式（静态可算） |
 | 高并发创建上限 | 受内存与 `RLIMIT_NOFILE` 限制；`StEventSchedule::Init` 会尝试把 fd 上限提到 65535（非 root 可能失败） |
-| arm64 实测 QPS / 万级协程 | **未完成**（ucontext stub）；请在 Linux / x86_64 上复测 |
+| arm64 app 冒烟 | **已做**（wrk/memcache 通过；dns 合成域名超时，见 plan/04） |
+| arm64 实测 QPS / 万级协程 | **底层切换已通**；万级协程 / QPS 仍待专项压测 |
 
 # 已知限制
 
-- **Apple Silicon**：协程切换为 stub，真实 IO 冒烟 known-failure。
+- **Apple Silicon**：真实 ucontext 已落地；app 冒烟结果见 plan/04 清单。
 - **TCP keepalive 复用**：`eTCP_KEEPLIVE_CONN`（0x11）+ `Keeplive()`=`IS_KEEPLIVE`；连接池对 keepalive 类型按地址 hash 复用。
 - **协程对象回收**：`StThread` 池回收仍有 `TODO`，长时间大量创建需关注内存。
 - **`app/st_c.h`**：在 `extern "C"` 块里使用了 C++ 引用，**不能**被纯 C 编译器直接 include。

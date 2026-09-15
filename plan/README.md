@@ -134,7 +134,7 @@
 - [ ] 协程：创建 / `Yield` / `Sleep` / `Wakeup` / 父子协程唤醒（`WakeupParent`）行为正确
 - [ ] 定时器：`StHeapTimer::CheckExpired` 到期触发，`Stop` 可取消
 - [ ] epoll 与 kqueue 两条路径行为一致（同一套用例双平台跑）
-- [ ] TCP 客户端：短连接与 keepalive 连接（`eTCP_CONN` / `eTCP_KEEPLIVE_CONN`）
+- [x] TCP 客户端：短连接与 keepalive 连接（`eTCP_CONN` / `eTCP_KEEPLIVE_CONN`；L4 已修）
 - [ ] UDP 客户端：`udp_sendrecv` 收发与超时
 - [ ] 服务端：`StServer` accept → 收 → 处理 → 发 闭环
 - [ ] 超时语义：连接 / 读 / 写 / 整体超时均按 `eERR_*` 错误码返回
