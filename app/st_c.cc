@@ -3,8 +3,9 @@
  */
 
 #include "st_c.h"
-#include "st_connection.h"
-#include "st_manager.h"
+#include "app/st_sys.h"
+#include "src/st_connection.h"
+#include "src/st_manager.h"
 
 using namespace stlib;
 
@@ -13,14 +14,14 @@ static StExecClientConnection *_get_conn(struct sockaddr_in *dst, int32_t &sock,
                                          eConnType type) {
   StNetAddr addr(*dst);
   StExecClientConnection *conn =
-      Instance<StConnectionManager<StExecClientConnection>>()->AllocPtr(type,
+      Instance<StConnectionManager<StExecClientConnection> >()->AllocPtr(type,
                                                                         &addr);
   if (NULL == conn) {
     LOG_ERROR("get connection failed, dst[%p]", dst);
     return NULL;
   }
 
-  int32_t osfd = conn->CreateSocket(addr);
+  int32_t osfd = conn->Create(addr);
   LOG_TRACE("osfd: %d", osfd);
   if (osfd < 0) {
     LOG_ERROR("create socket failed, ret[%d]", osfd);
@@ -40,10 +41,10 @@ static int32_t _tcp_check_recv(int32_t sock, char *recvbuf, int32_t &len,
                                int32_t flags, int32_t timeout,
                                CheckLengthCallback callback) {
   int32_t recvlen = 0;
-  time64_t start_ms = Util::SysMs();
+  time64_t start_ms = Util::TimeMs();
 
   do {
-    time64_t cost_time = Util::SysMs() - start_ms;
+    time64_t cost_time = Util::TimeMs() - start_ms;
     LOG_TRACE("cost_time: %ld", cost_time);
 
     if (cost_time > timeout) {
@@ -52,7 +53,7 @@ static int32_t _tcp_check_recv(int32_t sock, char *recvbuf, int32_t &len,
       return -3;
     }
 
-    int32_t rc = ::_recv(sock, (recvbuf + recvlen), (len - recvlen), 0,
+    int32_t rc = st_recv(sock, (recvbuf + recvlen), (len - recvlen), 0,
                          (timeout - cost_time));
     LOG_TRACE("sock: %d, rc: %d, recvlen: %d", sock, rc, recvlen);
     if (rc < 0) {
@@ -103,7 +104,7 @@ int32_t udp_sendrecv(struct sockaddr_in *dst, void *pkg, int32_t len,
   int32_t addr_len = sizeof(from_addr);
 
   // 获取时间戳
-  time64_t start_ms = Util::SysMs(), cost_time = 0;
+  time64_t start_ms = Util::TimeMs(), cost_time = 0;
   int32_t time_left = 0;
   int32_t sock = -1;
 
@@ -116,7 +117,7 @@ int32_t udp_sendrecv(struct sockaddr_in *dst, void *pkg, int32_t len,
   }
 
   // 发送数据
-  rc = ::_sendto(sock, pkg, len, 0, (struct sockaddr *)dst,
+  rc = st_sendto(sock, pkg, len, 0, (struct sockaddr *)dst,
                  (int32_t)sizeof(*dst), timeout);
   if (rc < 0) {
     LOG_ERROR("udp_sendrecv send failed, rc: %d, errno: %d", rc, errno);
@@ -124,10 +125,10 @@ int32_t udp_sendrecv(struct sockaddr_in *dst, void *pkg, int32_t len,
     goto UDP_SENDRECV_EXIT_LABEL;
   }
 
-  cost_time = Util::SysMs() - start_ms;
+  cost_time = Util::TimeMs() - start_ms;
   time_left = (timeout > cost_time) ? (timeout - (int32_t)cost_time) : 0;
   // 接收数据
-  rc = ::_recvfrom(sock, recvbuf, bufsize, 0, (struct sockaddr *)&from_addr,
+  rc = st_recvfrom(sock, recvbuf, bufsize, 0, (struct sockaddr *)&from_addr,
                    (socklen_t *)&addr_len, time_left);
   LOG_TRACE("from_addr %s: %d, time_left: %d", inet_ntoa(from_addr.sin_addr),
             ntohs(from_addr.sin_port), time_left);
@@ -141,7 +142,7 @@ int32_t udp_sendrecv(struct sockaddr_in *dst, void *pkg, int32_t len,
 
 UDP_SENDRECV_EXIT_LABEL:
   if (sock > 0) {
-    st_close(sock);
+    sys_close(sock);
     sock = -1;
   }
 
@@ -169,7 +170,7 @@ int32_t tcp_sendrecv(struct sockaddr_in *dst, void *pkg, int32_t len,
   int32_t ret = 0, rc = 0;
   int32_t addr_len = sizeof(struct sockaddr_in);
   // 获取时间戳
-  time64_t start_ms = Util::SysMs(), cost_time = 0;
+  time64_t start_ms = Util::TimeMs(), cost_time = 0;
   // 连接超时时间
   int32_t time_left = timeout;
   int32_t sock = -1;
@@ -184,17 +185,17 @@ int32_t tcp_sendrecv(struct sockaddr_in *dst, void *pkg, int32_t len,
     goto TCP_SENDRECV_EXIT_LABEL;
   }
 
-  cost_time = Util::SysMs() - start_ms;
+  cost_time = Util::TimeMs() - start_ms;
   time_left = (timeout > cost_time) ? (timeout - cost_time) : 0;
   // 先将数据包发送
-  rc = ::_send(sock, pkg, len, 0, time_left);
+  rc = st_send(sock, pkg, len, 0, time_left);
   if (rc < 0) {
     LOG_ERROR("socket[%d] send failed, ret[%d]", sock, rc);
     ret = -2;
     goto TCP_SENDRECV_EXIT_LABEL;
   }
 
-  cost_time = Util::SysMs() - start_ms;
+  cost_time = Util::TimeMs() - start_ms;
   time_left = (timeout > cost_time) ? (timeout - cost_time) : 0;
   rc = _tcp_check_recv(sock, (char *)recvbuf, bufsize, 0, time_left, callback);
   if (rc < 0) {
@@ -206,7 +207,7 @@ int32_t tcp_sendrecv(struct sockaddr_in *dst, void *pkg, int32_t len,
 TCP_SENDRECV_EXIT_LABEL:
   // 短连接close
   if (!keeplive) {
-    conn->CloseSocket();
+    conn->Close();
     // 释放链接
   }
 
@@ -237,4 +238,4 @@ void *st_get_private() {
   return NULL;
 }
 
-void st_set_hook_flag() { Instance<Manager>()->SetHookFlag(); }
+void st_set_hook_flag() { SET_HOOK_FLAG(); }

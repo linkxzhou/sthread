@@ -1,8 +1,9 @@
+#include "app/st_sys.h"
 #include "st_sys.h"
 
 using namespace sthread;
 
-int __sendto(int fd, const void *msg, int len, int flags,
+int st_sendto(int fd, const void *msg, int len, int flags,
              const struct sockaddr *to, int tolen, int timeout) {
   int64_t start = Util::TimeMs();
   StThreadItem *thread =
@@ -13,7 +14,7 @@ int __sendto(int fd, const void *msg, int len, int flags,
   timeout = (timeout <= -1) ? 0x7fffffff : timeout;
 
   int n = 0;
-  while ((n = st_sendto(fd, msg, len, flags, to, tolen)) < 0) {
+  while ((n = sys_sendto(fd, msg, len, flags, to, tolen)) < 0) {
     // 对端关闭
     if (n == 0) {
       LOG_ERROR("[n=0]sendto failed, errno: %d, strerr : %s", errno,
@@ -60,9 +61,9 @@ int __sendto(int fd, const void *msg, int len, int flags,
   return n;
 }
 
-int _recvfrom(int fd, void *buf, int len, int flags, struct sockaddr *from,
+int st_recvfrom(int fd, void *buf, int len, int flags, struct sockaddr *from,
               socklen_t *fromlen, int timeout) {
-  int64_t start = Util::SysMs();
+  int64_t start = Util::TimeMs();
   StThread *thread = (StThread *)(GlobalThreadSchedule()->GetActiveThread());
 
   LOG_TRACE("---------- [name : %s] -----------", thread->GetName());
@@ -70,7 +71,7 @@ int _recvfrom(int fd, void *buf, int len, int flags, struct sockaddr *from,
   timeout = (timeout <= -1) ? 0x7fffffff : timeout;
 
   while (true) {
-    now = Util::SysMs();
+    now = Util::TimeMs();
     if ((int)(now - start) > timeout) {
       errno = ETIME;
       return -1;
@@ -84,7 +85,7 @@ int _recvfrom(int fd, void *buf, int len, int flags, struct sockaddr *from,
     item->DisableOutput();
     item->EnableInput();
     item->SetOwnerThread(thread);
-    int64_t wakeup_timeout = timeout + Util::SysMs();
+    int64_t wakeup_timeout = timeout + Util::TimeMs();
     if (!(GlobalEventSchedule()->Schedule(thread, NULL, item,
                                            wakeup_timeout))) {
       LOG_ERROR("item schedule failed, errno: %d, strerr: %s", errno,
@@ -94,7 +95,7 @@ int _recvfrom(int fd, void *buf, int len, int flags, struct sockaddr *from,
       return -3;
     }
 
-    int n = st_recvfrom(fd, buf, len, flags, from, fromlen);
+    int n = sys_recvfrom(fd, buf, len, flags, from, fromlen);
     LOG_TRACE("recvfrom return n: %d, buf: %s, fd: %d, len: %d, flags: %d", n,
               buf, fd, len, flags);
     if (n < 0) {
@@ -116,8 +117,8 @@ int _recvfrom(int fd, void *buf, int len, int flags, struct sockaddr *from,
   }
 }
 
-int _connect(int fd, const struct sockaddr *addr, int addrlen, int timeout) {
-  int64_t start = Util::SysMs();
+int st_connect(int fd, const struct sockaddr *addr, int addrlen, int timeout) {
+  int64_t start = Util::TimeMs();
   StThread *thread = (StThread *)(GlobalThreadSchedule()->GetActiveThread());
 
   LOG_TRACE("---------- [name : %s] -----------", thread->GetName());
@@ -125,10 +126,10 @@ int _connect(int fd, const struct sockaddr *addr, int addrlen, int timeout) {
   timeout = (timeout <= -1) ? 0x7fffffff : timeout;
 
   int n = 0;
-  while ((n = st_connect(fd, addr, addrlen)) < 0) {
+  while ((n = sys_connect(fd, addr, addrlen)) < 0) {
     LOG_TRACE("connect n: %d, errno: %d, strerror: %s", n, errno,
               strerror(errno));
-    now = Util::SysMs();
+    now = Util::TimeMs();
     LOG_TRACE("now: %ld, start: %ld", now, start);
     if ((int)(now - start) > timeout) {
       errno = ETIME;
@@ -158,7 +159,7 @@ int _connect(int fd, const struct sockaddr *addr, int addrlen, int timeout) {
     item->DisableInput();
     item->EnableOutput();
     item->SetOwnerThread(thread);
-    int64_t wakeup_timeout = timeout + Util::SysMs();
+    int64_t wakeup_timeout = timeout + Util::TimeMs();
     if (!(GlobalEventSchedule()->Schedule(thread, NULL, item,
                                            wakeup_timeout))) {
       LOG_ERROR("item schedule failed, errno: %d, strerr: %s", errno,
@@ -172,8 +173,8 @@ int _connect(int fd, const struct sockaddr *addr, int addrlen, int timeout) {
   return n;
 }
 
-ssize_t _read(int fd, void *buf, size_t nbyte, int timeout) {
-  int64_t start = Util::SysMs();
+ssize_t st_read(int fd, void *buf, size_t nbyte, int timeout) {
+  int64_t start = Util::TimeMs();
   StThread *thread = (StThread *)(GlobalThreadSchedule()->GetActiveThread());
 
   LOG_TRACE("---------- [name : %s] -----------", thread->GetName());
@@ -181,14 +182,14 @@ ssize_t _read(int fd, void *buf, size_t nbyte, int timeout) {
   timeout = (timeout <= -1) ? 0x7fffffff : timeout;
 
   ssize_t n = 0;
-  while ((n = st_read(fd, buf, nbyte)) < 0) {
+  while ((n = sys_read(fd, buf, nbyte)) < 0) {
     if (n == 0) // 句柄关闭
     {
       LOG_ERROR("[n=0]read failed, errno: %d", errno);
       return 0;
     }
 
-    now = Util::SysMs();
+    now = Util::TimeMs();
     if ((int)(now - start) > timeout) {
       errno = ETIME;
       return -1;
@@ -211,7 +212,7 @@ ssize_t _read(int fd, void *buf, size_t nbyte, int timeout) {
     item->DisableOutput();
     item->EnableInput();
     item->SetOwnerThread(thread);
-    int64_t wakeup_timeout = timeout + Util::SysMs();
+    int64_t wakeup_timeout = timeout + Util::TimeMs();
     if (!(GlobalEventSchedule()->Schedule(thread, NULL, item,
                                            wakeup_timeout))) {
       LOG_ERROR("item schedule failed, errno: %d, strerr: %s", errno,
@@ -225,8 +226,8 @@ ssize_t _read(int fd, void *buf, size_t nbyte, int timeout) {
   return n;
 }
 
-ssize_t _write(int fd, const void *buf, size_t nbyte, int timeout) {
-  int64_t start = Util::SysMs();
+ssize_t st_write(int fd, const void *buf, size_t nbyte, int timeout) {
+  int64_t start = Util::TimeMs();
   StThread *thread = (StThread *)(GlobalThreadSchedule()->GetActiveThread());
 
   LOG_TRACE("---------- [name : %s] -----------", thread->GetName());
@@ -236,13 +237,13 @@ ssize_t _write(int fd, const void *buf, size_t nbyte, int timeout) {
   ssize_t n = 0;
   size_t send_len = 0;
   while (send_len < nbyte) {
-    now = Util::SysMs();
+    now = Util::TimeMs();
     if ((int)(now - start) > timeout) {
       errno = ETIME;
       return -1;
     }
 
-    n = st_write(fd, (char *)buf + send_len, nbyte - send_len);
+    n = sys_write(fd, (char *)buf + send_len, nbyte - send_len);
     if (n < 0) {
       if (errno == EINTR) {
         continue;
@@ -271,7 +272,7 @@ ssize_t _write(int fd, const void *buf, size_t nbyte, int timeout) {
     item->DisableInput();
     item->EnableOutput();
     item->SetOwnerThread(thread);
-    int64_t wakeup_timeout = timeout + Util::SysMs();
+    int64_t wakeup_timeout = timeout + Util::TimeMs();
     if (!(GlobalEventSchedule()->Schedule(thread, NULL, item,
                                            wakeup_timeout))) {
       LOG_ERROR("item schedule failed, errno: %d, strerr: %s", errno,
@@ -285,8 +286,8 @@ ssize_t _write(int fd, const void *buf, size_t nbyte, int timeout) {
   return nbyte;
 }
 
-int _recv(int fd, void *buf, int len, int flags, int timeout) {
-  int64_t start = Util::SysMs();
+int st_recv(int fd, void *buf, int len, int flags, int timeout) {
+  int64_t start = Util::TimeMs();
   StThread *thread = (StThread *)(GlobalThreadSchedule()->GetActiveThread());
 
   LOG_TRACE("---------- [name: %s] -----------", thread->GetName());
@@ -294,7 +295,7 @@ int _recv(int fd, void *buf, int len, int flags, int timeout) {
   timeout = (timeout <= -1) ? 0x7fffffff : timeout;
 
   while (true) {
-    now = Util::SysMs();
+    now = Util::TimeMs();
     LOG_TRACE("now time: %ld, start time: %ld", now, start);
     if ((int)(now - start) > timeout) {
       errno = ETIME;
@@ -309,7 +310,7 @@ int _recv(int fd, void *buf, int len, int flags, int timeout) {
     item->DisableOutput();
     item->EnableInput();
     item->SetOwnerThread(thread);
-    int64_t wakeup_timeout = timeout + Util::SysMs();
+    int64_t wakeup_timeout = timeout + Util::TimeMs();
     if (!(GlobalEventSchedule()->Schedule(thread, NULL, item,
                                            wakeup_timeout))) {
       LOG_ERROR("item schedule failed, errno: %d, strerr: %s", errno,
@@ -319,7 +320,7 @@ int _recv(int fd, void *buf, int len, int flags, int timeout) {
       return -3;
     }
 
-    int n = st_recv(fd, buf, len, flags);
+    int n = sys_recv(fd, buf, len, flags);
     LOG_TRACE("recv return n: %d, buf: %s, fd: %d, len: %d, flags: %d", n, buf,
               fd, len, flags);
     if (n < 0) {
@@ -341,8 +342,8 @@ int _recv(int fd, void *buf, int len, int flags, int timeout) {
   }
 }
 
-ssize_t _send(int fd, const void *buf, size_t nbyte, int flags, int timeout) {
-  int64_t start = Util::SysMs();
+ssize_t st_send(int fd, const void *buf, size_t nbyte, int flags, int timeout) {
+  int64_t start = Util::TimeMs();
   StThread *thread = (StThread *)(GlobalThreadSchedule()->GetActiveThread());
 
   LOG_TRACE("---------- [name : %s] -----------", thread->GetName());
@@ -352,13 +353,13 @@ ssize_t _send(int fd, const void *buf, size_t nbyte, int flags, int timeout) {
   ssize_t n = 0;
   size_t send_len = 0;
   while (send_len < nbyte) {
-    now = Util::SysMs();
+    now = Util::TimeMs();
     if ((int)(now - start) > timeout) {
       errno = ETIME; // 超时请求
       return -1;
     }
 
-    n = st_send(fd, (char *)buf + send_len, nbyte - send_len, flags);
+    n = sys_send(fd, (char *)buf + send_len, nbyte - send_len, flags);
     LOG_TRACE("send fd: %d, nbyte: %d, send_len: %d, flags: %d, n: %d", fd,
               nbyte, send_len, flags, n);
     if (n < 0) {
@@ -392,7 +393,7 @@ ssize_t _send(int fd, const void *buf, size_t nbyte, int flags, int timeout) {
     item->DisableInput();
     item->EnableOutput();
     item->SetOwnerThread(thread);
-    int64_t wakeup_timeout = timeout + Util::SysMs();
+    int64_t wakeup_timeout = timeout + Util::TimeMs();
     if (!(GlobalEventSchedule()->Schedule(thread, NULL, item,
                                            wakeup_timeout))) {
       LOG_ERROR("item schedule failed, errno: %d, strerr: %s", errno,
@@ -406,7 +407,7 @@ ssize_t _send(int fd, const void *buf, size_t nbyte, int flags, int timeout) {
   return nbyte;
 }
 
-void _sleep(int ms) {
+void st_sleep(int ms) {
   StThread *thread = (StThread *)(GlobalThreadSchedule()->GetActiveThread());
   if (thread != NULL) {
     thread->Sleep(ms);
@@ -414,11 +415,11 @@ void _sleep(int ms) {
   }
 }
 
-int _accept(int fd, struct sockaddr *addr, socklen_t *addrlen) {
+int st_accept(int fd, struct sockaddr *addr, socklen_t *addrlen) {
   StThread *thread = (StThread *)(GlobalThreadSchedule()->GetActiveThread());
 
   int connfd = -1;
-  while ((connfd = st_accept(fd, addr, addrlen)) < 0) {
+  while ((connfd = sys_accept(fd, addr, addrlen)) < 0) {
     if (errno == EINTR) {
       continue;
     }

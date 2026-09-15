@@ -109,7 +109,8 @@ public:
 
   StEventSchedule(int32_t max_num = 1024)
       : m_maxfd_(65535), m_iostate_(new StIOState()), m_event_(NULL),
-        m_timeout_(30000) // 默认超时30s
+        m_timeout_(30000), // 默认超时30s
+        m_thread_schedule_(NULL)
   {
     int32_t r = Init(max_num);
     LOG_ASSERT(r >= 0);
@@ -190,7 +191,7 @@ public:
 
   virtual ~StThread() { FreeStack(); }
 
-  virtual void Run(void);
+  virtual void Run(void) {}
 
   // 设置休眠时间
   virtual void Sleep(int32_t ms) {

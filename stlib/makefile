@@ -13,7 +13,13 @@ C_ARGS = $(ST_CXXFLAGS)
 #                        （Linux 走系统 ucontext，本文件在该平台展开为空）
 #   ucontext/asm.S       上述函数的汇编实现（同上）
 # 其余 stlib/*.h 都是模板或 inline，不产出目标文件。
-LIBO = st_log.o st_test.o st_context.o ucontext/ucontext.o ucontext/asm.o
+UNAME_M := $(shell uname -m)
+ifeq ($(UNAME_M),arm64)
+UCONTEXT_ASM_O = ucontext/ucontext_stub_arm64.o
+else
+UCONTEXT_ASM_O = ucontext/asm.o
+endif
+LIBO = st_log.o st_test.o st_context.o ucontext/ucontext.o $(UCONTEXT_ASM_O)
 
 .PHONY: all clean
 

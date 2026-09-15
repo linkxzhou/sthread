@@ -3,20 +3,26 @@
  */
 
 #include "st_sys.h"
+#include "src/st_sys.h"
+#include <fcntl.h>
+#include <sys/socket.h>
 #include <stdarg.h>
+
+SyscallCallbackTab g_syscall_tab;
+int g_hook_flag = 0;
 
 using namespace sthread;
 
 static sys_fd g_sys_fdlist[ST_MAX_FD];
 
-sys_fd *__find_fd(int fd) {
+sys_fd *sys_find_fd(int fd) {
   if (unlikely((fd < 0) || (fd >= ST_MAX_FD))) {
     return NULL;
   }
   return &g_sys_fdlist[fd];
 }
 
-void __new_fd(int fd) {
+void sys_new_fd(int fd) {
   if (unlikely((fd < 0) || (fd >= ST_MAX_FD))) {
     return;
   }
@@ -25,7 +31,7 @@ void __new_fd(int fd) {
   fd_info->write_timeout = 9; // 设置等待的ms，默认2^9ms
 }
 
-void __free_fd(int fd) {
+void sys_free_fd(int fd) {
   if (unlikely((fd < 0) || (fd >= ST_MAX_FD))) {
     return;
   }
@@ -34,43 +40,50 @@ void __free_fd(int fd) {
   fd_info->write_timeout = 0;
 }
 
-int __socket(int domain, int type, int protocol) {
+int sys_socket(int domain, int type, int protocol) {
   int fd = ::socket(domain, type, protocol);
   if (fd < 0) {
     return fd;
   }
-  __new_fd(fd); // 设置新的FD
+  sys_new_fd(fd); // 设置新的FD
   int flags;    // 默认都设置为非阻塞
-  flags = __fcntl(fd, F_GETFL, 0);
+  flags = sys_fcntl(fd, F_GETFL, 0);
   flags |= O_NONBLOCK;
-  __fcntl(fd, F_SETFL, flags);
+  sys_fcntl(fd, F_SETFL, flags);
   return fd;
 }
 
-int __close(int fd) {
-  sys_fd *_fd = __find_fd(fd);
-  if (!_fd) {
-    return ::close(fd);
+int sys_close(int fd) {
+  sys_fd *_fd = sys_find_fd(fd);
+  if (_fd) {
+    sys_free_fd(fd);
   }
-  __free_fd(fd);
+  HOOK_SYSCALL(close);
+  return REAL_FUNC(close) ? REAL_FUNC(close)(fd) : ::close(fd);
 }
 
-int __showdown(int fd) {
-  sys_fd *_fd = __find_fd(fd);
-  if (!_fd) {
-    return ::shutdown(fd);
+int sys_shutdown(int fd) {
+  sys_fd *_fd = sys_find_fd(fd);
+  if (_fd) {
+    sys_free_fd(fd);
   }
-  __free_fd(fd);
+  return ::shutdown(fd, SHUT_RDWR);
 }
 
-int __connect(int fd, const struct sockaddr *address, socklen_t address_len) {
-  sys_fd *_fd = __find_fd(fd);
-  return __connect(fd, address, (int)address_len, _fd->write_timeout);
+int sys_connect(int fd, const struct sockaddr *address, socklen_t address_len) {
+  sys_fd *_fd = sys_find_fd(fd);
+  if (!_fd) {
+    HOOK_SYSCALL(connect);
+    return REAL_FUNC(connect)(fd, address, address_len);
+  }
+  /* write_timeout stored as log2(ms); convert like historical 1<<n */
+  int timeout_ms = (1 << _fd->write_timeout);
+  return st_connect(fd, address, (int)address_len, timeout_ms);
 }
 
-ssize_t __read(int fd, void *buffer, size_t nbyte) {
+ssize_t sys_read(int fd, void *buffer, size_t nbyte) {
   HOOK_SYSCALL(read);
-  sys_fd *_fd = __find_fd(fd);
+  sys_fd *_fd = sys_find_fd(fd);
 
   if (!HOOK_ACTIVE() || !_fd) {
     return REAL_FUNC(read)(fd, buffer, nbyte);
@@ -79,83 +92,83 @@ ssize_t __read(int fd, void *buffer, size_t nbyte) {
   if (_fd->sock_flag & ST_FD_FLG_UNBLOCK) {
     return REAL_FUNC(read)(fd, buffer, nbyte);
   } else {
-    return ::_read(fd, buffer, nbyte, _fd->read_timeout);
+    return st_read(fd, buffer, nbyte, _fd->read_timeout);
   }
 }
 
-ssize_t __write(int fd, const void *buffer, size_t nbyte) {
+ssize_t sys_write(int fd, const void *buffer, size_t nbyte) {
   HOOK_SYSCALL(write);
-  sys_fd *_fd = __find_fd(fd);
+  sys_fd *_fd = sys_find_fd(fd);
   if (!HOOK_ACTIVE() || !_fd) {
     return REAL_FUNC(write)(fd, buffer, nbyte);
   }
   if (_fd->sock_flag & ST_FD_FLG_UNBLOCK) {
     return REAL_FUNC(write)(fd, buffer, nbyte);
   } else {
-    return ::_write(fd, buffer, nbyte, _fd->write_timeout);
+    return st_write(fd, buffer, nbyte, _fd->write_timeout);
   }
 }
 
-ssize_t __sendto(int fd, const void *buffer, size_t length, int flags,
+ssize_t sys_sendto(int fd, const void *buffer, size_t length, int flags,
                  const struct sockaddr *de__addr, socklen_t de__len) {
   HOOK_SYSCALL(sendto);
-  sys_fd *_fd = __find_fd(fd);
+  sys_fd *_fd = sys_find_fd(fd);
   if (!HOOK_ACTIVE() || !_fd) {
     return REAL_FUNC(sendto)(fd, buffer, length, flags, de__addr, de__len);
   }
   if (_fd->sock_flag & ST_FD_FLG_UNBLOCK) {
     return REAL_FUNC(sendto)(fd, buffer, length, flags, de__addr, de__len);
   } else {
-    return ::_sendto(fd, buffer, (int)length, flags, de__addr, de__len,
+    return st_sendto(fd, buffer, (int)length, flags, de__addr, de__len,
                      _fd->write_timeout);
   }
 }
 
-ssize_t __recvfrom(int fd, void *buffer, size_t length, int flags,
+ssize_t sys_recvfrom(int fd, void *buffer, size_t length, int flags,
                    struct sockaddr *address, socklen_t *address_len) {
   HOOK_SYSCALL(recvfrom);
-  sys_fd *_fd = __find_fd(fd);
+  sys_fd *_fd = sys_find_fd(fd);
   if (!HOOK_ACTIVE() || !_fd) {
     return REAL_FUNC(recvfrom)(fd, buffer, length, flags, address, address_len);
   }
-  if (hook_fd->sock_flag & ST_FD_FLG_UNBLOCK) {
+  if (_fd->sock_flag & ST_FD_FLG_UNBLOCK) {
     return REAL_FUNC(recvfrom)(fd, buffer, length, flags, address, address_len);
   } else {
-    return ::_recvfrom(fd, buffer, length, flags, address, address_len,
+    return st_recvfrom(fd, buffer, length, flags, address, address_len,
                        _fd->read_timeout);
   }
 }
 
-ssize_t __recv(int fd, void *buffer, size_t length, int flags) {
+ssize_t sys_recv(int fd, void *buffer, size_t length, int flags) {
   HOOK_SYSCALL(recv);
-  sys_fd *_fd = __find_fd(fd);
+  sys_fd *_fd = sys_find_fd(fd);
   if (!HOOK_ACTIVE() || !_fd) {
     return REAL_FUNC(recv)(fd, buffer, length, flags);
   }
   if (_fd->sock_flag & ST_FD_FLG_UNBLOCK) {
     return REAL_FUNC(recv)(fd, buffer, length, flags);
   } else {
-    return ::_recv(fd, buffer, length, flags, _fd->read_timeout);
+    return st_recv(fd, buffer, length, flags, _fd->read_timeout);
   }
 }
 
-ssize_t __send(int fd, const void *buffer, size_t nbyte, int flags) {
+ssize_t sys_send(int fd, const void *buffer, size_t nbyte, int flags) {
   HOOK_SYSCALL(send);
-  sys_fd *_fd = __find_fd(fd);
+  sys_fd *_fd = sys_find_fd(fd);
   if (!HOOK_ACTIVE() || !_fd) {
     return REAL_FUNC(send)(fd, buffer, nbyte, flags);
   }
   if (_fd->sock_flag & ST_FD_FLG_UNBLOCK) {
     return REAL_FUNC(send)(fd, buffer, nbyte, flags);
   } else {
-    return ::_send(fd, buffer, nbyte, flags, _fd->write_timeout);
+    return st_send(fd, buffer, nbyte, flags, _fd->write_timeout);
   }
 }
 
-int __setsockopt(int fd, int level, int option_name, const void *option_value,
+int sys_setsockopt(int fd, int level, int option_name, const void *option_value,
                  socklen_t option_len) {
   HOOK_SYSCALL(setsockopt);
-  sys_fd *_fd = __find_fd(fd);
+  sys_fd *_fd = sys_find_fd(fd);
   if (!HOOK_ACTIVE() || !_fd) {
     return REAL_FUNC(setsockopt)(fd, level, option_name, option_value,
                                  option_len);
@@ -172,14 +185,14 @@ int __setsockopt(int fd, int level, int option_name, const void *option_value,
                                option_len);
 }
 
-int __fcntl(int fd, int cmd, ...) {
+int sys_fcntl(int fd, int cmd, ...) {
   va_list ap;
   ::va_start(ap, cmd);
   void *arg = va_arg(ap, void *);
   ::va_end(ap);
 
   HOOK_SYSCALL(fcntl);
-  sys_fd *_fd = __find_fd(fd);
+  sys_fd *_fd = sys_find_fd(fd);
   if (!_fd) {
     return REAL_FUNC(fcntl)(fd, cmd, arg);
   }
@@ -197,14 +210,14 @@ int __fcntl(int fd, int cmd, ...) {
   return REAL_FUNC(fcntl)(fd, cmd, arg);
 }
 
-int __ioctl(int fd, uint64_t cmd, ...) {
+int sys_ioctl(int fd, uint64_t cmd, ...) {
   va_list ap;
   va_start(ap, cmd);
   void *arg = va_arg(ap, void *);
   va_end(ap);
 
   HOOK_SYSCALL(ioctl);
-  sys_fd *_fd = __find_fd(fd);
+  sys_fd *_fd = sys_find_fd(fd);
   if (!_fd) {
     return REAL_FUNC(ioctl)(fd, cmd, arg);
   }
@@ -219,22 +232,22 @@ int __ioctl(int fd, uint64_t cmd, ...) {
   return REAL_FUNC(ioctl)(fd, cmd, arg);
 }
 
-int __accept(int fd, struct sockaddr *address, socklen_t *address_len) {
+int sys_accept(int fd, struct sockaddr *address, socklen_t *address_len) {
   HOOK_SYSCALL(accept);
-  sys_fd *_fd = __find_fd(fd);
+  sys_fd *_fd = sys_find_fd(fd);
   if (!_fd) {
     return REAL_FUNC(accept)(fd, address, address_len);
   }
 
   int at_fd = REAL_FUNC(accept)(fd, address, address_len);
-  __new_fd(at_fd);
+  sys_new_fd(at_fd);
 
   // 设置为非阻塞
   if (at_fd > 0) {
     int flags;
-    flags = __fcntl(at_fd, F_GETFL, 0);
+    flags = sys_fcntl(at_fd, F_GETFL, 0);
     flags |= O_NONBLOCK;
-    __fcntl(at_fd, F_SETFL, flags);
+    sys_fcntl(at_fd, F_SETFL, flags);
   }
 
   return at_fd;

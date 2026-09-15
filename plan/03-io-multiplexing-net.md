@@ -680,3 +680,24 @@ keepalive 相关用例（`tests/scripts/keepalive_unittest.py`）需等 P3/P4（
 | L8 | `ApiResize()` 是否有调用方（决定是否值得修其泄漏） | 步骤 1 grep 确认 |
 | L9 | `StServer::Loop()` 的 `connfd <= 0 → continue` busy-loop 修法 | 需确认后单独处理 |
 | L10 | `ST_MAX_FD`（`65535 * 2`，无括号）与 `StEventSchedule` 硬编码 `65535` 不一致 | 记录，不改 |
+
+
+## 10. 实现期记录（本地 impl-plan-03-io-net，2026-09-15）
+
+### 已落地
+- `st_epoll.h`: `m_file_events_` → `m_file_`；独立 include guard；补 `<fcntl.h>`
+- `st_kqueue.h`: 独立 include guard；补 `<fcntl.h>`（`memset(m_file_.data)` 已在 02 删除）
+- D4: 框架超时 API → `st_*`（`src/st_sys.*`）；hook POSIX API → `sys_*`（`app/st_sys.*`）；恢复 HOOK 宏/syscall 表/`sock_flag`
+- `src/st_manager.h` 转发到 `st_sys.h`
+- `StEventSchedule::m_thread_schedule_` 构造初始化为 NULL；`Reset()` 供 Init 失败路径
+- `libmthread.a` / `libmthread.so` **已在本机产出**（Apple Silicon）
+- arm64: `ucontext_stub_arm64.c` + makefile 条件；**协程切换未实现**，仅保证可链接
+
+### 明确未做（按用户确认）
+- L4: `eTCP_KEEPLIVE_CONN` 的 `&`→`|`（单独阶段）
+- TCP/UDP 回环运行时测试（arm64 stub 下 context switch 不可用）
+- 完整 Linux CI 验证本分支（需 push 后看 Actions）
+
+### 验证
+- `make -C src` → `libmthread.a` + `libmthread.so`
+- `otool -L libmthread.so` 仅系统库

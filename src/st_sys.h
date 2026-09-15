@@ -179,25 +179,25 @@ public:
 extern "C" {
 #endif
 
-int __sendto(int fd, const void *msg, int len, int flags,
+int st_sendto(int fd, const void *msg, int len, int flags,
              const struct sockaddr *to, int tolen, int timeout);
 
-int __recvfrom(int fd, void *buf, int len, int flags, struct sockaddr *from,
+int st_recvfrom(int fd, void *buf, int len, int flags, struct sockaddr *from,
                socklen_t *fromlen, int timeout);
 
-int __connect(int fd, const struct sockaddr *addr, int addrlen, int timeout);
+int st_connect(int fd, const struct sockaddr *addr, int addrlen, int timeout);
 
-ssize_t __read(int fd, void *buf, size_t nbyte, int timeout);
+ssize_t st_read(int fd, void *buf, size_t nbyte, int timeout);
 
 ssize_t st_write(int fd, const void *buf, size_t nbyte, int timeout);
 
-int __recv(int fd, void *buf, int len, int flags, int timeout);
+int st_recv(int fd, void *buf, int len, int flags, int timeout);
 
-ssize_t __send(int fd, const void *buf, size_t nbyte, int flags, int timeout);
+ssize_t st_send(int fd, const void *buf, size_t nbyte, int flags, int timeout);
 
-void __sleep(int ms);
+void st_sleep(int ms);
 
-int __accept(int fd, struct sockaddr *addr, socklen_t *addrlen);
+int st_accept(int fd, struct sockaddr *addr, socklen_t *addrlen);
 
 #ifdef __cplusplus
 }

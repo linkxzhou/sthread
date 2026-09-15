@@ -5,13 +5,14 @@
 #include "st_connection.h"
 #include "st_manager.h"
 
-ST_NAMESPACE_USING
+using namespace stlib;
+using namespace sthread;
 
 int32_t StConnection::SendData() {
   LOG_ASSERT(m_sendbuf_ != NULL);
 
   int32_t len = m_sendbuf_->GetMaxLen();
-  int ret = HandleOutput(m_sendbuf_->GetBuffer(), len);
+  int ret = DoOutput(m_sendbuf_->GetBuffer(), len);
   if (ret < 0) {
     LOG_ERROR("HandleOutput failed, ret: %d", ret);
     return ret;
@@ -25,13 +26,12 @@ int32_t StConnection::SendData() {
 
   int have_send_len = m_sendbuf_->GetHaveSendLen();
   if (IS_UDP_CONN(m_type_)) {
-    struct sockaddr *servaddr;
-    m_destaddr_.GetSockAddr(servaddr);
-    ret = ::_sendto(m_osfd_, buf + have_send_len, buf_len - have_send_len, 0,
-                    servaddr, sizeof(struct sockaddr), m_timeout_);
+    struct sockaddr *servaddr = m_destaddr_.GetSockAddr();
+    ret = st_sendto(m_osfd_, buf + have_send_len, buf_len - have_send_len, 0,
+                   servaddr, sizeof(struct sockaddr), m_timeout_);
   } else {
-    ret = ::_send(m_osfd_, buf + have_send_len, buf_len - have_send_len, 0,
-                  m_timeout_);
+    ret = st_send(m_osfd_, buf + have_send_len, buf_len - have_send_len, 0,
+                 m_timeout_);
   }
 
   LOG_TRACE("send: %s", buf + have_send_len);
@@ -72,13 +72,13 @@ int32_t StConnection::RecvData() {
     // 设置目的IP地址
     struct sockaddr clientaddr;
     socklen_t addrlen = sizeof(struct sockaddr);
-    ret = ::_sendto(m_osfd_, (char *)buf + have_recv_len,
-                    buf_maxlen - have_recv_len, 0, &clientaddr, addrlen,
-                    m_timeout_);
+    ret = st_recvfrom(m_osfd_, (char *)buf + have_recv_len,
+                       buf_maxlen - have_recv_len, 0, &clientaddr, &addrlen,
+                       m_timeout_);
     m_destaddr_ = StNetAddr(*((struct sockaddr_in *)&clientaddr));
   } else {
-    ret = ::_recv(m_osfd_, (char *)buf + have_recv_len,
-                  buf_maxlen - have_recv_len, 0, m_timeout_);
+    ret = st_recv(m_osfd_, (char *)buf + have_recv_len,
+                   buf_maxlen - have_recv_len, 0, m_timeout_);
   }
 
   if (ret < 0) {
@@ -97,7 +97,7 @@ int32_t StConnection::RecvData() {
   }
 
   // 处理收到的buffer数据
-  ret = HandleInput(m_recvbuf_->GetBuffer(), m_recvbuf_->GetHaveRecvLen());
+  ret = DoInput(m_recvbuf_->GetBuffer(), m_recvbuf_->GetHaveRecvLen());
   if (ret > 0) {
     m_recvbuf_->SetMsgLen(ret);
   } else if (ret == 0) {
