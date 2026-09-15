@@ -93,7 +93,8 @@
 #define ST_MAX(a, b) ((a) > (b) ? (a) : (b))
 
 #define ST_SQUARE(d) ((d) * (d))
-#define ST_VAR(s, s2, n) (((n) < 2) ? 0.0 : ((s2)-ST_SQUARE(s) / (n)) / ((n)-1))
+#define ST_VAR(s, s2, n)                                                       \
+  (((n) < 2) ? 0.0 : ((s2) - ST_SQUARE(s) / (n)) / ((n) - 1))
 #define ST_STDDEV(s, s2, n) (((n) < 2) ? 0.0 : sqrt(ST_VAR((s), (s2), (n))))
 
 #endif

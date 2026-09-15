@@ -16,8 +16,8 @@ public:
   StConnection()
       : m_type_(eUNDEF_CONN), m_osfd_(-1), m_timeout_(30000), m_sendbuf_(NULL),
         m_recvbuf_(NULL), m_item_(NULL) {
-    m_recvbuf_ = Instance<StBufferPool<>>()->GetBuffer(ST_RECV_BUFFSIZE);
-    m_sendbuf_ = Instance<StBufferPool<>>()->GetBuffer(ST_SEND_BUFFSIZE);
+    m_recvbuf_ = Instance<StBufferPool<> >()->GetBuffer(ST_RECV_BUFFSIZE);
+    m_sendbuf_ = Instance<StBufferPool<> >()->GetBuffer(ST_SEND_BUFFSIZE);
   }
 
   virtual ~StConnection() {
@@ -56,8 +56,8 @@ public:
   inline int32_t GetTimeout() { return m_timeout_; }
 
   virtual void Reset() {
-    Instance<StBufferPool<>>()->FreeBuffer(m_sendbuf_);
-    Instance<StBufferPool<>>()->FreeBuffer(m_recvbuf_);
+    Instance<StBufferPool<> >()->FreeBuffer(m_sendbuf_);
+    Instance<StBufferPool<> >()->FreeBuffer(m_recvbuf_);
 
     m_osfd_ = -1;
     m_sendbuf_ = NULL;
@@ -115,7 +115,7 @@ public:
       return -1;
     }
 
-    m_item_ = Instance<UtilPtrPool<ConnectionT>>()->AllocPtr();
+    m_item_ = Instance<UtilPtrPool<ConnectionT> >()->AllocPtr();
     ASSERT(m_item_ != NULL);
 
     m_item_->SetOsfd(m_osfd_);
@@ -187,7 +187,7 @@ public:
     }
 
     if (conn == NULL) {
-      conn = Instance<UtilPtrPool<ConnectionT>>()->AllocPtr();
+      conn = Instance<UtilPtrPool<ConnectionT> >()->AllocPtr();
       conn->SetConnType(type);
       if (destaddr != NULL) {
         conn->SetDestAddr(*destaddr);
