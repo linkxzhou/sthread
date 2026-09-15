@@ -1,0 +1,65 @@
+This file records the license of the third-party source that is vendored into
+this repository. It exists because several vendored files carry the header
+comment "Copyright (c) 2005-2006 Russ Cox, MIT; see COPYRIGHT" but the
+referenced COPYRIGHT file was missing from the repository.
+
+NOTE: This file covers the vendored third-party code listed below only.
+It is NOT the license of sthread itself. sthread's own source carries
+"Copyright (C) zhoulv2000@163.com" and the project has not yet published a
+license; that is up to the repository owner to decide.
+
+
+================================================================================
+libtask -- Russ Cox
+================================================================================
+
+Applies to:
+
+    stlib/ucontext/ucontext.c
+    stlib/ucontext/ucontext.h
+    stlib/ucontext/ucontext-386.h
+    stlib/ucontext/ucontext-amd64.h
+    stlib/ucontext/ucontext-mips.h
+    stlib/ucontext/ucontext-power.h
+    stlib/ucontext/asm.S
+    stlib/ucontext/uthread.c
+    stlib/ucontext/uthread.h
+    stlib/ucontext/ucontext_test.c
+    stlib/tests/ucontext/*        (upstream sample programs; not part of the build)
+
+Upstream: https://swtch.com/libtask/ (see also https://github.com/jamwt/libtask)
+
+    Copyright (c) 2005-2007 Russ Cox, Massachusetts Institute of Technology
+
+    Permission is hereby granted, free of charge, to any person obtaining a
+    copy of this software and associated documentation files (the "Software"),
+    to deal in the Software without restriction, including without limitation
+    the rights to use, copy, modify, merge, publish, distribute, sublicense,
+    and/or sell copies of the Software, and to permit persons to whom the
+    Software is furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included
+    in all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+    OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+    CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+    TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+
+================================================================================
+http-parser -- Joyent, Inc. and other Node contributors / NGINX (Igor Sysoev)
+================================================================================
+
+Applies to:
+
+    app/st_wrk/http_parser.c
+    app/st_wrk/http_parser.h
+
+Upstream: https://github.com/nodejs/http-parser
+
+The full MIT-style notice is kept in the header comment of those two files;
+see app/st_wrk/http_parser.c lines 1-23.
