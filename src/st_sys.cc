@@ -9,6 +9,11 @@ int st_sendto(int fd, const void *msg, int len, int flags,
   int64_t start = Util::TimeMs();
   StThreadItem *thread =
       (StThreadItem *)(GlobalThreadSchedule()->GetActiveThread());
+  if (thread == NULL) {
+    LOG_ERROR("active thread is NULL");
+    errno = EINVAL;
+    return -1;
+  }
 
   LOG_TRACE("---------- [name : %s] -----------", thread->GetName());
   int64_t now = 0;
@@ -53,8 +58,7 @@ int st_sendto(int fd, const void *msg, int len, int flags,
                                           wakeup_timeout))) {
       LOG_ERROR("item schedule failed, errno: %d, strerr: %s", errno,
                 strerror(errno));
-      // 释放item数据
-      UtilPtrPoolFree(item);
+      /* Do not UtilPtrPoolFree(item): it is the live GetEventItem(fd). */
       return -3;
     }
   }
@@ -67,6 +71,11 @@ int st_recvfrom(int fd, void *buf, int len, int flags, struct sockaddr *from,
   HOOK_SYSCALL(recvfrom);
   int64_t start = Util::TimeMs();
   StThread *thread = (StThread *)(GlobalThreadSchedule()->GetActiveThread());
+  if (thread == NULL) {
+    LOG_ERROR("active thread is NULL");
+    errno = EINVAL;
+    return -1;
+  }
 
   LOG_TRACE("---------- [name : %s] -----------", thread->GetName());
   int64_t now = 0;
@@ -92,8 +101,7 @@ int st_recvfrom(int fd, void *buf, int len, int flags, struct sockaddr *from,
                                           wakeup_timeout))) {
       LOG_ERROR("item schedule failed, errno: %d, strerr: %s", errno,
                 strerror(errno));
-      // 释放item数据
-      UtilPtrPoolFree(item);
+      /* Do not UtilPtrPoolFree(item): it is the live GetEventItem(fd). */
       return -3;
     }
 
@@ -122,6 +130,11 @@ int st_recvfrom(int fd, void *buf, int len, int flags, struct sockaddr *from,
 int st_connect(int fd, const struct sockaddr *addr, int addrlen, int timeout) {
   int64_t start = Util::TimeMs();
   StThread *thread = (StThread *)(GlobalThreadSchedule()->GetActiveThread());
+  if (thread == NULL) {
+    LOG_ERROR("active thread is NULL");
+    errno = EINVAL;
+    return -1;
+  }
 
   LOG_TRACE("---------- [name : %s] -----------", thread->GetName());
   int64_t now = 0;
@@ -168,8 +181,7 @@ int st_connect(int fd, const struct sockaddr *addr, int addrlen, int timeout) {
                                           wakeup_timeout))) {
       LOG_ERROR("item schedule failed, errno: %d, strerr: %s", errno,
                 strerror(errno));
-      // 释放item数据
-      UtilPtrPoolFree(item);
+      /* Do not UtilPtrPoolFree(item): it is the live GetEventItem(fd). */
       return -3;
     }
   }
@@ -181,6 +193,11 @@ ssize_t st_read(int fd, void *buf, size_t nbyte, int timeout) {
   HOOK_SYSCALL(read);
   int64_t start = Util::TimeMs();
   StThread *thread = (StThread *)(GlobalThreadSchedule()->GetActiveThread());
+  if (thread == NULL) {
+    LOG_ERROR("active thread is NULL");
+    errno = EINVAL;
+    return -1;
+  }
 
   LOG_TRACE("---------- [name : %s] -----------", thread->GetName());
   int64_t now = 0;
@@ -222,8 +239,7 @@ ssize_t st_read(int fd, void *buf, size_t nbyte, int timeout) {
                                           wakeup_timeout))) {
       LOG_ERROR("item schedule failed, errno: %d, strerr: %s", errno,
                 strerror(errno));
-      // 释放item数据
-      UtilPtrPoolFree(item);
+      /* Do not UtilPtrPoolFree(item): it is the live GetEventItem(fd). */
       return -3;
     }
   }
@@ -235,6 +251,11 @@ ssize_t st_write(int fd, const void *buf, size_t nbyte, int timeout) {
   HOOK_SYSCALL(write);
   int64_t start = Util::TimeMs();
   StThread *thread = (StThread *)(GlobalThreadSchedule()->GetActiveThread());
+  if (thread == NULL) {
+    LOG_ERROR("active thread is NULL");
+    errno = EINVAL;
+    return -1;
+  }
 
   LOG_TRACE("---------- [name : %s] -----------", thread->GetName());
   int64_t now = 0;
@@ -283,8 +304,7 @@ ssize_t st_write(int fd, const void *buf, size_t nbyte, int timeout) {
                                           wakeup_timeout))) {
       LOG_ERROR("item schedule failed, errno: %d, strerr: %s", errno,
                 strerror(errno));
-      // 释放item数据
-      UtilPtrPoolFree(item);
+      /* Do not UtilPtrPoolFree(item): it is the live GetEventItem(fd). */
       return -3;
     }
   }
@@ -296,6 +316,11 @@ int st_recv(int fd, void *buf, int len, int flags, int timeout) {
   HOOK_SYSCALL(recv);
   int64_t start = Util::TimeMs();
   StThread *thread = (StThread *)(GlobalThreadSchedule()->GetActiveThread());
+  if (thread == NULL) {
+    LOG_ERROR("active thread is NULL");
+    errno = EINVAL;
+    return -1;
+  }
 
   LOG_TRACE("---------- [name: %s] -----------", thread->GetName());
   int64_t now = 0;
@@ -322,8 +347,7 @@ int st_recv(int fd, void *buf, int len, int flags, int timeout) {
                                           wakeup_timeout))) {
       LOG_ERROR("item schedule failed, errno: %d, strerr: %s", errno,
                 strerror(errno));
-      // 释放item数据
-      UtilPtrPoolFree(item);
+      /* Do not UtilPtrPoolFree(item): it is the live GetEventItem(fd). */
       return -3;
     }
 
@@ -353,6 +377,11 @@ ssize_t st_send(int fd, const void *buf, size_t nbyte, int flags, int timeout) {
   HOOK_SYSCALL(send);
   int64_t start = Util::TimeMs();
   StThread *thread = (StThread *)(GlobalThreadSchedule()->GetActiveThread());
+  if (thread == NULL) {
+    LOG_ERROR("active thread is NULL");
+    errno = EINVAL;
+    return -1;
+  }
 
   LOG_TRACE("---------- [name : %s] -----------", thread->GetName());
   int64_t now = 0;
@@ -406,8 +435,7 @@ ssize_t st_send(int fd, const void *buf, size_t nbyte, int flags, int timeout) {
                                           wakeup_timeout))) {
       LOG_ERROR("item schedule failed, errno: %d, strerr: %s", errno,
                 strerror(errno));
-      // 释放item数据
-      UtilPtrPoolFree(item);
+      /* Do not UtilPtrPoolFree(item): it is the live GetEventItem(fd). */
       return -3;
     }
   }
@@ -426,6 +454,11 @@ void st_sleep(int ms) {
 int st_accept(int fd, struct sockaddr *addr, socklen_t *addrlen) {
   HOOK_SYSCALL(accept);
   StThread *thread = (StThread *)(GlobalThreadSchedule()->GetActiveThread());
+  if (thread == NULL) {
+    LOG_ERROR("active thread is NULL");
+    errno = EINVAL;
+    return -1;
+  }
 
   int connfd = -1;
   while ((connfd = REAL_FUNC(accept)(fd, addr, addrlen)) < 0) {
@@ -450,8 +483,7 @@ int st_accept(int fd, struct sockaddr *addr, socklen_t *addrlen) {
     if (!(GlobalEventSchedule()->Schedule(thread, NULL, item, -1))) {
       LOG_ERROR("item schedule failed, errno: %d, strerr: %s", errno,
                 strerror(errno));
-      // 释放item数据
-      UtilPtrPoolFree(item);
+      /* Do not UtilPtrPoolFree(item): it is the live GetEventItem(fd). */
       return -3;
     }
   }

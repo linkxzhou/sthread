@@ -19,7 +19,13 @@ sys_fd *sys_find_fd(int fd) {
   if (unlikely((fd < 0) || (fd >= ST_MAX_FD))) {
     return NULL;
   }
-  return &g_sys_fdlist[fd];
+  sys_fd *fd_info = &g_sys_fdlist[fd];
+  /* Unregistered slots must not look "found" — callers treat NULL as
+   * "use real syscall". */
+  if (!(fd_info->sock_flag & ST_FD_FLG_INUSE)) {
+    return NULL;
+  }
+  return fd_info;
 }
 
 void sys_new_fd(int fd) {
@@ -27,8 +33,10 @@ void sys_new_fd(int fd) {
     return;
   }
   sys_fd *fd_info = &g_sys_fdlist[fd];
-  fd_info->read_timeout = 9;  // 设置等待的ms，默认2^9ms
-  fd_info->write_timeout = 9; // 设置等待的ms，默认2^9ms
+  fd_info->sock_flag = ST_FD_FLG_INUSE;
+  /* Default timeouts in milliseconds (not log2). */
+  fd_info->read_timeout = 512;
+  fd_info->write_timeout = 512;
 }
 
 void sys_free_fd(int fd) {
@@ -36,6 +44,7 @@ void sys_free_fd(int fd) {
     return;
   }
   sys_fd *fd_info = &g_sys_fdlist[fd];
+  fd_info->sock_flag = ST_FD_FLG_NOUSE;
   fd_info->read_timeout = 0;
   fd_info->write_timeout = 0;
 }
@@ -76,9 +85,7 @@ int sys_connect(int fd, const struct sockaddr *address, socklen_t address_len) {
     HOOK_SYSCALL(connect);
     return REAL_FUNC(connect)(fd, address, address_len);
   }
-  /* write_timeout stored as log2(ms); convert like historical 1<<n */
-  int timeout_ms = (1 << _fd->write_timeout);
-  return st_connect(fd, address, (int)address_len, timeout_ms);
+  return st_connect(fd, address, (int)address_len, _fd->write_timeout);
 }
 
 ssize_t sys_read(int fd, void *buffer, size_t nbyte) {
@@ -203,7 +210,7 @@ int sys_fcntl(int fd, int cmd, ...) {
     ::va_end(ap);
 
     if (flags & O_NONBLOCK) {
-      _fd->sock_flag |= ST_FD_FLG_UNBLOCK;
+      _fd->sock_flag |= ST_FD_FLG_UNBLOCK | ST_FD_FLG_INUSE;
     }
   }
 

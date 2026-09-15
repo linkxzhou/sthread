@@ -86,7 +86,7 @@ typedef struct {
 
 typedef struct {
   int sock_flag;
-  int read_timeout;  /* log2 ms scale historically; see sys_new_fd */
+  int read_timeout;  /* milliseconds; see sys_new_fd */
   int write_timeout;
 } sys_fd;
 

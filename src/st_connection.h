@@ -226,6 +226,9 @@ public:
   }
 
   void FreePtr(ConnectionTPtr conn) {
+    if (conn == NULL) {
+      return;
+    }
     eConnType type = conn->GetConnType();
     if (IS_KEEPLIVE(type)) {
       StNetAddrKey probe;

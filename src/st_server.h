@@ -98,6 +98,11 @@ public:
       StConnection *conn =
           (StConnection *)(Instance<StConnectionManager<ConnetionT> >()
                                ->AllocPtr((eConnType)ServerT, &addr));
+      if (conn == NULL) {
+        LOG_ERROR("AllocPtr failed, close connfd: %d", connfd);
+        sys_close(connfd);
+        continue;
+      }
       conn->SetOsfd(connfd);
       conn->SetDestAddr(addr);
 
@@ -114,6 +119,15 @@ public:
 
     item->SetOsfd(conn->GetOsfd());
     StThreadItem *thread = GlobalThreadSchedule()->GetActiveThread();
+    if (thread == NULL) {
+      LOG_ERROR("CallBack active thread is NULL");
+      GlobalEventSchedule()->ClearItem(item);
+      UtilPtrPoolFree(item);
+      if (conn != NULL) {
+        conn->Close();
+      }
+      return;
+    }
 
     int32_t ret = 0;
     do {
