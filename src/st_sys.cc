@@ -25,7 +25,8 @@ int st_sendto(int fd, const void *msg, int len, int flags,
   timeout = (timeout <= -1) ? 0x7fffffff : timeout;
 
   int n = 0;
-  while ((n = REAL_FUNC(sendto)(fd, msg, (size_t)len, flags, to, (socklen_t)tolen)) < 0) {
+  while ((n = REAL_FUNC(sendto)(fd, msg, (size_t)len, flags, to,
+                                (socklen_t)tolen)) < 0) {
     // 对端关闭
     if (n == 0) {
       LOG_ERROR("[n=0]sendto failed, errno: %d, strerr : %s", errno,
