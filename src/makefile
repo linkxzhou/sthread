@@ -40,11 +40,7 @@ SRC_O = st_connection.o st_sys.o st_thread.o
 
 # On Apple Silicon, asm.S is PowerPC-only; use stub instead.
 UNAME_M := $(shell uname -m)
-ifeq ($(UNAME_M),arm64)
-UCONTEXT_ASM_O = $(ST_ROOT)/stlib/ucontext/ucontext_stub_arm64.o
-else
 UCONTEXT_ASM_O = $(ST_ROOT)/stlib/ucontext/asm.o
-endif
 
 STLIB_O = $(ST_ROOT)/stlib/st_log.o \
 	$(ST_ROOT)/stlib/st_test.o \

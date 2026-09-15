@@ -125,8 +125,10 @@ int st_connect(int fd, const struct sockaddr *addr, int addrlen, int timeout) {
   int64_t now = 0;
   timeout = (timeout <= -1) ? 0x7fffffff : timeout;
 
+  /* Must call the real syscall, not sys_connect (that re-enters st_connect). */
+  HOOK_SYSCALL(connect);
   int n = 0;
-  while ((n = sys_connect(fd, addr, addrlen)) < 0) {
+  while ((n = REAL_FUNC(connect)(fd, addr, (socklen_t)addrlen)) < 0) {
     LOG_TRACE("connect n: %d, errno: %d, strerror: %s", n, errno,
               strerror(errno));
     now = Util::TimeMs();

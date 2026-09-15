@@ -74,19 +74,7 @@ extern void makecontext(ucontext_t *, void (*)(), int, ...);
 #elif defined(__x86_64__)
 #include "ucontext-amd64.h"
 #elif defined(__aarch64__)
-typedef struct { long dummy[32]; } mcontext_t;
-typedef struct ucontext {
-  mcontext_t uc_mcontext;
-  struct ucontext *uc_link;
-  stack_t uc_stack;
-  sigset_t uc_sigmask;
-} ucontext_t;
-int getmcontext(mcontext_t *);
-void setmcontext(const mcontext_t *);
-#define setcontext(u) setmcontext(&(u)->uc_mcontext)
-#define getcontext(u) getmcontext(&(u)->uc_mcontext)
-int swapcontext(ucontext_t *, const ucontext_t *);
-void makecontext(ucontext_t *, void (*)(), int, ...);
+#include "ucontext-arm64.h"
 #else
 #include "ucontext-power.h"
 #endif
@@ -138,7 +126,8 @@ void setmcontext(const mcontext_t *);
 #define NEEDAMD64MAKECONTEXT
 #define NEEDSWAPCONTEXT
 #elif defined(__aarch64__)
-/* arm64: asm.S not ported; stubs in ucontext_stub_arm64.c */
+#define NEEDARM64MAKECONTEXT
+#define NEEDSWAPCONTEXT
 #else
 #define NEEDPOWERMAKECONTEXT
 #define NEEDSWAPCONTEXT

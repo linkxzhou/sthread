@@ -25,11 +25,12 @@ typedef struct Context {
 } Context;
 
 typedef struct ustack {
+  /* Context first: keep uc_mcontext better aligned (old offset was 24). */
+  Context m_context_;
   int m_stk_size_;
   int m_vaddr_size_;
   uchar *m_vaddr_;
   void *m_private_;
-  Context m_context_;
   unsigned int m_id_;
 } Stack;
 

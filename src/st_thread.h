@@ -257,7 +257,8 @@ protected:
       return;
     }
 
-    m_stack_->m_context_.uc.uc_stack.ss_sp = m_stack_->m_vaddr_ + 8;
+    /* Guard + 16-byte SP base (arm64 Darwin). */
+    m_stack_->m_context_.uc.uc_stack.ss_sp = m_stack_->m_vaddr_ + 16;
     m_stack_->m_context_.uc.uc_stack.ss_size = m_stack_->m_vaddr_size_ - 64;
 
     makecontext(&m_stack_->m_context_.uc, (void (*)())ActiveThreadStartUp, 2,
@@ -335,6 +336,9 @@ inline StThreadItem *StThreadSchedule::PrimoThread(void) {
     m_primo_->SetType(ePRIMORDIAL);
     m_primo_->SetState(eRUNNING);
     m_primo_->SetName(THREAD_PRIMO_NAME);
+    if (m_active_thread_ == NULL) {
+      m_active_thread_ = m_primo_;
+    }
   }
   return m_primo_;
 }

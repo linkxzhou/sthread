@@ -22,7 +22,7 @@ sthread 是一个**基于协程的高性能网络库**，C++98，提供非阻塞
 | `make lib` | 绿：产出 `libmthread.a` / `.so`，无第三方运行时依赖 |
 | `make apps` | 绿：dns / memcache / wrk **可编译** |
 | `make -C tests` | 绿：核心 unittest 可编译；多数可跑 |
-| Apple Silicon arm64 | **编译可、切换不可用**（`ucontext` stub） |
+| Apple Silicon arm64 | **真实 ucontext/asm**（`NEEDARM64CONTEXT`） |
 | keepalive（L4） | **未修**；勿在示例/测试里依赖连接复用 |
 | 本仓库 `LICENSE` | **未发布**（仅有 vendored 的 [`COPYRIGHT`](COPYRIGHT)） |
 
@@ -40,7 +40,7 @@ gperftools / ASan 仅为可选开发期开关，默认关（`make.inc`）。测�
 
 ### 2. 多平台协程
 
-ucontext + `stlib/ucontext/asm.S`（386 / amd64 / mips / power；**无 arm64**，有 stub）。来源 Russ Cox libtask，见 [`COPYRIGHT`](COPYRIGHT)。
+ucontext + `stlib/ucontext/asm.S`（386 / amd64 / mips / power；**含 arm64**）。来源 Russ Cox libtask，见 [`COPYRIGHT`](COPYRIGHT)。
 
 勿擅动：`InitContext` 的 `ty`/`tx` 拆分、`ss_sp`/`ss_size` 余量、`STACK`（260096）、`MEM_PAGE_SIZE`（2048）。
 
@@ -112,7 +112,7 @@ C++：`StClientConnection`、`StServer`。示例兼容层：`app/st_action.h`、
 | --- | --- |
 | `src/st_thread.o` `st_connection.o` `st_sys.o` | `src/*.cc` |
 | `stlib/st_log.o` `st_test.o` `st_context.o` | stlib |
-| `stlib/ucontext/ucontext.o` + `asm.o` 或 **arm64 stub** | ucontext |
+| `stlib/ucontext/ucontext.o` + `asm.o` （含 arm64） | ucontext |
 | `app/st_c.o` `st_sys.o` `st_action.o` | app 下的库文件 |
 
 系统库：`-lpthread -ldl`。不得链第三方。
@@ -136,7 +136,7 @@ make -C stlib/tests run    # stlib 单测
 1. API 兼容：对外符号与枚举数值勿 silently 改
 2. 不提交二进制 / `.dSYM` / 本地 log（见 `.gitignore`）
 3. 注释保持**中文**（与现有代码一致）
-4. L4 keepalive、arm64 真 asm 是已知后续项，勿在无关 PR 里顺手改半截
+4. L4 keepalive、L4 keepalive 是已知后续项，勿在无关 PR 里顺手改半截
 5. 改文档时示例必须来自真实可编译路径（`app/` / `tests/`），勿再写已删除的 `IMtActionServer` / `mt_set_timeout` 等
 
 ---
@@ -145,7 +145,7 @@ make -C stlib/tests run    # stlib 单测
 
 | 项 | 归类 |
 | --- | --- |
-| arm64 ucontext stub | 已知限制 |
+| L4 keepalive | 已知后续 |
 | keepalive `eTCP_KEEPLIVE_CONN` / `Keeplive()` | 待办 L4 |
 | `StThread` 回收 TODO | 待办 |
 | `app/st_c.h` 非纯 C 可用 | 已知限制 |
