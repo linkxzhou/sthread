@@ -10,13 +10,12 @@ sthread
 # 特性
 
 1. 不用依赖任何第三方运行时库
-2. 基于支持多平台的协程调度（ucontext）
+2. 多平台协程调度（ucontext + `asm.S`：386 / amd64 / mips / power / **arm64**）
 3. 支持 epoll（Linux）与 kqueue（macOS / OpenBSD）
 4. 不用写异步调度代码：业务全部同步写法，框架内部异步处理
-5. 提供非阻塞 TCP 客户端
-6. 提供非阻塞 UDP 客户端
-7. 跨平台；在内存与句柄足够时可以创建大量协程（见下方「性能」）
-8. 使用简单，只需链接一个 `libmthread.a` 或 `libmthread.so`
+5. 提供非阻塞 TCP / UDP 客户端（短连接与 TCP keepalive 复用）
+6. 跨平台；在内存与句柄足够时可以创建大量协程（见下方「性能」）
+7. 使用简单，只需链接一个 `libmthread.a` 或 `libmthread.so`
 
 示例应用：`app/st_dns`、`app/st_memcacheclient`、`app/st_wrk`。
 
@@ -26,11 +25,27 @@ sthread
 | --- | --- |
 | 语言标准 | C++98（`-std=c++98`） |
 | Linux | g++；epoll 后端 |
-| macOS | clang++；kqueue 后端 |
+| macOS | clang++；kqueue 后端；**Apple Silicon 已支持真实 ucontext** |
 | 运行时依赖 | 无（仅系统库：libc / libstdc++ 或 libc++ / libpthread / libdl） |
 | 可选开发期依赖 | gperftools（tcmalloc / profiler），默认关闭；见 [`thirdparty/readme.md`](thirdparty/readme.md) |
 
-**Apple Silicon（arm64）说明**：`stlib/ucontext/asm.S` 尚含 arm64 实现，当前使用 stub。库与示例可以**编译**，但协程上下文切换不可用，依赖 Yield 的真实 IO 冒烟会失败。x86_64 macOS / Linux 可做端到端验证。详见 [`plan/04-regression-checklist.md`](plan/04-regression-checklist.md)。
+## Apple Silicon（arm64）
+
+- 实现：`stlib/ucontext/ucontext-arm64.h` + `asm.S`（`NEEDARM64CONTEXT`）
+- 符号：`makecontext` / `swapcontext` 重命名为 `libthread_*`，**避开** Apple `libsystem` 同名函数（布局不兼容，会 SIGSEGV）
+- 栈：`makecontext` 保持 SP 16 字节对齐；`InitContext` 使用 `ss_sp + 16`
+- 冒烟与单测记录见 [`plan/04-regression-checklist.md`](plan/04-regression-checklist.md)
+
+# 验证状态（本机 Apple Silicon，2026-09-15）
+
+| 项 | 状态 |
+| --- | --- |
+| `make lib` / `make -C tests run` | 通过（含 `st_thread_unittest` `Wait(10)`、`st_keepalive_unittest`） |
+| `st_wrk` | **通过**：`./wrk -n 3 -c 3 -d 2s http://127.0.0.1:8765/` → 3 requests，约 832 req/s |
+| `st_memcacheclient` | **通过**：本机 memcached `:11211`，可见 `STORED` / `VALUE k1`（有同 fd `item conflict` 告警） |
+| `st_dns` | **部分通过**：150 协程进 IO wait、切换正常；默认 `www.2000–2149.com` 为合成域名，查询超时属预期；`Frame::Loop(true)` 不退出，需手动结束进程 |
+| L4 keepalive | **已修**：`eTCP_KEEPLIVE_CONN = 0x11`，`Keeplive()` = `IS_KEEPLIVE(m_type_)` |
+| 万级协程 / QPS 专项 | 待测 |
 
 # 快速开始
 
@@ -42,7 +57,7 @@ sthread
 make lib                 # 产出 libmthread.a 与 libmthread.so（仓库根）
 make apps                # 编译 app/st_dns、st_memcacheclient、st_wrk
 make tests               # 编译 tests/ 下的 unittest
-make -C tests run        # 运行核心单测
+make -C tests run        # 运行核心单测（含 keepalive）
 make clean
 make help                # 目标与开关一览
 ```
@@ -50,7 +65,7 @@ make help                # 目标与开关一览
 可选开关（见 `make.inc`，默认：`TRACE=1` `DEBUG=1` `ASAN=0` `TCMALLOC=0` `PROFILER=0`）：
 
 ```bash
-make lib TRACE=0         # 关闭 LOG_TRACE
+make lib TRACE=0         # 关闭编译期 -DTRACE（日志级别仍可能打 PVERB）
 make lib ASAN=1          # AddressSanitizer（与协程栈切换配合较差，默认关）
 make lib TCMALLOC=1      # 需自行安装 gperftools
 ```
@@ -80,7 +95,7 @@ int main() {
   st_set_hook_flag();   /* 启用 syscall hook（可选，视场景） */
 
   Frame::CreateThread(worker, NULL);
-  Frame::Loop(true);    /* 进入 daemon 事件循环 */
+  Frame::Loop(true);    /* 进入 daemon 事件循环（默认不返回） */
   return 0;
 }
 ```
@@ -111,6 +126,20 @@ int main() {
 
 `src/st_poll.h` 编译期选择 `stlib/st_epoll.h` 或 `stlib/st_kqueue.h`。两边同名 `StIOState`，公开接口必须一致；业务代码无感。
 
+## 连接类型（`eConnType`）
+
+规则：末位 `0x1` 表示需要保存 / 复用状态（`IS_KEEPLIVE`）。
+
+| 枚举 | 值 | 含义 |
+| --- | --- | --- |
+| `eUNDEF_CONN` | `0x0` | 未定义 / 错误 |
+| `eUDP_CONN` | `0x10` | UDP |
+| `eTCP_CONN` | `0x20` | TCP 短连接（兼容宏 `eTCP_SHORT_CONN`） |
+| `eTCP_KEEPLIVE_CONN` | `0x11` | TCP keepalive（连接池按地址 hash 复用） |
+| `eUDP_UDPSESSION_CONN` | `0x21` | UDP session |
+
+`StConnection::Keeplive()` 返回 `IS_KEEPLIVE(m_type_)`。服务端 `do { ... } while (conn->Keeplive())` 仅在 keepalive 类型上循环。
+
 # 示例
 
 ## DNS 客户端
@@ -123,16 +152,29 @@ int main() {
 st_init_frame();
 st_set_hook_flag();
 Frame::CreateThread(func, s);   /* s 为域名字符串 */
-Frame::Loop(true);
+Frame::Loop(true);              /* 不返回；联调请 Ctrl-C / kill */
 ```
 
-`dns_lookup` 内部通过 `udp_sendrecv` 发查询。请使用真实可解析域名做联调；readme 旧示例里的 `www.2000.com` 一类域名通常无结果。
+`dns_lookup` 内部通过 `udp_sendrecv` 发查询。**请改成真实可解析域名**再联调；仓库默认循环 `www.2000.com` … `www.2149.com` 为合成名，通常无 A 记录，会超时失败（用于压调度路径，不是正确性证明）。
 
 ```bash
 make -C app/st_dns
-# 需要可用的协程切换（非 arm64 stub）与外网 DNS
-./app/st_dns/main
+./app/st_dns/main          # Frame::Loop(true) 需手动结束
 ```
+
+## Memcache / wrk
+
+```bash
+# memcache：先启动本机 memcached（默认 127.0.0.1:11211）
+make -C app/st_memcacheclient
+./app/st_memcacheclient/main
+
+# wrk：先起一个 HTTP 服务，再压测
+make -C app/st_wrk
+./app/st_wrk/wrk -n 3 -c 3 -d 2s http://127.0.0.1:8765/
+```
+
+示例应用还会用到精简版 `IMtAction` / `IMtActionClient`（`app/st_action.h`），其 `SendRecv` 建立在 `tcp_sendrecv` / `udp_sendrecv` 之上。
 
 ## TCP / UDP 客户端 API
 
@@ -147,13 +189,13 @@ int tcp_sendrecv(struct sockaddr_in *dst, void *pkg, int len,
                  CheckLengthCallback callback, bool keeplive = false);
 ```
 
-示例应用还会用到精简版 `IMtAction` / `IMtActionClient`（`app/st_action.h`），其 `SendRecv` 建立在上述 API 之上：见 `app/st_memcacheclient`、`app/st_wrk`。
+`keeplive == true` 时走 `eTCP_KEEPLIVE_CONN` 连接池路径。
 
 ## HTTP 服务端（Listen）
 
 服务端模板：`StServer<ConnectionT, ServerT>`（`src/st_server.h`）。连接回调请覆盖 `DoInput` / `DoOutput` / `DoProcess` / `DoError`（不是旧的 `Handle*`）。
 
-可编译的 Listen 路径示例：`tests/st_server_unittest.cpp`（创建 socket + `Listen`；完整 `Loop` 依赖真实协程切换）。
+可编译的 Listen 路径示例：`tests/st_server_unittest.cpp`（创建 socket + `Listen`；完整 `Loop` 会进入 daemon 事件循环）。
 
 ```bash
 make -C tests server
@@ -191,6 +233,7 @@ make -C tests server
 | `StServer` | `src/st_server.h` |
 | `IMessage` / `IMtAction` / `IMtActionClient` | `app/st_action.h`（示例兼容层） |
 | `Instance<T>()` | `stlib/st_singleton.h` |
+| `eConnType` / `IS_KEEPLIVE` / `IS_TCP_CONN` | `src/st_public.h` |
 
 ## 旧名 → 新名（迁移）
 
@@ -222,18 +265,21 @@ MEM_PAGE_SIZE * 2 + (STACK / MEM_PAGE_SIZE + 1) * MEM_PAGE_SIZE
 | --- | --- |
 | 单协程栈占用 | 上式（静态可算） |
 | 高并发创建上限 | 受内存与 `RLIMIT_NOFILE` 限制；`StEventSchedule::Init` 会尝试把 fd 上限提到 65535（非 root 可能失败） |
-| arm64 实测 QPS / 万级协程 | **未完成**（ucontext stub）；请在 Linux / x86_64 上复测 |
+| arm64 协程切换 | 已通（`libthread_makecontext` + asm） |
+| arm64 app 冒烟 | wrk / memcache 通过；dns 合成域名超时，见「验证状态」 |
+| 万级协程 / QPS 专项 | 待测 |
 
 # 已知限制
 
-- **Apple Silicon**：协程切换为 stub，真实 IO 冒烟 known-failure。
-- **TCP keepalive 复用**：`eTCP_KEEPLIVE_CONN`（0x11）+ `Keeplive()`=`IS_KEEPLIVE`；连接池对 keepalive 类型按地址 hash 复用。
 - **协程对象回收**：`StThread` 池回收仍有 `TODO`，长时间大量创建需关注内存。
 - **`app/st_c.h`**：在 `extern "C"` 块里使用了 C++ 引用，**不能**被纯 C 编译器直接 include。
 - **单进程内协程不可跨 OS 线程**（由 `Instance<T>()` 线程局部语义决定）。
+- **`Frame::Loop(true)`**：进入 daemon 后默认不返回；示例进程需外部结束。
+- **同 fd 多 action**：memcache 示例可能打出 `item conflict` 告警，属示例用法问题，不是 ucontext 回归。
 - `app/st_c.*` / `app/st_sys.*` 语义上是库代码，物理路径仍在 `app/`（未搬迁）。
+- **LICENSE**：根目录尚未发布；vendored 许可见 [`COPYRIGHT`](COPYRIGHT)（决策 D6）。
 
-更多执行记录见 [`plan/04-regression-checklist.md`](plan/04-regression-checklist.md)。
+更多执行记录见 [`plan/04-regression-checklist.md`](plan/04-regression-checklist.md)。贡献约定见 [`AGENTS.md`](AGENTS.md)。
 
 # 代码风格
 

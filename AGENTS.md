@@ -136,7 +136,6 @@ make -C stlib/tests run    # stlib 单测
 1. API 兼容：对外符号与枚举数值勿 silently 改
 2. 不提交二进制 / `.dSYM` / 本地 log（见 `.gitignore`）
 3. 注释保持**中文**（与现有代码一致）
-4. L4 keepalive、L4 keepalive 是已知后续项，勿在无关 PR 里顺手改半截
 5. 改文档时示例必须来自真实可编译路径（`app/` / `tests/`），勿再写已删除的 `IMtActionServer` / `mt_set_timeout` 等
 
 ---
@@ -146,7 +145,7 @@ make -C stlib/tests run    # stlib 单测
 | 项 | 归类 |
 | --- | --- |
 | L4 keepalive | 已修（见 `st_keepalive_unittest`） |
-| keepalive `eTCP_KEEPLIVE_CONN` / `Keeplive()` | 待办 L4 |
+| keepalive `eTCP_KEEPLIVE_CONN` / `Keeplive()` | 已修（0x11 / `IS_KEEPLIVE`） |
 | `StThread` 回收 TODO | 待办 |
 | `app/st_c.h` 非纯 C 可用 | 已知限制 |
 | `app/st_c|st_sys` 未搬入 `src/` | 遗留目录语义 |
