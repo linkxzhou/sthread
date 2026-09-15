@@ -1,5 +1,6 @@
-#include "../include/st_singleton.h"
-#include "../include/st_util.h"
+#include "stlib/st_singleton.h"
+#include "tests/st_test_compat.h"
+#include "stlib/st_util.h"
 #include <stdio.h>
 
 inline int LEFT(int i) {

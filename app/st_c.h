@@ -35,6 +35,12 @@ void *st_get_private();
 
 void st_set_hook_flag();
 
+bool st_init_frame();
+
+/* Historical aliases used by sample apps */
+#define mt_init_frame st_init_frame
+#define mt_set_hook_flag st_set_hook_flag
+
 #ifdef __cplusplus
 }
 #endif

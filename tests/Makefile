@@ -1,104 +1,55 @@
 ST_ROOT = ..
 include $(ST_ROOT)/make.inc
 
-# NOTE 本目录的 target 列表整体还对不上真实文件（引用了大量不存在的
-# st_*.cpp / st_manager.cpp / st_asm.S 等），属 plan/04 范围。
-# plan/01 只把编译开关接到 make.inc：-ltcmalloc / -lprofiler / ASan
-# 一律默认关闭，需要时 `make TCMALLOC=1 PROFILER=1 ASAN=1`。
-
-CLANG = $(CC)
-
-COMM_DIR = $(ST_ROOT)
-COMM_LIB = $(COMM_DIR)/stlib/libst.a
-
+LIB = $(ST_ROOT)/libmthread.a
 INCLUDE = $(ST_INC)
-SRC = ../src
-
 FLAGS = $(ST_CXXFLAGS) $(ST_LDFLAGS) $(ST_LDLIBS)
 
-stlib_hash_list:
-	$(CLANG) st_hash_list_test.cc \
-		$(INCLUDE) $(COMM_LIB) \
-		$(FLAGS) -o st_hash_list_test
+.PHONY: all clean run singleton base thread manager connection session c main server ucontext
 
-heap:
-	$(CLANG) st_heap_test.cpp \
-		$(COMM_SRC) \
-		$(INCLUDE) $(COMM_LIB) \
-		$(FLAGS) -o st_heap_test
+all: singleton base thread manager connection session main
 
-heap_timer:
-	$(CLANG) st_heap_timer_unittest.cpp $(COMM_SRC) \
-		$(INCLUDE) $(COMM_LIB) \
-		$(FLAGS) -o st_heap_timer_unittest
+# Network-ish / heavier targets kept separate
+extra: c server
 
-buffer:
-	$(CLANG) st_buffer_test.cpp $(COMM_SRC) \
-		$(INCLUDE) $(COMM_LIB) \
-		$(FLAGS) -o st_buffer_test
+singleton: st_singleton_unittest.cpp
+	$(CC) $< $(INCLUDE) $(FLAGS) $(LIB) -o st_singleton_unittest
 
-item:
-	$(CLANG) st_item_unittest.cpp $(COMM_SRC) \
-		$(INCLUDE) $(COMM_LIB) \
-		$(FLAGS) -o st_item_unittest
+base: st_base_unittest.cpp
+	$(CC) $< $(INCLUDE) $(FLAGS) $(LIB) -o st_base_unittest
 
-connection:
-	$(CLANG) st_connection_unittest.cpp $(COMM_SRC) \
-		$(SRC)/st_connection.cpp  $(SRC)/st_thread.cpp \
-		$(SRC)/st_sys.cpp $(SRC)/st_manager.cpp \
-		$(INCLUDE) $(COMM_LIB) \
-		$(FLAGS) -o st_connection_unittest
+thread: st_thread_unittest.cpp
+	$(CC) $< $(INCLUDE) $(FLAGS) $(LIB) -o st_thread_unittest
 
-thread:
-	$(CLANG) st_thread_unittest.cpp $(COMM_SRC) \
-		$(SRC)/st_thread.cpp \
-		$(INCLUDE) $(COMM_LIB) \
-		$(FLAGS) -o st_thread_unittest
+manager: st_manager_unittest.cpp
+	$(CC) $< $(INCLUDE) $(FLAGS) $(LIB) -o st_manager_unittest
 
-c:
-	$(CLANG) st_c_unittest.cpp $(COMM_SRC) \
-		$(SRC)/st_connection.cpp $(SRC)/st_thread.cpp $(SRC)/st_sys.cpp \
-		$(SRC)/st_manager.cpp $(SRC)/st_c.cpp \
-		$(INCLUDE) $(COMM_LIB) \
-		$(FLAGS) -o st_c_unittest
+connection: st_connection_unittest.cpp
+	$(CC) $< $(INCLUDE) $(FLAGS) $(LIB) -o st_connection_unittest
 
-session:
-	$(CLANG) st_session_unittest.cpp $(COMM_SRC) \
-		$(SRC)/st_thread.cpp  $(SRC)/st_manager.cpp \
-		$(INCLUDE) $(COMM_LIB) \
-		$(FLAGS) -o st_session_unittest
+session: st_session_unittest.cpp
+	$(CC) $< $(INCLUDE) $(FLAGS) $(LIB) -o st_session_unittest
 
-manager:
-	$(CLANG) st_manager_unittest.cpp $(COMM_SRC) \
-		$(SRC)/st_thread.cpp $(SRC)/st_sys.cpp $(SRC)/st_manager.cpp \
-		$(INCLUDE) $(COMM_LIB) \ 
-		$(FLAGS) -o st_manager_unittest
+c: st_c_unittest.cpp
+	$(CC) $< $(INCLUDE) $(FLAGS) $(LIB) -o st_c_unittest
 
-server:
-	$(CLANG) st_server_unittest.cpp $(COMM_SRC) \
-		$(SRC)/st_connection.cpp  $(SRC)/st_thread.cpp \
-		$(SRC)/st_sys.cpp $(SRC)/st_manager.cpp \
-		$(INCLUDE) $(COMM_LIB) \
-		$(FLAGS) -o st_server_unittest
+main: st_main_unittest.cpp
+	$(CC) $< $(INCLUDE) $(FLAGS) $(LIB) -o st_main_unittest
 
-ucontext:
-	$(CLANG) -c $(SRC)/st_asm.S $(FLAGS) -o ./st_asm.o
-	$(CLANG) -c $(SRC)/st_ucontext.cpp $(INCLUDE) $(FLAGS) -o ./st_ucontext.o
-	$(CLANG) -c $(SRC)/st_log.cpp $(INCLUDE) $(FLAGS) -o ./st_log.o
-	ar cr libucontext.a ./st_asm.o ./st_ucontext.o ./st_log.o
-	$(CLANG) st_ucontext_unittest.cpp \
-		$(SRC)/st_test.cpp $(INCLUDE) $(COMM_LIB) \
-		$(FLAGS) -o st_ucontext_unittest
-	rm -rf *.o
+server: st_server_unittest.cpp
+	$(CC) $< $(INCLUDE) $(FLAGS) $(LIB) -o st_server_unittest
 
-queue:
-	$(CLANG) queue_unittest.cpp $(FLAGS) -o queue_unittest
+ucontext: st_ucontext_unittest.cpp
+	$(CC) $< $(INCLUDE) $(FLAGS) $(LIB) -o st_ucontext_unittest
 
-singleton:
-	$(CLANG) st_singleton_unittest.cpp $(COMM_LIB) \
-		$(FLAGS) -o st_singleton_unittest
+run: all
+	@set -e; \
+	for t in st_singleton_unittest st_base_unittest st_thread_unittest \
+	         st_manager_unittest st_connection_unittest st_session_unittest \
+	         st_main_unittest; do \
+	  echo "=== run $$t ==="; \
+	  ./$$t; \
+	done
 
 clean:
-	rm -rf *_unittest
-	rm -rf *.dSYM
-	rm -rf *.o
+	@rm -rf st_*_unittest uthread_unittest server_unittest *.dSYM *.o

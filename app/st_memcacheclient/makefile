@@ -1,11 +1,16 @@
-INCLUDE = -I../../include -I.
-SRC = .
-FLAGS = -Wno-backslash-newline-escape -Wno-unused-value -Wno-format -g -DTRACE
-LIBS = ../../libmthread.a
+ST_ROOT = ../..
+include $(ST_ROOT)/make.inc
 
-all:
-	g++ $(SRC)/mt_array.cpp $(SRC)/memcache.cpp $(SRC)/main.cpp $(INCLUDE) \
-		$(FLAGS) $(LIBS) -o main
+INCLUDE = $(ST_INC) -I. -I..
+FLAGS = $(ST_CXXFLAGS) -Wno-unused-value
+LIBS = $(ST_ROOT)/libmthread.a $(ST_LDFLAGS) $(ST_LDLIBS)
+
+.PHONY: all clean
+
+all: main
+
+main: mt_array.cpp memcache.cpp main.cpp
+	$(CC) mt_array.cpp memcache.cpp main.cpp $(INCLUDE) $(FLAGS) $(LIBS) -o main
 
 clean:
 	@rm -rf main *.dSYM

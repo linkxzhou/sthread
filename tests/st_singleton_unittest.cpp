@@ -1,4 +1,5 @@
-#include "../include/st_singleton.h"
+#include "stlib/st_singleton.h"
+#include "tests/st_test_compat.h"
 
 ST_NAMESPACE_USING
 

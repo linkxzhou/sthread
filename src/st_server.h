@@ -6,13 +6,17 @@
 #define _ST_SERVER_H__
 
 #include "st_connection.h"
-#include "st_public.h"
-#include "st_connection.h"
-#include "st_poll.h"
 #include "st_manager.h"
-#include "st_netaddr.h"
+#include "st_poll.h"
+#include "st_public.h"
 #include "st_sys.h"
-#include "st_util.h"
+#include "stlib/st_netaddr.h"
+#include "stlib/st_util.h"
+#include "app/st_c.h"
+#include "app/st_sys.h"
+
+using namespace sthread;
+using namespace stlib;
 
 template <class ConnectionT> class StServerConnection : public StConnection {
 public:
@@ -21,9 +25,8 @@ public:
 
 template <class ConnetionT, int ServerT = eTCP_CONN> class StServer {
 public:
-  StServer() : m_osfd_(-1), m_item_(NULL) {
-    m_osfd_ = -1;
-    m_manager_ = Instance<Manager>();
+  StServer() : m_osfd_(-1), m_item_(NULL), m_schedule_(NULL) {
+    m_schedule_ = Instance<StSysSchedule>();
   }
 
   ~StServer() {
@@ -31,7 +34,7 @@ public:
     UtilPtrPoolFree(m_item_);
   }
 
-  inline void SetHookFlag() { m_manager_->SetHookFlag(); }
+  inline void SetHookFlag() { st_set_hook_flag(); }
 
   int32_t CreateSocket(const StNetAddr &addr) {
     m_addr_ = addr;
@@ -40,32 +43,27 @@ public:
     if (IS_UDP_CONN(ServerT)) {
       protocol = SOCK_DGRAM;
     }
-    m_osfd_ = st_socket(addr.IsIPV6() ? AF_INET6 : AF_INET, protocol, 0);
+    m_osfd_ = sys_socket(addr.IsIPV6() ? AF_INET6 : AF_INET, protocol, 0);
     LOG_TRACE("m_osfd_: %d", m_osfd_);
     if (m_osfd_ < 0) {
       LOG_ERROR("create socket failed, ret[%d]", m_osfd_);
       return -1;
     }
 
-    m_item_ = Instance<UtilPtrPool<typename ConnetionT::ServerStEventSuperT> >()
-                  ->AllocPtr();
-
+    m_item_ = Instance<UtilPtrPool<StEventItem> >()->AllocPtr();
     LOG_ASSERT(m_item_ != NULL);
     m_item_->SetOsfd(m_osfd_);
     m_item_->EnableOutput();
     m_item_->DisableInput();
     GlobalEventSchedule()->Add(m_item_);
 
-    struct sockaddr *servaddr;
-    m_addr_.GetSockAddr(servaddr);
-    if (::bind(m_osfd_, (struct sockaddr *)servaddr, sizeof(struct sockaddr)) <
-        0) {
+    struct sockaddr *servaddr = m_addr_.GetSockAddr();
+    if (::bind(m_osfd_, servaddr, sizeof(struct sockaddr)) < 0) {
       LOG_ERROR("bind socket error: %s(errno: %d)", strerror(errno), errno);
       return -2;
     }
 
     LOG_TRACE("addr: %s", m_addr_.IPPort());
-
     return m_osfd_;
   }
 
@@ -75,13 +73,13 @@ public:
   }
 
   void Loop() {
-    LOG_ASSERT(m_manager_ != NULL);
+    LOG_ASSERT(m_schedule_ != NULL);
 
     int connfd = -1;
     while (true) {
       struct sockaddr clientaddr;
       socklen_t addrlen = sizeof(struct sockaddr);
-      if ((connfd = ::_accept(m_osfd_, (struct sockaddr *)&clientaddr,
+      if ((connfd = st_accept(m_osfd_, (struct sockaddr *)&clientaddr,
                               &addrlen)) <= 0) {
         LOG_TRACE("connfd: %d, errno: %d, errmsg: %s", connfd, errno,
                   strerror(errno));
@@ -96,18 +94,14 @@ public:
       conn->SetDestAddr(addr);
 
       LOG_TRACE("connfd: %d", connfd);
-      m_manager_->CreateThread(NewStClosure(CallBack, conn, this));
+      m_schedule_->CreateThread(NewStClosure(CallBack, conn, this));
     }
   }
 
   static void CallBack(StConnection *conn,
                        StServer<ConnetionT, ServerT> *server) {
-    Manager *manager = server->m_manager_;
-    LOG_ASSERT(manager != NULL);
-
-    StEventItem *item =
-        Instance<UtilPtrPool<typename ConnetionT::ServerStEventSuperT> >()
-            ->AllocPtr();
+    (void)server;
+    StEventItem *item = Instance<UtilPtrPool<StEventItem> >()->AllocPtr();
     LOG_ASSERT(item != NULL);
 
     item->SetOsfd(conn->GetOsfd());
@@ -121,34 +115,30 @@ public:
       LOG_TRACE("CallBack ==========[name:%s]========== %p", thread->GetName(),
                 item);
 
-      // 收数据
       if ((ret = conn->RecvData()) < 0) {
-        conn->HandleError(ret);
+        conn->DoError(ret);
         goto CALLBACK_EXIT1;
       }
 
-      // 处理数据
-      if ((ret = conn->HandleProcess()) < 0) {
-        conn->HandleError(ret);
+      if ((ret = conn->DoProcess()) < 0) {
+        conn->DoError(ret);
         goto CALLBACK_EXIT1;
       }
 
-      // 发数据
       if ((ret = conn->SendData()) < 0) {
-        conn->HandleError(ret);
+        conn->DoError(ret);
         goto CALLBACK_EXIT1;
       }
     } while (conn->Keeplive());
 
   CALLBACK_EXIT1:
-    // 清理句柄数据
-    GlobalEventSchedule()->Close(item);
-    conn->CloseSocket();
+    GlobalEventSchedule()->ClearItem(item);
+    conn->Close();
     UtilPtrPoolFree(item);
   }
 
 private:
-  Manager *m_manager_;
+  StSysSchedule *m_schedule_;
   int m_osfd_;
   StNetAddr m_addr_;
   StEventItem *m_item_;

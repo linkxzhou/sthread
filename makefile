@@ -16,12 +16,11 @@ FORMAT_SRC = $(wildcard stlib/*.h stlib/*.cc src/*.h src/*.cc stlib/tests/*.cc)
 
 # plan/01 的出口条件是「stlib 成为可编译、可运行、C++98 干净的绿色基线」，
 # 所以当前默认目标是 stlib。src/ 还编不过（旧名未定义、st_manager.h 缺失等，
-# 属 plan/02 与 plan/03），等它打通后把 all 改为依赖 lib。
+# lib / apps / tests 由 plan/01～04 打通。
 all: stlib
 	@echo ""
 	@echo "已构建 stlib（stlib/libst.a、stlib/libst.so）。"
 	@echo "运行 'make test' 跑 stlib 的四个测试，'make help' 看全部目标与开关。"
-	@echo "'make lib'（libmthread）当前会在编译期失败，等 plan/02、plan/03 打通 src/。"
 
 help:
 	@echo "目标："

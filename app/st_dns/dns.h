@@ -1,7 +1,15 @@
 #ifndef _DNS53_H_
 #define _DNS53_H_
 
-#include "mt_action.h"
+#include "app/st_c.h"
+#include "app/st_action.h"
+#include "stlib/st_log.h"
+#include "stlib/st_def.h"
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <string.h>
+#include <time.h>
+#include <stdint.h>
 #include <vector>
 #include <string>
 

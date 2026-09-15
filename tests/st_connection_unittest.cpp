@@ -1,19 +1,26 @@
-#include "../include/st_connection.h"
-#include "../include/st_manager.h"
+#include "src/st_connection.h"
+#include "src/st_sys.h"
+#include "app/st_c.h"
+#include "stlib/st_netaddr.h"
+#include "tests/st_test_compat.h"
 
 ST_NAMESPACE_USING
 
 TEST(StStatus, TCP) {
-  Manager *manager = Instance<Manager>();
-  manager->SetHookFlag();
+  st_init_frame();
+  st_set_hook_flag();
 
-  StClientConnection<StEventSuper> *conn =
-      new StClientConnection<StEventSuper>();
-  StNetAddress addr;
-  addr.SetAddr("112.80.248.75", 80);
-  int fd = conn->CreateSocket(addr);
+  StClientConnection<StEventItem> *conn = new StClientConnection<StEventItem>();
+  StNetAddr addr;
+  addr.SetAddr("127.0.0.1", 80);
+  int fd = conn->Create(addr);
   LOG_TRACE("fd: %d", fd);
+  conn->Close();
+  delete conn;
 }
 
-// 测试所有的功能
-int main(int argc, char *argv[]) { return RUN_ALL_TESTS(); }
+int main(int argc, char *argv[]) {
+  (void)argc;
+  (void)argv;
+  return RUN_ALL_TESTS();
+}
