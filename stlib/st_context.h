@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2005-2006 Russ Cox, MIT; see COPYRIGHT
- * Project wrappers: Stack / Context / context_switch (restored from git history).
+ * Project wrappers: Stack / Context / context_switch (restored from git
+ * history).
  */
 
 #ifndef _ST_CONTEXT_H_

@@ -5,13 +5,13 @@
 #ifndef _ST_CONNECTION_H__
 #define _ST_CONNECTION_H__
 
+#include "app/st_sys.h"
+#include "st_poll.h"
+#include "st_public.h"
+#include "st_thread.h"
 #include "stlib/st_buffer.h"
 #include "stlib/st_heap_timer.h"
 #include "stlib/st_util.h"
-#include "st_public.h"
-#include "st_poll.h"
-#include "st_thread.h"
-#include "app/st_sys.h"
 
 using namespace stlib;
 using namespace sthread;
@@ -24,8 +24,8 @@ public:
   StConnection()
       : m_type_(eUNDEF_CONN), m_osfd_(-1), m_timeout_(30000), m_sendbuf_(NULL),
         m_recvbuf_(NULL), m_item_(NULL) {
-    m_recvbuf_ = Instance<StBufferPool >()->GetBuffer(ST_RECV_BUFFSIZE);
-    m_sendbuf_ = Instance<StBufferPool >()->GetBuffer(ST_SEND_BUFFSIZE);
+    m_recvbuf_ = Instance<StBufferPool>()->GetBuffer(ST_RECV_BUFFSIZE);
+    m_sendbuf_ = Instance<StBufferPool>()->GetBuffer(ST_SEND_BUFFSIZE);
   }
 
   virtual ~StConnection() {
@@ -34,7 +34,6 @@ public:
   }
 
   virtual int32_t Create(const StNetAddr &addr) { return -1; }
-
 
   void Close() {
     if (m_osfd_ > 0) {
@@ -65,8 +64,8 @@ public:
   inline int32_t GetTimeout() { return m_timeout_; }
 
   virtual void Reset() {
-    Instance<StBufferPool >()->FreeBuffer(m_sendbuf_);
-    Instance<StBufferPool >()->FreeBuffer(m_recvbuf_);
+    Instance<StBufferPool>()->FreeBuffer(m_sendbuf_);
+    Instance<StBufferPool>()->FreeBuffer(m_recvbuf_);
 
     m_osfd_ = -1;
     m_sendbuf_ = NULL;

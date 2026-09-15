@@ -28,10 +28,10 @@ int32_t StConnection::SendData() {
   if (IS_UDP_CONN(m_type_)) {
     struct sockaddr *servaddr = m_destaddr_.GetSockAddr();
     ret = st_sendto(m_osfd_, buf + have_send_len, buf_len - have_send_len, 0,
-                   servaddr, sizeof(struct sockaddr), m_timeout_);
+                    servaddr, sizeof(struct sockaddr), m_timeout_);
   } else {
     ret = st_send(m_osfd_, buf + have_send_len, buf_len - have_send_len, 0,
-                 m_timeout_);
+                  m_timeout_);
   }
 
   LOG_TRACE("send: %s", buf + have_send_len);
@@ -73,12 +73,12 @@ int32_t StConnection::RecvData() {
     struct sockaddr clientaddr;
     socklen_t addrlen = sizeof(struct sockaddr);
     ret = st_recvfrom(m_osfd_, (char *)buf + have_recv_len,
-                       buf_maxlen - have_recv_len, 0, &clientaddr, &addrlen,
-                       m_timeout_);
+                      buf_maxlen - have_recv_len, 0, &clientaddr, &addrlen,
+                      m_timeout_);
     m_destaddr_ = StNetAddr(*((struct sockaddr_in *)&clientaddr));
   } else {
     ret = st_recv(m_osfd_, (char *)buf + have_recv_len,
-                   buf_maxlen - have_recv_len, 0, m_timeout_);
+                  buf_maxlen - have_recv_len, 0, m_timeout_);
   }
 
   if (ret < 0) {

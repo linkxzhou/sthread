@@ -34,8 +34,10 @@ public:
     m_heap_timer_ = new StHeapTimer(max_num * 2);
     LOG_ASSERT(m_heap_timer_ != NULL);
 
-    // D3(B): schedule owns daemon/primo via lazy getters; we only alias + rebind callback.
-    m_daemon_ = dynamic_cast<StThread *>(GlobalThreadSchedule()->DaemonThread());
+    // D3(B): schedule owns daemon/primo via lazy getters; we only alias +
+    // rebind callback.
+    m_daemon_ =
+        dynamic_cast<StThread *>(GlobalThreadSchedule()->DaemonThread());
     LOG_ASSERT(m_daemon_ != NULL);
     m_daemon_->SetCallback(NewStClosure(StartUp, this));
 
@@ -63,8 +65,8 @@ public:
   }
 
   inline int64_t GetTimeout() {
-    StThread *thread =
-        dynamic_cast<StThread *>(GlobalThreadSchedule()->m_sleep_list_.HeapTop());
+    StThread *thread = dynamic_cast<StThread *>(
+        GlobalThreadSchedule()->m_sleep_list_.HeapTop());
 
     int64_t now = GetLastClock();
     if (!thread) {
@@ -183,10 +185,10 @@ extern "C" {
 #endif
 
 int st_sendto(int fd, const void *msg, int len, int flags,
-             const struct sockaddr *to, int tolen, int timeout);
+              const struct sockaddr *to, int tolen, int timeout);
 
 int st_recvfrom(int fd, void *buf, int len, int flags, struct sockaddr *from,
-               socklen_t *fromlen, int timeout);
+                socklen_t *fromlen, int timeout);
 
 int st_connect(int fd, const struct sockaddr *addr, int addrlen, int timeout);
 

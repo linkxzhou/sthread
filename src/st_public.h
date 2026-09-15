@@ -58,10 +58,10 @@ typedef enum {
 
 // 规则是最后一位0x1则表示需要保存状态，否则不需要
 typedef enum {
-  eUNDEF_CONN = 0x0,                            // 连接错误
-  eUDP_CONN = 0x10,                             // UDP 连接
-  eTCP_CONN = 0x20,                             // TCP 短连接
-  eTCP_KEEPLIVE_CONN = (0x10 | KEEPLIVE_VALUE), // TCP keepalive = 0x11
+  eUNDEF_CONN = 0x0,                              // 连接错误
+  eUDP_CONN = 0x10,                               // UDP 连接
+  eTCP_CONN = 0x20,                               // TCP 短连接
+  eTCP_KEEPLIVE_CONN = (0x10 | KEEPLIVE_VALUE),   // TCP keepalive = 0x11
   eUDP_UDPSESSION_CONN = (0x20 | KEEPLIVE_VALUE), // UDP session = 0x21
 } eConnType;
 
