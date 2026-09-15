@@ -137,6 +137,10 @@ int32_t StThreadSchedule::RemoveRunable(StThreadItem *thread) {
 }
 
 int32_t StThreadSchedule::RemoveSleep(StThreadItem *thread) {
+  if (unlikely(NULL == thread)) {
+    LOG_ERROR("thread NULL, (%p)", thread);
+    return -1;
+  }
   thread->UnsetFlag(eSLEEP_LIST);
   // 如果HeapSize < 0 则不需要处理
   if (m_sleep_list_.HeapSize() <= 0) {
@@ -153,6 +157,10 @@ int32_t StThreadSchedule::RemoveSleep(StThreadItem *thread) {
 }
 
 int32_t StThreadSchedule::InsertSleep(StThreadItem *thread) {
+  if (unlikely(NULL == thread)) {
+    LOG_ERROR("thread NULL, (%p)", thread);
+    return -1;
+  }
   thread->SetFlag(eSLEEP_LIST);
   thread->SetState(eSLEEPING);
   m_sleep_list_.HeapPush(thread);

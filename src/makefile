@@ -6,7 +6,12 @@ include $(ST_ROOT)/make.inc
 BINARY = $(ST_ROOT)/libmthread.a $(ST_ROOT)/libmthread.so
 
 INC    = $(ST_INC)
+# -O1 fights coverage (-O0 from make.inc); keep objs when COVERAGE=1 for llvm-cov.
+ifeq ($(COVERAGE),0)
 C_ARGS = $(ST_CXXFLAGS) -O1
+else
+C_ARGS = $(ST_CXXFLAGS)
+endif
 
 # ---------------------------------------------------------------------------
 # libmthread 产物组成（书面定义，另见 AGENTS.md「libmthread 产物定义」一节）
@@ -55,7 +60,9 @@ LIB_O = $(SRC_O) $(STLIB_O) $(APP_O)
 .PHONY: all clean
 
 all: $(BINARY)
+ifeq ($(COVERAGE),0)
 	@rm -f $(LIB_O)
+endif
 
 %.o: %.cpp
 	@echo "Compiling $< ..."

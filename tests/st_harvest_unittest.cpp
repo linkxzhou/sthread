@@ -11,6 +11,7 @@
 #include "stlib/st_util.h"
 #include "tests/st_test_compat.h"
 #include <sys/wait.h>
+#include <signal.h>
 #include <unistd.h>
 
 ST_NAMESPACE_USING
@@ -183,5 +184,6 @@ TEST(StStatus, LogInitNull) {
 int main(int argc, char *argv[]) {
   (void)argc;
   (void)argv;
+  signal(SIGPIPE, SIG_IGN);
   return RUN_ALL_TESTS();
 }

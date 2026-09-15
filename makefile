@@ -2,7 +2,7 @@ ST_ROOT = .
 include $(ST_ROOT)/make.inc
 
 # 开关一律透传给子目录的 make
-export TRACE DEBUG ASAN TCMALLOC PROFILER ARCH
+export TRACE DEBUG ASAN TCMALLOC PROFILER ARCH COVERAGE
 
 CLANG_FORMAT ?= clang-format
 

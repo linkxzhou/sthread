@@ -34,8 +34,15 @@ public:
   }
 
   ~StServer() {
-    m_osfd_ = -1;
-    UtilPtrPoolFree(m_item_);
+    if (m_item_ != NULL) {
+      GlobalEventSchedule()->ClearItem(m_item_);
+      UtilPtrPoolFree(m_item_);
+      m_item_ = NULL;
+    }
+    if (m_osfd_ >= 0) {
+      sys_close(m_osfd_);
+      m_osfd_ = -1;
+    }
   }
 
   inline void SetHookFlag() { st_set_hook_flag(); }

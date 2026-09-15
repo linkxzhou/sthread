@@ -8,12 +8,12 @@ FLAGS = $(ST_CXXFLAGS) $(ST_LDFLAGS) $(ST_LDLIBS)
 .PHONY: all clean run extra coverage coverage-report \
 	singleton base thread manager connection session keepalive c main server ucontext \
 	util buffer heap hash scheduler connmgr loopback context accept \
-	sysapi connio logbuf harvest httpserver
+	sysapi connio logbuf harvest httpserver covextra
 
 # Primary suite (used by make -C tests run and coverage)
 all: singleton base thread manager connection session keepalive main \
 	util buffer heap hash scheduler connmgr loopback context server accept \
-	sysapi connio logbuf harvest httpserver
+	sysapi connio logbuf harvest httpserver covextra
 
 extra: c
 
@@ -92,6 +92,9 @@ harvest: st_harvest_unittest.cpp
 httpserver: st_http_server_unittest.cpp
 	$(CC) $< $(INCLUDE) $(FLAGS) $(LIB) -o st_http_server_unittest
 
+covextra: st_coverage_extra_unittest.cpp
+	$(CC) $< $(INCLUDE) $(FLAGS) $(LIB) -o st_coverage_extra_unittest
+
 RUN_TESTS = \
 	st_singleton_unittest st_base_unittest st_thread_unittest \
 	st_manager_unittest st_connection_unittest st_session_unittest \
@@ -101,7 +104,8 @@ RUN_TESTS = \
 	st_loopback_unittest st_context_unittest st_accept_unittest \
 	st_sys_api_unittest st_conn_io_unittest st_log_buffer_extra_unittest \
 	st_harvest_unittest \
-	st_http_server_unittest
+	st_http_server_unittest \
+	st_coverage_extra_unittest
 
 run: all
 	@set -e; \
@@ -117,32 +121,31 @@ PROFDATA ?= $(COV_DIR)/merged.profdata
 LLVM_PROFDATA ?= llvm-profdata
 LLVM_COV ?= llvm-cov
 COV_IGNORE ?= (stlib/ucontext/|stlib/st_epoll\.h|stlib/st_test\.|/usr/|/opt/|tests/|app/)
-COV_THRESHOLD ?= 65  # interim; long-term target remains ~80
+COV_THRESHOLD ?= 70  # interim; long-term target remains ~80
 
 coverage: all
 	@mkdir -p $(COV_DIR)
 	@rm -f $(COV_DIR)/*.profraw $(PROFDATA)
-	@set -e; \
+	@failed=0; \
 	for t in $(RUN_TESTS); do \
 	  echo "=== cov $$t ==="; \
-	  LLVM_PROFILE_FILE="$(COV_DIR)/$${t}.%p.profraw" ./$$t \
-	    >$(COV_DIR)/$${t}.out 2>$(COV_DIR)/$${t}.err; \
-	done
+	  LLVM_PROFILE_FILE="$(COV_DIR)/$${t}.%p%c.profraw" ./$$t \
+	    >$(COV_DIR)/$${t}.out 2>$(COV_DIR)/$${t}.err || { echo "FAIL $$t exit $$?"; failed=1; }; \
+	done; \
+	if [ $$failed -ne 0 ]; then exit 1; fi
 	@$(LLVM_PROFDATA) merge -sparse $(COV_DIR)/*.profraw -o $(PROFDATA)
 	@$(MAKE) coverage-report
 
+# Report via per-binary lcov export union (avoids multi-object mismatched under-count).
+# Lib .o are kept when COVERAGE=1 (see src/makefile) for optional deep dives.
 coverage-report:
-	@objs=""; first=1; \
-	for t in $(RUN_TESTS); do \
-	  if [ $$first -eq 1 ]; then objs="./$$t"; first=0; \
-	  else objs="$$objs -object ./$$t"; fi; \
-	done; \
-	$(LLVM_COV) report $$objs -instr-profile=$(PROFDATA) \
-	  --ignore-filename-regex='$(COV_IGNORE)' | tee $(COV_DIR)/report.txt; \
-	pct=`$(LLVM_COV) report $$objs -instr-profile=$(PROFDATA) \
-	  --ignore-filename-regex='$(COV_IGNORE)' | awk '/^TOTAL/ {print $$10}' | tr -d '%'`; \
-	echo "LINE_COVER=$$pct THRESHOLD=$(COV_THRESHOLD)"; \
-	awk -v p="$$pct" -v t="$(COV_THRESHOLD)" 'BEGIN { exit (p+0 >= t+0) ? 0 : 1 }'
+	@python3 $(ST_ROOT)/tests/merge_cov.py \
+	  --llvm-cov=$(LLVM_COV) \
+	  --profdata=$(PROFDATA) \
+	  --ignore='$(COV_IGNORE)' \
+	  --tests="$(RUN_TESTS)" \
+	  --out=$(COV_DIR)/report.txt \
+	  --threshold=$(COV_THRESHOLD)
 
 clean:
 	@rm -rf st_*_unittest uthread_unittest server_unittest *.dSYM *.o
