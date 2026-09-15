@@ -7,6 +7,7 @@
 #include <fcntl.h>
 #include <sys/socket.h>
 #include <stdarg.h>
+#include <errno.h>
 
 SyscallCallbackTab g_syscall_tab;
 int g_hook_flag = 0;
@@ -68,7 +69,10 @@ int sys_close(int fd) {
     sys_free_fd(fd);
   }
   HOOK_SYSCALL(close);
-  return REAL_FUNC(close) ? REAL_FUNC(close)(fd) : ::close(fd);
+  if (!HAS_REAL(close)) {
+    return ::close(fd);
+  }
+  return REAL_FUNC(close)(fd);
 }
 
 int sys_shutdown(int fd) {
@@ -83,6 +87,10 @@ int sys_connect(int fd, const struct sockaddr *address, socklen_t address_len) {
   sys_fd *_fd = sys_find_fd(fd);
   if (!_fd) {
     HOOK_SYSCALL(connect);
+    if (!HAS_REAL(connect)) {
+      errno = ENOSYS;
+      return -1;
+    }
     return REAL_FUNC(connect)(fd, address, address_len);
   }
   return st_connect(fd, address, (int)address_len, _fd->write_timeout);
@@ -90,6 +98,10 @@ int sys_connect(int fd, const struct sockaddr *address, socklen_t address_len) {
 
 ssize_t sys_read(int fd, void *buffer, size_t nbyte) {
   HOOK_SYSCALL(read);
+  if (!HAS_REAL(read)) {
+    errno = ENOSYS;
+    return -1;
+  }
   sys_fd *_fd = sys_find_fd(fd);
 
   if (!HOOK_ACTIVE() || !_fd) {
@@ -105,6 +117,10 @@ ssize_t sys_read(int fd, void *buffer, size_t nbyte) {
 
 ssize_t sys_write(int fd, const void *buffer, size_t nbyte) {
   HOOK_SYSCALL(write);
+  if (!HAS_REAL(write)) {
+    errno = ENOSYS;
+    return -1;
+  }
   sys_fd *_fd = sys_find_fd(fd);
   if (!HOOK_ACTIVE() || !_fd) {
     return REAL_FUNC(write)(fd, buffer, nbyte);
@@ -119,6 +135,10 @@ ssize_t sys_write(int fd, const void *buffer, size_t nbyte) {
 ssize_t sys_sendto(int fd, const void *buffer, size_t length, int flags,
                  const struct sockaddr *de__addr, socklen_t de__len) {
   HOOK_SYSCALL(sendto);
+  if (!HAS_REAL(sendto)) {
+    errno = ENOSYS;
+    return -1;
+  }
   sys_fd *_fd = sys_find_fd(fd);
   if (!HOOK_ACTIVE() || !_fd) {
     return REAL_FUNC(sendto)(fd, buffer, length, flags, de__addr, de__len);
@@ -134,6 +154,10 @@ ssize_t sys_sendto(int fd, const void *buffer, size_t length, int flags,
 ssize_t sys_recvfrom(int fd, void *buffer, size_t length, int flags,
                    struct sockaddr *address, socklen_t *address_len) {
   HOOK_SYSCALL(recvfrom);
+  if (!HAS_REAL(recvfrom)) {
+    errno = ENOSYS;
+    return -1;
+  }
   sys_fd *_fd = sys_find_fd(fd);
   if (!HOOK_ACTIVE() || !_fd) {
     return REAL_FUNC(recvfrom)(fd, buffer, length, flags, address, address_len);
@@ -148,6 +172,10 @@ ssize_t sys_recvfrom(int fd, void *buffer, size_t length, int flags,
 
 ssize_t sys_recv(int fd, void *buffer, size_t length, int flags) {
   HOOK_SYSCALL(recv);
+  if (!HAS_REAL(recv)) {
+    errno = ENOSYS;
+    return -1;
+  }
   sys_fd *_fd = sys_find_fd(fd);
   if (!HOOK_ACTIVE() || !_fd) {
     return REAL_FUNC(recv)(fd, buffer, length, flags);
@@ -161,6 +189,10 @@ ssize_t sys_recv(int fd, void *buffer, size_t length, int flags) {
 
 ssize_t sys_send(int fd, const void *buffer, size_t nbyte, int flags) {
   HOOK_SYSCALL(send);
+  if (!HAS_REAL(send)) {
+    errno = ENOSYS;
+    return -1;
+  }
   sys_fd *_fd = sys_find_fd(fd);
   if (!HOOK_ACTIVE() || !_fd) {
     return REAL_FUNC(send)(fd, buffer, nbyte, flags);
@@ -175,6 +207,10 @@ ssize_t sys_send(int fd, const void *buffer, size_t nbyte, int flags) {
 int sys_setsockopt(int fd, int level, int option_name, const void *option_value,
                  socklen_t option_len) {
   HOOK_SYSCALL(setsockopt);
+  if (!HAS_REAL(setsockopt)) {
+    errno = ENOSYS;
+    return -1;
+  }
   sys_fd *_fd = sys_find_fd(fd);
   if (!HOOK_ACTIVE() || !_fd) {
     return REAL_FUNC(setsockopt)(fd, level, option_name, option_value,
@@ -199,6 +235,10 @@ int sys_fcntl(int fd, int cmd, ...) {
   ::va_end(ap);
 
   HOOK_SYSCALL(fcntl);
+  if (!HAS_REAL(fcntl)) {
+    errno = ENOSYS;
+    return -1;
+  }
   sys_fd *_fd = sys_find_fd(fd);
   if (!_fd) {
     return REAL_FUNC(fcntl)(fd, cmd, arg);
@@ -224,6 +264,10 @@ int sys_ioctl(int fd, uint64_t cmd, ...) {
   va_end(ap);
 
   HOOK_SYSCALL(ioctl);
+  if (!HAS_REAL(ioctl)) {
+    errno = ENOSYS;
+    return -1;
+  }
   sys_fd *_fd = sys_find_fd(fd);
   if (!_fd) {
     return REAL_FUNC(ioctl)(fd, cmd, arg);
@@ -232,7 +276,7 @@ int sys_ioctl(int fd, uint64_t cmd, ...) {
   if (cmd == FIONBIO) {
     int flags = (arg != NULL) ? *((int *)arg) : 0;
     if (flags != 0) {
-      _fd->sock_flag |= ST_FD_FLG_UNBLOCK;
+      _fd->sock_flag |= ST_FD_FLG_UNBLOCK | ST_FD_FLG_INUSE;
     }
   }
 
@@ -241,6 +285,10 @@ int sys_ioctl(int fd, uint64_t cmd, ...) {
 
 int sys_accept(int fd, struct sockaddr *address, socklen_t *address_len) {
   HOOK_SYSCALL(accept);
+  if (!HAS_REAL(accept)) {
+    errno = ENOSYS;
+    return -1;
+  }
   sys_fd *_fd = sys_find_fd(fd);
   if (!_fd) {
     return REAL_FUNC(accept)(fd, address, address_len);

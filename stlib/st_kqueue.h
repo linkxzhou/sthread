@@ -110,26 +110,11 @@ public:
   }
 
   int32_t DelEvent(int32_t fd, int32_t delmask) {
-    struct kevent ke[1];
+    /* Remaining interest set — sync via AddEvent (absolute ADD/DELETE),
+     * matching epoll DelEvent semantics. Old code deleted filters present
+     * in the *remaining* mask (inverted) and could leave stale kevents. */
     int32_t mask = m_file_[fd].mask & (~delmask);
-
-    if (mask & ST_READABLE) {
-      EV_SET(&ke[0], fd, EVFILT_READ, EV_DELETE, 0, 0, NULL);
-      if (kevent(m_kqfd_, ke, 1, NULL, 0, NULL) == -1) {
-        return ST_ERROR;
-      }
-    }
-
-    if (mask & ST_WRITEABLE) {
-      EV_SET(&ke[0], fd, EVFILT_WRITE, EV_DELETE, 0, 0, NULL);
-      if (kevent(m_kqfd_, ke, 1, NULL, 0, NULL) == -1) {
-        return ST_ERROR;
-      }
-    }
-
-    m_file_[fd].mask = mask;
-
-    return ST_OK;
+    return AddEvent(fd, mask);
   }
 
   int32_t Poll(struct timeval *tvp = NULL) {

@@ -9,7 +9,10 @@ using namespace stlib;
 using namespace sthread;
 
 int32_t StConnection::SendData() {
-  LOG_ASSERT(m_sendbuf_ != NULL);
+  if (m_sendbuf_ == NULL) {
+    LOG_ERROR("SendData: sendbuf is NULL");
+    return -1;
+  }
 
   int32_t len = m_sendbuf_->GetMaxLen();
   int ret = DoOutput(m_sendbuf_->GetBuffer(), len);
@@ -56,7 +59,10 @@ int32_t StConnection::SendData() {
 }
 
 int32_t StConnection::RecvData() {
-  LOG_ASSERT(m_recvbuf_ != NULL);
+  if (m_recvbuf_ == NULL) {
+    LOG_ERROR("RecvData: recvbuf is NULL");
+    return -1;
+  }
 
   char *buf = (char *)m_recvbuf_->GetBuffer();
   int buf_maxlen = m_recvbuf_->GetMaxLen();

@@ -319,27 +319,22 @@ bool StEventSchedule::Add(StEventItem *item) {
   int new_events = item->GetEvents();
   StEventItem *old_item = m_event_[osfd];
   LOG_TRACE("add old_item: %p, item: %p", old_item, item);
-  if (NULL == old_item) {
-    m_event_[osfd] = item;
-    if (!AddFd(osfd, new_events)) {
-      LOG_ERROR("add fd: %d failed", osfd);
-      return false;
-    }
-  } else {
-    if (old_item != item) {
-      LOG_ERROR("item conflict, fd: %d, old: %p, new: %p", osfd, old_item,
-                item);
-      return false;
-    }
-
-    if (!AddFd(osfd, new_events)) {
-      LOG_ERROR("add fd: %d failed", osfd);
-      return false;
-    }
-
-    old_item->SetEvents(new_events);
+  if (old_item != NULL && old_item != item) {
+    /* Stale mapping (fd reuse without ClearItem). Detach old from the
+     * table/kqueue without freeing the object — caller owns lifetimes. */
+    LOG_WARN("item replace, fd: %d, old: %p, new: %p", osfd, old_item, item);
+    DeleteFd(osfd, old_item->GetEvents());
+    m_event_[osfd] = NULL;
+    old_item = NULL;
   }
 
+  if (!AddFd(osfd, new_events)) {
+    LOG_ERROR("add fd: %d failed", osfd);
+    return false;
+  }
+
+  m_event_[osfd] = item;
+  item->SetEvents(new_events);
   return true;
 }
 
@@ -355,30 +350,27 @@ bool StEventSchedule::Delete(StEventItem *item) {
     return false;
   }
 
-  int new_events = item->GetEvents();
+  int del_events = item->GetEvents();
   StEventItem *old_item = m_event_[osfd];
   LOG_TRACE("delete old_item: %p, item: %p", old_item, item);
-  if (NULL == old_item) {
-    m_event_[osfd] = item;
-    if (!DeleteFd(osfd, new_events)) {
-      LOG_ERROR("del fd: %d failed", osfd);
-      return false;
-    }
-  } else {
-    if (old_item != item) {
-      LOG_ERROR("item conflict, fd: %d, old: %p, new: %p", osfd, old_item,
-                item);
-      return false;
-    }
-
-    if (!DeleteFd(osfd, new_events)) {
-      LOG_ERROR("del fd: %d failed", osfd);
-      return false;
-    }
-
-    old_item->SetEvents(new_events);
+  if (old_item == NULL) {
+    /* Nothing registered for this fd — still try DelEvent for cleanliness. */
+    (void)DeleteFd(osfd, del_events);
+    return true;
+  }
+  if (old_item != item) {
+    LOG_WARN("delete skip mismatch, fd: %d, old: %p, item: %p", osfd, old_item,
+             item);
+    return false;
   }
 
+  if (!DeleteFd(osfd, del_events)) {
+    LOG_ERROR("del fd: %d failed", osfd);
+    return false;
+  }
+
+  /* Keep m_event_[osfd] so GetEventItem still works until ClearItem.
+   * Events on the item are whatever the caller set; do not reassign slot. */
   return true;
 }
 

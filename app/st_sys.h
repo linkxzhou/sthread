@@ -22,10 +22,16 @@ extern "C" {
   do {                                                                         \
     if (!g_syscall_tab.real_##name) {                                          \
       g_syscall_tab.real_##name = (name##_func)dlsym(RTLD_NEXT, #name);        \
+      if (!g_syscall_tab.real_##name) {                                        \
+        g_syscall_tab.real_##name = (name##_func)dlsym(RTLD_DEFAULT, #name);   \
+      }                                                                        \
     }                                                                          \
   } while (0)
 
 #define REAL_FUNC(name) g_syscall_tab.real_##name
+
+/* After HOOK_SYSCALL: true if real_##name is usable. */
+#define HAS_REAL(name) (REAL_FUNC(name) != 0)
 #define SET_HOOK_FLAG() (g_hook_flag = 1)
 #define UNSET_HOOK_FLAG() (g_hook_flag = 0)
 #define HOOK_ACTIVE() (g_hook_flag == 1)

@@ -6,6 +6,11 @@ using namespace sthread;
 int st_sendto(int fd, const void *msg, int len, int flags,
               const struct sockaddr *to, int tolen, int timeout) {
   HOOK_SYSCALL(sendto);
+  if (!HAS_REAL(sendto)) {
+    LOG_ERROR("dlsym(sendto) failed");
+    errno = ENOSYS;
+    return -1;
+  }
   int64_t start = Util::TimeMs();
   StThreadItem *thread =
       (StThreadItem *)(GlobalThreadSchedule()->GetActiveThread());
@@ -69,6 +74,11 @@ int st_sendto(int fd, const void *msg, int len, int flags,
 int st_recvfrom(int fd, void *buf, int len, int flags, struct sockaddr *from,
                 socklen_t *fromlen, int timeout) {
   HOOK_SYSCALL(recvfrom);
+  if (!HAS_REAL(recvfrom)) {
+    LOG_ERROR("dlsym(recvfrom) failed");
+    errno = ENOSYS;
+    return -1;
+  }
   int64_t start = Util::TimeMs();
   StThread *thread = (StThread *)(GlobalThreadSchedule()->GetActiveThread());
   if (thread == NULL) {
@@ -142,6 +152,11 @@ int st_connect(int fd, const struct sockaddr *addr, int addrlen, int timeout) {
 
   /* Must call the real syscall, not sys_connect (that re-enters st_connect). */
   HOOK_SYSCALL(connect);
+  if (!HAS_REAL(connect)) {
+    LOG_ERROR("dlsym(connect) failed");
+    errno = ENOSYS;
+    return -1;
+  }
   int n = 0;
   while ((n = REAL_FUNC(connect)(fd, addr, (socklen_t)addrlen)) < 0) {
     LOG_TRACE("connect n: %d, errno: %d, strerror: %s", n, errno,
@@ -191,6 +206,11 @@ int st_connect(int fd, const struct sockaddr *addr, int addrlen, int timeout) {
 
 ssize_t st_read(int fd, void *buf, size_t nbyte, int timeout) {
   HOOK_SYSCALL(read);
+  if (!HAS_REAL(read)) {
+    LOG_ERROR("dlsym(read) failed");
+    errno = ENOSYS;
+    return -1;
+  }
   int64_t start = Util::TimeMs();
   StThread *thread = (StThread *)(GlobalThreadSchedule()->GetActiveThread());
   if (thread == NULL) {
@@ -249,6 +269,11 @@ ssize_t st_read(int fd, void *buf, size_t nbyte, int timeout) {
 
 ssize_t st_write(int fd, const void *buf, size_t nbyte, int timeout) {
   HOOK_SYSCALL(write);
+  if (!HAS_REAL(write)) {
+    LOG_ERROR("dlsym(write) failed");
+    errno = ENOSYS;
+    return -1;
+  }
   int64_t start = Util::TimeMs();
   StThread *thread = (StThread *)(GlobalThreadSchedule()->GetActiveThread());
   if (thread == NULL) {
@@ -314,6 +339,11 @@ ssize_t st_write(int fd, const void *buf, size_t nbyte, int timeout) {
 
 int st_recv(int fd, void *buf, int len, int flags, int timeout) {
   HOOK_SYSCALL(recv);
+  if (!HAS_REAL(recv)) {
+    LOG_ERROR("dlsym(recv) failed");
+    errno = ENOSYS;
+    return -1;
+  }
   int64_t start = Util::TimeMs();
   StThread *thread = (StThread *)(GlobalThreadSchedule()->GetActiveThread());
   if (thread == NULL) {
@@ -375,6 +405,11 @@ int st_recv(int fd, void *buf, int len, int flags, int timeout) {
 
 ssize_t st_send(int fd, const void *buf, size_t nbyte, int flags, int timeout) {
   HOOK_SYSCALL(send);
+  if (!HAS_REAL(send)) {
+    LOG_ERROR("dlsym(send) failed");
+    errno = ENOSYS;
+    return -1;
+  }
   int64_t start = Util::TimeMs();
   StThread *thread = (StThread *)(GlobalThreadSchedule()->GetActiveThread());
   if (thread == NULL) {
@@ -453,6 +488,11 @@ void st_sleep(int ms) {
 
 int st_accept(int fd, struct sockaddr *addr, socklen_t *addrlen) {
   HOOK_SYSCALL(accept);
+  if (!HAS_REAL(accept)) {
+    LOG_ERROR("dlsym(accept) failed");
+    errno = ENOSYS;
+    return -1;
+  }
   StThread *thread = (StThread *)(GlobalThreadSchedule()->GetActiveThread());
   if (thread == NULL) {
     LOG_ERROR("active thread is NULL");
