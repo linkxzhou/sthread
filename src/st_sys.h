@@ -148,7 +148,7 @@ public:
   }
 
   inline Thread *AllocThread() {
-    return (Thread *)(Instance<UtilPtrPool<Thread>>()->AllocPtr());
+    return (Thread *)(Instance<UtilPtrPool<Thread> >()->AllocPtr());
   }
 
   static void StartUp(StSysSchedule *schedule) {

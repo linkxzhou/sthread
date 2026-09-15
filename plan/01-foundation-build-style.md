@@ -2,12 +2,14 @@
 
 > 阶段目标一句话：**让 `stlib/` 成为可编译、可运行、双平台、C++98 干净的绿色基线，并定义清楚 `libmthread` 到底是什么。**
 
+> **状态：已实现。** 落地结果、与本计划的偏差、以及留给 02/03/04 的问题见文末[第 10 节](#10-落地记录plan01-实现结果)。本文其余部分保留为当初的计划原文，未随实现改写。
+
 ## 硬约束（本阶段同样适用）
 
 1. 不改变现有功能行为；对外 API 语义兼容。基准为「代码表达的语义意图」，详见 [`README.md`](README.md#对不改变现有功能行为这条约束的必要澄清)。
 2. C++98。禁止 C++11+ 语言特性；`__thread` / `__builtin_expect` 等 GNU 扩展可用（现有代码已在用）。
 3. Linux + macOS 双平台可编译。
-4. Google C++ Style（`.clang-format` 已存在，但内容与声明矛盾 → 见决策点 D1）。
+4. 本仓库 style：LLVM 基线 + `m_x_` 成员命名（`.clang-format` 是唯一权威）。~~Google C++ Style~~ —— D1 已拍板保留 LLVM，不切 Google。
 5. 零第三方运行时依赖。
 6. 协程调度 + epoll/kqueue；业务同步写法、框架内部异步；非阻塞 TCP/UDP 客户端；链接 `libmthread.a`/`.so` 即可使用。
 
@@ -107,7 +109,7 @@ INC  = -I. -I./ucontext
 | `stlib/ucontext/st_kqueue.h` | `stlib/st_kqueue.h` |
 | `stlib/ucontext/st_epoll.h` | `stlib/st_epoll.h` |
 
-**`stlib/ucontext/ucontext.h` 引用了带反向命名的架构头：**
+**带反向命名的架构头引用：**
 
 | 引用 | 真实文件 |
 | --- | --- |
@@ -116,6 +118,8 @@ INC  = -I. -I./ucontext
 | `mips-ucontext.h` | `ucontext-mips.h` |
 | `power-ucontext.h` | `ucontext-power.h` |
 | `sparc-ucontext.h` / `ucontext-sparc.h` | **两个都不存在**（SPARC 无支持） |
+
+> **实现期更正**：这一组反向命名**只存在于** `stlib/tests/ucontext/taskimpl.h`（libtask 上游示例，不参与构建）。`stlib/ucontext/ucontext.h` 在 commit `621f77f`（「更新ucontext」）里已经用的是正确的 `ucontext-386.h` / `-amd64.h` / `-mips.h` / `-power.h`，本计划写作时看错了对象。`ucontext-sparc.h` 那一处确实不存在，但它被包在 `#if 0 && defined(__sun__)` 里，本来就是死代码。
 
 `tests/` 下还有一整组 `../include/st_*.h` 引用（`st_base.h`、`st_c.h`、`st_connection.h`、`st_manager.h`、`st_netaddr.h`、`st_server.h`、`st_singleton.h`、`st_sys.h`、`st_thread.h`、`st_util.h`、`ucontext/st_ucontext.h`），对应 2.2 里不存在的 `include/` 目录。这些属于 04 阶段的范围，但**根因同一个**：没有统一的 include 根。
 
@@ -420,20 +424,20 @@ git rm --cached app/st_dns/test.log
 
 ## 7. 验收
 
-- [ ] `stlib/tests` 四个测试在 Linux 编译通过并运行通过（退出码 0）
-- [ ] 同上，在 macOS 编译通过并运行通过
-- [ ] `-std=c++98` 下 `stlib` 零 error
-- [ ] 步骤 2 的 MISSING 脚本在 `stlib/` + `src/st_poll.h` 范围内输出为空
-- [ ] `make -C stlib` 产出 `libst.a` / `libst.so`
-- [ ] 根目录存在 `makefile`，`make` 与 `make clean` 均可用
-- [ ] `src/makefile` 的 `LIB_O` 只引用真实存在的源文件
-- [ ] `libmthread` 的产物内容与路径有书面定义（写入本文件与 `AGENTS.md`）
-- [ ] `clang-format --dry-run --Werror` 全库通过
-- [ ] `.clang-format` 的 `Standard` 与 C++98 约束不矛盾
-- [ ] `make && make clean` 后 `git status --porcelain` 为空
-- [ ] `.DS_Store` 等垃圾文件不再被跟踪
-- [ ] ASan / tcmalloc / profiler 默认关闭，且有开关可开
-- [ ] D1 / D2 / D5 已决策并落地
+- [x] `stlib/tests` 四个测试在 Linux 编译通过并运行通过（退出码 0）
+- [x] 同上，在 macOS 编译通过并运行通过 —— 由 CI 的 `stlib-macos` job 守，实测环境 `macos-26-arm64` / Apple clang 21，四个测试输出 `ALL STLIB TESTS PASSED`；**注意 `make stlib` 在 Apple Silicon 上仍编不过**（见第 10 节遗留项 L3）
+- [x] `-std=c++98` 下 `stlib` 零 error
+- [x] 步骤 2 的 MISSING 脚本在 `stlib/` + `src/st_poll.h` 范围内输出为空
+- [x] `make -C stlib` 产出 `libst.a` / `libst.so`
+- [x] 根目录存在 `makefile`，`make` 与 `make clean` 均可用
+- [x] `src/makefile` 的 `LIB_O` 只引用真实存在的源文件
+- [x] `libmthread` 的产物内容与路径有书面定义（`AGENTS.md`「libmthread 产物定义」+ `src/makefile` 顶部注释）
+- [x] `clang-format --dry-run --Werror` 通过 —— **范围是本仓库自己写的代码**（根 `makefile` 的 `FORMAT_SRC`），不是全库；vendor 代码与 `app/`、`tests/` 的历史代码偏差达数百到数千处，属 04/05
+- [x] `.clang-format` 的 `Standard` 与 C++98 约束不矛盾（`Latest` → `Cpp03`）
+- [x] `make && make clean` 后 `git status --porcelain` 为空
+- [x] `.DS_Store` 等垃圾文件不再被跟踪
+- [x] ASan / tcmalloc / profiler 默认关闭，且有开关可开
+- [x] D1 / D2 / D5 已决策并落地（另外 D6 的许可部分也一并落地）
 
 ## 8. 依赖与工作量
 
@@ -457,3 +461,96 @@ git rm --cached app/st_dns/test.log
 **风险集中点**：步骤 8（macOS 首次验证，可能暴露成片的 kqueue / ucontext 问题）与步骤 9(b)（若选 Google 则产生全库 diff）。
 
 **遗留决策**（本阶段暴露、需在 03 前确认）：`app/st_sys.cc` 与 `app/st_c.cc` 是否移出 `app/` 并纳入 `libmthread`？这关系到「只需链接一个 libmthread」能否成立，也关系到目录语义（`app/` 应只放示例 app）。建议移入 `src/`，但涉及文件移动 → 需用户授权。
+
+---
+
+## 10. 落地记录（plan/01 实现结果）
+
+### 10.1 决策结论
+
+| 决策点 | 结论 | 落地方式 |
+| --- | --- | --- |
+| **D1** style | 选 (a)：保留 LLVM 基线 + `m_x_` 命名，不切 Google | `.clang-format` 只把 `Standard: Latest` → `Cpp03`；`AGENTS.md` 删掉「Google C++ Style」的措辞 |
+| **D2** gperftools | 选 (a)：移除 gitlink，`-ltcmalloc` / `-lprofiler` 默认关、可选开 | `git rm --cached thirdparty/gperftools`；重写 `thirdparty/readme.md`；开关进 `make.inc` |
+| **D3** 命名统一 | 统一到**新名**；**不加 namespace**（不把裸类塞进 `namespace`） | 本阶段不动，`plan/02` 执行 |
+| **D4** `extern "C"` 符号 | 本阶段不做 | `plan/03` 执行 |
+| **D5** Bazel | 选 (a)：移除残留，只留 makefile | `git rm WORKSPACE stlib/ucontext/BUILD stlib/tests/build.bzl` |
+| **D6** 第三方许可 | 补 Russ Cox `COPYRIGHT` 与来源说明；**不**自选本仓库 license；**不**删 `stlib/tests/ucontext/` 与 `stlib/tiny/` | 新增根目录 `COPYRIGHT`；`thirdparty/readme.md` 列出 vendor 清单 |
+
+`__THREAD` 按步骤 3 的倾向选了 **(b)**：直接把 `stlib/st_singleton.h` 里 3 处替换为 `__thread`，不引入自定义宏。
+
+### 10.2 `libmthread` 产物组成（书面定义）
+
+- 产物：`libmthread.a` / `libmthread.so`，**位于仓库根目录**（`app/*/makefile` 写的是 `LIBS = ../../libmthread.a`）
+- 生成者：`src/makefile`（根 `makefile` 的 `lib` 目标）
+- 目标文件清单（`src/makefile` 的 `LIB_O`，9 个）：
+
+| 目标文件 | 源文件 | 作用 |
+| --- | --- | --- |
+| `src/st_thread.o` | `src/st_thread.cc` | 协程、协程调度、事件调度 |
+| `src/st_connection.o` | `src/st_connection.cc` | 连接对象 |
+| `src/st_sys.o` | `src/st_sys.cc` | 框架内部**带超时**的 IO 封装 |
+| `stlib/st_log.o` | `stlib/st_log.cc` | 日志 |
+| `stlib/st_test.o` | `stlib/st_test.cc` | 自带的轻量断言 / 测试注册框架 |
+| `stlib/ucontext/ucontext.o` | `stlib/ucontext/ucontext.c` | `makecontext` / `swapcontext` 的 C 部分 |
+| `stlib/ucontext/asm.o` | `stlib/ucontext/asm.S` | `getmcontext` / `setmcontext` 的汇编 |
+| `app/st_c.o` | `app/st_c.cc` | 对外 C 风格 API（`udp_sendrecv` / `tcp_sendrecv` / `st_set_private` …） |
+| `app/st_sys.o` | `app/st_sys.cc` | syscall hook（`socket` / `close` / `read` / `write` …） |
+
+- 依赖的系统库：`-lpthread -ldl`。**不含任何第三方库**
+- Linux 上 `ucontext.c` 与 `asm.S` 展开为**空目标文件**（`USE_UCONTEXT 1`，走 glibc 的 `getcontext` 家族）；`__APPLE__` 分支才用自带汇编
+- `libmthread` **自带** `stlib` 的目标文件，因此不依赖 `stlib/libst.a`；`libst.a` 只是 `stlib` 的独立产物，给 `tests/` 用
+
+关于第 8 节那条遗留决策：`app/st_c.cc` 与 `app/st_sys.cc` **已在 makefile 层面编进 `libmthread`**（满足「只需链接一个库」），但**没有做目录搬迁**（改动更小、diff 更干净）。是否物理移入 `src/` 留给 03/04。
+
+### 10.3 与计划的偏差
+
+1. **`ucontext/st_def.h` 是 6 处而不是 3 处**。计划只点了 `st_closure.h`、`st_util.h`、`st_log.h`，实际还有 `st_netaddr.h`、`st_test.h`、`st_singleton.h`。改成同目录裸文件名 `"st_def.h"`（`stlib/` 内部本来就是这个约定），而不是 `"stlib/st_def.h"` —— 后者要连带改 10 多处同目录引用，收益为零。
+2. **`stlib/ucontext/ucontext.h` 的架构头名本来就是对的**（见 2.5 的「实现期更正」）。这一项实际只加了一条 SPARC 的说明注释。
+3. **`stlib/makefile` 的 `all: @rm -rf *.o` 改为 `@rm -f $(LIBO)`**。目标文件现在有一部分在 `ucontext/` 子目录里，`*.o` 匹配不到。行为意图（归档完成后清掉中间产物）保持不变。
+4. **新增 `make.inc`**，计划里没有。5 个 makefile 需要同一套开关，写 5 遍不现实。
+5. **根 `makefile` 的默认目标是 `stlib` 而不是 `lib`**。计划草稿写的是 `all: lib`，但 `src/` 本阶段编不过，默认目标必然失败没有意义。已在 `makefile` 与 `AGENTS.md` 里注明：`src/` 打通后改为 `all: lib`。
+6. **`clang-format` 的检查范围不是全库**。计划验收写的是「全库通过」，实测全库偏差极大（`app/st_wrk/http_parser.c` 2399 处、`stlib/ucontext/asm.S` 982 处、`app/st_memcacheclient/memcache.cpp` 1006 处…），全量格式化会把真实改动彻底淹没。改为只覆盖本仓库自己写的代码（`FORMAT_SRC`），实际格式化量是 **6 个文件 15 增 14 删**，不需要独立的「纯格式提交」和 `.git-blame-ignore-revs`。
+7. **`make.inc` 里 `-m32` / `-m64` 只在 x86 上追加**。历史 makefile 无条件写 `-m64`，在 arm64（Apple Silicon / aarch64）上 clang 直接报 `unsupported option '-m64'`，macOS CI 会全红。x86 上行为不变。
+8. **顺手做了两件卫生工作**：13 个 `.h` / `.cc` / `.c` 的可执行位（`100755` → `100644`）；`tests/Makefile` 的 `-ltcmalloc -lprofiler -fsanitize=address` 从硬编码改为走 `make.inc` 开关（该目录的 target 列表本身属 04）。
+
+### 10.4 验证方式
+
+```bash
+# 1) C++98 语法检查，唯一 include 根
+for f in stlib/tests/*.cc; do g++ -std=c++98 -fsyntax-only -I. "$f"; done
+
+# 2) 四个测试编译 + 运行（退出码 0 且输出 ALL STLIB TESTS PASSED）
+make test
+
+# 3) libst.a / libst.so
+make stlib && ls -l stlib/libst.a stlib/libst.so
+
+# 4) src/makefile 的 LIB_O 只引用存在的源（不应出现 No rule to make target）
+make -C src -n
+
+# 5) 干净收尾
+make && make clean && git status --porcelain      # 应为空
+
+# 6) 格式
+make format-check CLANG_FORMAT=clang-format-18
+```
+
+`stlib/st_test.h` 的 `StTester` 析构在断言失败时打印 `[FAILED]` 后调用 **`exit(0)`**，也就是说**退出码恒为 0**，不能单独作为通过/失败依据。`stlib/tests/Makefile` 的 `run` 目标因此三条一起判：退出码为 0、输出无 `[FAILED]`、输出有 `==== PASSED n tests`。已用「故意插入一个失败断言」验证过该判定会让 `make test` 返回非 0。
+
+### 10.5 留给后续阶段的问题
+
+| # | 问题 | 去向 |
+| --- | --- | --- |
+| L1 | `src/` 编译不过：旧名无定义（`Thread` / `ThreadSchedule` / `StEventSuper` …）、`Stack` / `STACK` / `eThreadType` 未声明、`st_manager.h` 文件不存在 | `plan/02` |
+| L2 | `stlib/st_test.h` 的 `StTester` 断言失败时 `exit(0)`。改它会动到测试框架语义，本阶段只用输出内容绕开 | `plan/02` |
+| L3 | `stlib/ucontext` 没有 arm64 分支：`ucontext.h` 在非 i386/x86_64 的 `__APPLE__` 下落到 `ucontext-power.h`（PowerPC），`asm.S` 同理。**Apple Silicon 上 `make stlib` 编不过**，CI 里该步骤设为非阻塞。已由 CI 实测坐实（`macos-26-arm64` / Apple clang 21）：`ucontext-power.h` 的 `#pragma message("ucontext power")` 被触发，随后 `asm.S:149` 起报 `unrecognized instruction mnemonic: mflr r0 / mfcr r5 / mfctr r6 / mfxer r7`——确实在拿 PowerPC 汇编喂 arm64 汇编器 | `plan/02` |
+| L3b | `CC = g++` 会把 `ucontext/ucontext.c` 当 C++ 编译（clang 已就此报 `treating 'c' input as 'c++' when in C++ mode, this behavior is deprecated`）。后果是 `makecontext` / `swapcontext` 拿到 C++ 修饰名，而 `asm.S` 提供的是未修饰的 `_getmcontext` / `_setmcontext`。Linux 上这两个文件展开为空目标文件所以无影响，**Apple 分支上会是真实的链接问题** | `plan/02` |
+| L4 | `ld` 对 `ucontext/asm.o` 报 `missing .note.GNU-stack section implies executable stack`。Linux 上 `asm.S` 本来展开为空目标文件，暂不处理（修法要么改 vendor 汇编，要么加平台相关的 `-Wa,--noexecstack`） | `plan/02` |
+| L5 | `stlib/st_epoll.h` 两处硬错误：`m_file_` 是指针却当结构体用（`.data`）、`m_file_events_` 未声明 | `plan/03` |
+| L6 | `src/st_sys.h` 与 `app/st_sys.h` 用相同名字声明签名不同的 `extern "C"` 符号，`libmthread` 归档里还会出现两个同名成员 `st_sys.o`。**链接期必然冲突**，必须先拆前缀（D4） | `plan/03` |
+| L7 | `app/st_c.cc`、`app/st_sys.cc` 是否物理移入 `src/` | `plan/03` / `plan/04` |
+| L8 | `app/`、`tests/`、`stlib/tiny/` 与 vendor 代码不在 `make format-check` 范围内 | `plan/04` / `plan/05` |
+| L9 | `tests/Makefile` 的 target 列表整体对不上真实文件；`app/*/makefile` 的 `-I../../include` 指向不存在的目录 | `plan/04` |
+| L10 | 本仓库自身没有 LICENSE（第三方成分的许可已在 `COPYRIGHT` 里说明） | `plan/05` |
+| L11 | `readme.md` 的构建说明与真实 make 目标不一致（写着 `make event`，无此目标） | `plan/05` |

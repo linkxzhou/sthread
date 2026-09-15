@@ -1,48 +1,45 @@
-BINARY = libst.so libst.a
+ST_ROOT = ..
+include $(ST_ROOT)/make.inc
 
-DEBUG = -g2 -DTRACE
-C_ARGS = -fPIC \
-	-Wno-backslash-newline-escape \
-	-Wno-format \
-	-Wno-deprecated-declarations \
-	-Wno-null-dereference \
-	$(DEBUG)
+BINARY = libst.a libst.so
 
-ifeq ($(ARCH),32)
-	C_ARGS += -march=pentium4 -m32 -pthread
-else
-	C_ARGS += -m64 -pthread
-endif
+INC    = $(ST_INC)
+C_ARGS = $(ST_CXXFLAGS)
 
-CC = g++
-INC = -I. -I./ucontext
+# stlib 里只有这四个非 header-only 的编译单元：
+#   st_log.cc          日志实现
+#   st_test.cc         自带的轻量断言 / 测试注册框架
+#   ucontext/ucontext.c  getmcontext/setmcontext/swapcontext/makecontext 的 C 部分
+#                        （Linux 走系统 ucontext，本文件在该平台展开为空）
+#   ucontext/asm.S       上述函数的汇编实现（同上）
+# 其余 stlib/*.h 都是模板或 inline，不产出目标文件。
+LIBO = st_log.o st_test.o ucontext/ucontext.o ucontext/asm.o
+
+.PHONY: all clean
 
 all: $(BINARY)
-	@rm -rf *.o
+	@rm -f $(LIBO)
 
 %.o: %.c
-	@echo -e Compiling $(GREEN)$<$(RESET) ...$(RED)
-	@$(CC) $(C_ARGS) -c -o $@ $< $(INC) $(CRESET)  
+	@echo "Compiling $< ..."
+	@$(CC) $(C_ARGS) -c -o $@ $< $(INC)
 
 %.o: %.cc
-	@echo -e Compiling $(GREEN)$<$(RESET) ...$(RED)
-	@$(CC) $(C_ARGS) -c -o $@ $< $(INC) $(CRESET)
+	@echo "Compiling $< ..."
+	@$(CC) $(C_ARGS) -c -o $@ $< $(INC)
 
 %.o: %.S
-	@echo -e Compiling $(GREEN)$<$(RESET) ...$(RED)
-	@$(CC) $(C_ARGS) -c -o $@ $< $(INC) $(CRESET) 
-
-clean:
-	@rm -f $(BINARY) *.o
-
-LIBO = st_ucontext.o st_log.o st_test.o st_asm.o
+	@echo "Compiling $< ..."
+	@$(CC) $(C_ARGS) -c -o $@ $< $(INC)
 
 libst.a: $(LIBO)
-	@echo -e Linking $(CYAN)$@$(RESET) ...$(RED)
+	@echo "Linking $@ ..."
 	@rm -f $@
-	@ar crs $@ $^ $(CRESET)
-	@chmod +x $@
+	@ar crs $@ $^
 
 libst.so: $(LIBO)
-	@echo -e Linking $(CYAN)$@$(RESET) ...$(RED)
-	@$(CC) -o $@ $^ -shared $(C_ARGS) $(CRESET)
+	@echo "Linking $@ ..."
+	@$(CC) -o $@ $^ -shared $(C_ARGS) $(ST_LDFLAGS)
+
+clean:
+	@rm -f $(BINARY) $(LIBO) *.o ucontext/*.o

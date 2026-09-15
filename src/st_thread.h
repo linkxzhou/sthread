@@ -102,7 +102,7 @@ public:
 
   // 创建线程
   inline StThread *AllocThread() {
-    return (StThread *)(Instance<UtilPtrPool<StThread>>()->AllocPtr());
+    return (StThread *)(Instance<UtilPtrPool<StThread> >()->AllocPtr());
   }
 
   // !debug print

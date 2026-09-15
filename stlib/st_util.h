@@ -16,10 +16,10 @@
 #include <unistd.h>
 
 #include "st_closure.h"
+#include "st_def.h"
 #include "st_log.h"
 #include "st_singleton.h"
 #include "st_tailq.h"
-#include "ucontext/st_def.h"
 
 namespace stlib {
 
