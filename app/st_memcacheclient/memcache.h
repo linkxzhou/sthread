@@ -3,6 +3,7 @@
 
 #include "mt_array.h"
 #include "mt_action.h"
+#include "app/st_frame.h"
 
 #define LF                  (uint8_t) 10
 #define CR                  (uint8_t) 13
@@ -10,7 +11,7 @@
 #define CRLF_LEN            (sizeof("\x0d\x0a") - 1)
 #define NOT_REACHED()       // LOG_ASSERT(0)
 
-#define LOG_ERROR
+/* LOG_ERROR comes from st_log.h */
 
 #define NELEMS(a)           ((sizeof(a)) / sizeof((a)[0]))
 

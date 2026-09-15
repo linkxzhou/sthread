@@ -1,5 +1,6 @@
-#include "../include/st_c.h"
-#include "../include/st_manager.h"
+#include "app/st_c.h"
+#include "tests/st_test_compat.h"
+#include "src/st_sys.h"
 
 ST_NAMESPACE_USING
 
@@ -26,7 +27,7 @@ ST_NAMESPACE_USING
 //             (void *)buf2, buf2_recv, 10000);
 //         LOG_TRACE("recv : %s, buf2_recv : %d", buf2, buf2_recv);
 //         LOG_TRACE("udp_sendrecv rc : %d", rc);
-//         ::_sleep(5000);
+//         usleep(5000);
 //     }
 
 //     LOG_TRACE("end ...");
@@ -61,7 +62,7 @@ TEST(StStatus, TCP)
             10000, test_recv_callback, true);
         LOG_TRACE("recv : %s, buf2_recv : %d", buf2, buf2_recv);
         LOG_TRACE("tcp_sendrecv rc : %d", rc);
-        ::_sleep(5000);
+        usleep(5000);
     }
 
     LOG_TRACE("end ...");

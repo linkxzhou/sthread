@@ -239,3 +239,14 @@ void *st_get_private() {
 }
 
 void st_set_hook_flag() { SET_HOOK_FLAG(); }
+
+bool st_init_frame() {
+  /* Pull event schedule (Init in ctor) and sys schedule (daemon/primo). */
+  if (GlobalEventSchedule() == NULL) {
+    return false;
+  }
+  if (Instance<sthread::StSysSchedule>() == NULL) {
+    return false;
+  }
+  return true;
+}

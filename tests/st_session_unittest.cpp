@@ -1,4 +1,7 @@
-#include "../include/st_manager.h"
+#include "src/st_sys.h"
+#include "stlib/st_def.h"
+#include "stlib/st_util.h"
+#include "tests/st_test_compat.h"
 
 ST_NAMESPACE_USING
 

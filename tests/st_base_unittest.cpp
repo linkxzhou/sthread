@@ -1,9 +1,10 @@
-#include "../include/st_base.h"
+#include "src/st_poll.h"
+#include "tests/st_test_compat.h"
 
 ST_NAMESPACE_USING
 
-TEST(StStatus, StEventSuper) {
-  StEventSuper *item = new StEventSuper();
+TEST(StStatus, StEventItem) {
+  StEventItem *item = new StEventItem();
   item->EvInput();
   item->EvOutput();
   item->EvHangup();

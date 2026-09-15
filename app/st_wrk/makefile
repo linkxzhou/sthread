@@ -1,11 +1,23 @@
-INCLUDE = -I../../include -I.
-SRC = .
-FLAGS = -Wno-backslash-newline-escape -Wno-unused-value -Wno-format -Wno-c++11-compat-deprecated-writable-strings -g #-DTRACE
-LIBS = ../../libmthread.a
+ST_ROOT = ../..
+include $(ST_ROOT)/make.inc
 
-all:
-	g++ $(SRC)/http_parser.c $(SRC)/wrk.cpp $(INCLUDE) \
-		$(FLAGS) $(LIBS) -o wrk
+INCLUDE = $(ST_INC) -I. -I..
+FLAGS = $(ST_CXXFLAGS) -Wno-unused-value
+LIBS = $(ST_ROOT)/libmthread.a $(ST_LDFLAGS) $(ST_LDLIBS)
+
+# clang-only warning suppression (g++ ignores unknown -Wno-* with a note)
+CLANG := $(shell $(CC) --version 2>&1 | grep -c clang)
+ifeq ($(CLANG),1)
+FLAGS += -Wno-c++11-compat-deprecated-writable-strings
+endif
+
+.PHONY: all clean
+
+all: wrk
+
+wrk: http_parser.c wrk.cpp
+	$(CC) -c http_parser.c $(ST_INC) -I. -g -o http_parser.o
+	$(CC) wrk.cpp http_parser.o $(INCLUDE) $(FLAGS) $(LIBS) -o wrk
 
 clean:
-	@rm -rf main *.dSYM
+	@rm -rf wrk http_parser.o *.dSYM

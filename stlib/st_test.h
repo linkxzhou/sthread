@@ -73,7 +73,7 @@ public:
     if (!m_ok_) {
       fprintf(stderr, "[FAILED]%s:%d:%s\n", m_fname_, m_line_,
               m_ss_.str().c_str());
-      exit(0);
+      exit(1);
     }
   }
 

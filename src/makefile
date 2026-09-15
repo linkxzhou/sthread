@@ -52,7 +52,7 @@ STLIB_O = $(ST_ROOT)/stlib/st_log.o \
 	$(ST_ROOT)/stlib/ucontext/ucontext.o \
 	$(UCONTEXT_ASM_O)
 
-APP_O = $(ST_ROOT)/app/st_c.o $(ST_ROOT)/app/st_sys.o
+APP_O = $(ST_ROOT)/app/st_c.o $(ST_ROOT)/app/st_sys.o $(ST_ROOT)/app/st_action.o
 
 LIB_O = $(SRC_O) $(STLIB_O) $(APP_O)
 

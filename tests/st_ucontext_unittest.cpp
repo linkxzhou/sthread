@@ -1,4 +1,5 @@
-#include "../include/ucontext/st_ucontext.h"
+#include "stlib/ucontext/ucontext.h"
+#include "tests/st_test_compat.h"
 
 ST_NAMESPACE_USING
 
