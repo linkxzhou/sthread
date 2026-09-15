@@ -30,7 +30,7 @@ sthread
 | 运行时依赖 | 无（仅系统库：libc / libstdc++ 或 libc++ / libpthread / libdl） |
 | 可选开发期依赖 | gperftools（tcmalloc / profiler），默认关闭；见 [`thirdparty/readme.md`](thirdparty/readme.md) |
 
-**Apple Silicon（arm64）说明**：`stlib/ucontext/asm.S` 尚无 arm64 实现，当前使用 stub。库与示例可以**编译**，但协程上下文切换不可用，依赖 Yield 的真实 IO 冒烟会失败。x86_64 macOS / Linux 可做端到端验证。详见 [`plan/04-regression-checklist.md`](plan/04-regression-checklist.md)。
+**Apple Silicon（arm64）说明**：`stlib/ucontext/asm.S` 尚含 arm64 实现，当前使用 stub。库与示例可以**编译**，但协程上下文切换不可用，依赖 Yield 的真实 IO 冒烟会失败。x86_64 macOS / Linux 可做端到端验证。详见 [`plan/04-regression-checklist.md`](plan/04-regression-checklist.md)。
 
 # 快速开始
 

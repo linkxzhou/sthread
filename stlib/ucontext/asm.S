@@ -21,6 +21,10 @@
 #define NEEDAMD64CONTEXT 1
 #define SET _setmcontext
 #define GET _getmcontext
+#elif defined(__aarch64__)
+#define NEEDARM64CONTEXT 1
+#define SET _setmcontext
+#define GET _getmcontext
 #else
 #define NEEDPOWERCONTEXT 1
 #define SET __setmcontext
@@ -134,6 +138,84 @@ GET:
 	
 	movq	32(%rdi), %rcx	/* restore %rcx */
 	movq	$0, %rax
+	ret
+#endif
+
+
+#ifdef NEEDARM64CONTEXT
+/*
+ * Apple Silicon / aarch64 getmcontext / setmcontext.
+ * x0 = mcontext_t*
+ * Layout: see ucontext-arm64.h
+ */
+.text
+.align 2
+
+.globl SET
+SET:
+	mov	x16, x0			/* mcontext* */
+
+	ldp	d8, d9, [x16, #264]
+	ldp	d10, d11, [x16, #280]
+	ldp	d12, d13, [x16, #296]
+	ldp	d14, d15, [x16, #312]
+
+	ldp	x18, x19, [x16, #(18*8)]
+	ldp	x20, x21, [x16, #(20*8)]
+	ldp	x22, x23, [x16, #(22*8)]
+	ldp	x24, x25, [x16, #(24*8)]
+	ldp	x26, x27, [x16, #(26*8)]
+	ldp	x28, x29, [x16, #(28*8)]
+	ldr	x30, [x16, #(30*8)]
+
+	ldr	x17, [x16, #248]
+	mov	sp, x17
+
+	ldr	x17, [x16, #256]	/* pc */
+
+	ldp	x2, x3, [x16, #(2*8)]
+	ldp	x4, x5, [x16, #(4*8)]
+	ldp	x6, x7, [x16, #(6*8)]
+	ldp	x0, x1, [x16, #(0*8)]
+
+	br	x17
+
+.globl GET
+GET:
+	/* x0 = mcontext*; move aside before clobbering */
+	mov	x16, x0
+
+	stp	x2, x3, [x16, #(2*8)]
+	stp	x4, x5, [x16, #(4*8)]
+	stp	x6, x7, [x16, #(6*8)]
+	stp	x8, x9, [x16, #(8*8)]
+	stp	x10, x11, [x16, #(10*8)]
+	stp	x12, x13, [x16, #(12*8)]
+	stp	x14, x15, [x16, #(14*8)]
+	/* x16/x17 are scratch; store zeros */
+	stp	xzr, xzr, [x16, #(16*8)]
+	stp	x18, x19, [x16, #(18*8)]
+	stp	x20, x21, [x16, #(20*8)]
+	stp	x22, x23, [x16, #(22*8)]
+	stp	x24, x25, [x16, #(24*8)]
+	stp	x26, x27, [x16, #(26*8)]
+	stp	x28, x29, [x16, #(28*8)]
+	str	x30, [x16, #(30*8)]
+	str	x1, [x16, #(1*8)]
+
+	mov	x17, #1
+	str	x17, [x16, #(0*8)]	/* mc_x[0]=1 so resume looks like getcontext!=0 */
+
+	mov	x17, sp
+	str	x17, [x16, #248]
+	str	x30, [x16, #256]
+
+	stp	d8, d9, [x16, #264]
+	stp	d10, d11, [x16, #280]
+	stp	d12, d13, [x16, #296]
+	stp	d14, d15, [x16, #312]
+
+	mov	x0, #0
 	ret
 #endif
 

@@ -486,8 +486,11 @@ void StEventSchedule::Wait(int timeout) {
     }
     nfd = m_iostate_->Poll(&tv);
   }
-  LOG_TRACE("wait poll nfd: %d, --------[name:%s]---------", nfd,
-            m_thread_schedule_->GetActiveThread()->GetName());
+  {
+    StThreadItem *active = m_thread_schedule_->GetActiveThread();
+    LOG_TRACE("wait poll nfd: %d, --------[name:%s]---------", nfd,
+              active != NULL ? active->GetName() : "(null)");
+  }
   if (nfd <= 0) {
     return;
   }

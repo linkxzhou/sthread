@@ -22,7 +22,7 @@
 | --- | --- | --- |
 | `st_singleton_unittest` | PASSED | |
 | `st_base_unittest` | PASSED | `StEventItem`（原 `st_base`/`StEventSuper`） |
-| `st_thread_unittest` | PASSED | daemon/primo 可取；`Wait` 在 arm64 stub 上跳过 |
+| `st_thread_unittest` | PASSED | daemon/primo 可取；`Wait(10)` 在真实 arm64 ucontext 上通过 |
 | `st_manager_unittest` | PASSED | `st_init_frame` + `CreateThread` API；无真实切换 |
 | `st_connection_unittest` | exit 0 | Create/Close；无端到端 IO |
 | `st_session_unittest` | PASSED | TAILQ / 栈内存公式 |
@@ -34,9 +34,9 @@
 
 | App | 结果 | 备注 |
 | --- | --- | --- |
-| `st_dns` | **known-failure on arm64** | 依赖协程切换；arm64 为 `ucontext` stub |
-| `st_memcacheclient` | **known-failure on arm64** | 同上；另需本机 memcached |
-| `st_wrk` | **known-failure on arm64** | 同上；需被压 HTTP 服务 |
+| `st_dns` | 待重跑 | arm64 已有真实 ucontext；需本机网络/服务 |
+| `st_memcacheclient` | 待重跑 | 需本机 memcached |
+| `st_wrk` | 待重跑 | 需被压 HTTP 服务 |
 
 Linux / x86_64 上应能做真实 IO 冒烟（待 CI 或本机验证）。
 
@@ -54,13 +54,13 @@ Linux / x86_64 上应能做真实 IO 冒烟（待 CI 或本机验证）。
 | 项 | 状态 |
 | --- | --- |
 | L4 keepalive (`eTCP_KEEPLIVE_CONN`) | 未修（按既定） |
-| arm64 真实 `ucontext` / `asm` | stub，协程切换不可用 |
+| arm64 真实 `ucontext` / `asm` | **已落地**（`NEEDARM64CONTEXT` + `libthread_makecontext`） |
 | 完整恢复历史 `mt_action` 多路 poll 客户端 | 用精简 `st_action` 替代 |
-| 高并发 1万+ 协程实测 | 依赖真实 context switch；arm64 无法完成 |
+| 高并发 1万+ 协程实测 | 待测（底层切换已通） |
 | `tests/uthread.*` vs `stlib/ucontext/uthread.*` | 仍并存；未删（内容不同） |
 
 ## 建议后续
 
 1. Linux CI：跑 `make apps` + DNS/wrk 冒烟 + `make -C tests run`。
-2. arm64：实现真实 ucontext/asm，再重跑 app 与 Event `Wait`。
+2. ~~arm64 真实 ucontext~~ 已完成；重跑 app 冒烟与 1万+ 协程。
 3. plan/05：README/AGENTS 示例改为 `st_init_frame` / `StSysSchedule` / `st_action`。

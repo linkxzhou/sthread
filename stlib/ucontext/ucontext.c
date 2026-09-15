@@ -3,6 +3,10 @@
 
 #include "ucontext.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #ifdef NEEDPOWERMAKECONTEXT
 void makecontext(ucontext_t *ucp, void (*func)(void), int argc, ...) {
   ulong *sp, *tos;
@@ -83,11 +87,41 @@ void makecontext(ucontext_t *uc, void (*fn)(void), int argc, ...) {
 }
 #endif
 
+
+#ifdef NEEDARM64MAKECONTEXT
+void makecontext(ucontext_t *ucp, void (*func)(void), int argc, ...) {
+  long *sp;
+  va_list va;
+
+  memset(&ucp->uc_mcontext, 0, sizeof ucp->uc_mcontext);
+  assert(argc == 2);
+  va_start(va, argc);
+  ucp->uc_mcontext.mc_x[0] = va_arg(va, int);
+  ucp->uc_mcontext.mc_x[1] = va_arg(va, int);
+  va_end(va);
+
+  sp = (long *)ucp->uc_stack.ss_sp + ucp->uc_stack.ss_size / sizeof(long);
+  /* Apple AAPCS64: SP must stay 16-byte aligned at all times (no call push). */
+  sp = (long *)((uintptr_t)sp & ~(uintptr_t)15);
+  sp -= 2; /* two slots keeps 16-byte alignment */
+  sp[0] = 0;
+  sp[1] = 0;
+  ucp->uc_mcontext.mc_x[29] = (long)sp; /* FP */
+  ucp->uc_mcontext.mc_x[30] = 0; /* LR: must not return */
+  ucp->uc_mcontext.mc_sp = (long)sp;
+  ucp->uc_mcontext.mc_pc = (long)func;
+}
+#endif
+
 #ifdef NEEDSWAPCONTEXT
 int swapcontext(ucontext_t *oucp, const ucontext_t *ucp) {
   if (getcontext(oucp) == 0)
     setcontext(ucp);
   return 0;
+}
+#endif
+
+#ifdef __cplusplus
 }
 #endif
 
