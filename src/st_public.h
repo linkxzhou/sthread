@@ -61,8 +61,8 @@ typedef enum {
   eUNDEF_CONN = 0x0,                            // 连接错误
   eUDP_CONN = 0x10,                             // UDP 连接
   eTCP_CONN = 0x20,                             // TCP 短连接
-  eTCP_KEEPLIVE_CONN = (0x10 & KEEPLIVE_VALUE), // KEEPALIVE
-  eUDP_UDPSESSION_CONN = (0x20 & KEEPLIVE_VALUE),
+  eTCP_KEEPLIVE_CONN = (0x10 | KEEPLIVE_VALUE), // TCP keepalive = 0x11
+  eUDP_UDPSESSION_CONN = (0x20 | KEEPLIVE_VALUE), // UDP session = 0x21
 } eConnType;
 
 // 对应的错误

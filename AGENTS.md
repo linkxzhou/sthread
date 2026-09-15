@@ -23,7 +23,7 @@ sthread 是一个**基于协程的高性能网络库**，C++98，提供非阻塞
 | `make apps` | 绿：dns / memcache / wrk **可编译** |
 | `make -C tests` | 绿：核心 unittest 可编译；多数可跑 |
 | Apple Silicon arm64 | **真实 ucontext/asm**（`NEEDARM64CONTEXT`） |
-| keepalive（L4） | **未修**；勿在示例/测试里依赖连接复用 |
+| keepalive（L4） | **已修**：`eTCP_KEEPLIVE_CONN=0x11`，`Keeplive()`=`IS_KEEPLIVE` |
 | 本仓库 `LICENSE` | **未发布**（仅有 vendored 的 [`COPYRIGHT`](COPYRIGHT)） |
 
 回归记录：[`plan/04-regression-checklist.md`](plan/04-regression-checklist.md)。
@@ -145,7 +145,7 @@ make -C stlib/tests run    # stlib 单测
 
 | 项 | 归类 |
 | --- | --- |
-| L4 keepalive | 已知后续 |
+| L4 keepalive | 已修（见 `st_keepalive_unittest`） |
 | keepalive `eTCP_KEEPLIVE_CONN` / `Keeplive()` | 待办 L4 |
 | `StThread` 回收 TODO | 待办 |
 | `app/st_c.h` 非纯 C 可用 | 已知限制 |

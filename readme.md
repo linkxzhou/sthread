@@ -227,7 +227,7 @@ MEM_PAGE_SIZE * 2 + (STACK / MEM_PAGE_SIZE + 1) * MEM_PAGE_SIZE
 # 已知限制
 
 - **Apple Silicon**：协程切换为 stub，真实 IO 冒烟 known-failure。
-- **TCP keepalive 复用**：`eTCP_KEEPLIVE_CONN` / `Keeplive()` 当前不可用（计划中的 L4，单独阶段修复，勿在文档示例里依赖）。
+- **TCP keepalive 复用**：`eTCP_KEEPLIVE_CONN`（0x11）+ `Keeplive()`=`IS_KEEPLIVE`；连接池对 keepalive 类型按地址 hash 复用。
 - **协程对象回收**：`StThread` 池回收仍有 `TODO`，长时间大量创建需关注内存。
 - **`app/st_c.h`**：在 `extern "C"` 块里使用了 C++ 引用，**不能**被纯 C 编译器直接 include。
 - **单进程内协程不可跨 OS 线程**（由 `Instance<T>()` 线程局部语义决定）。
