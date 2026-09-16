@@ -7,7 +7,9 @@
 
 #include "st_def.h"
 #include <fcntl.h>
+#include <string.h>
 #include <sys/epoll.h>
+#include <unistd.h>
 
 namespace stlib {
 
@@ -32,8 +34,11 @@ public:
     m_events_ = (struct epoll_event *)malloc(sizeof(struct epoll_event) * size);
     m_file_ = (StFileEvent *)malloc(sizeof(StFileEvent) * size);
     m_fired_ = (StFiredEvent *)malloc(sizeof(StFiredEvent) * size);
+    m_epfd_ = -1;
+    m_size_ = 0;
 
     if (NULL == m_events_ || NULL == m_file_ || NULL == m_fired_) {
+      Free();
       return ST_ERROR;
     }
 
@@ -56,6 +61,7 @@ public:
   void Free() {
     if (m_epfd_ > 0) {
       ::close(m_epfd_);
+      m_epfd_ = -1;
     }
 
     st_safe_free(m_events_);

@@ -5,6 +5,8 @@
 #ifndef _ST_TAILQ_H_
 #define _ST_TAILQ_H_
 
+#include "st_def.h"
+
 // 使用c++封装的linux的TAILQ_ENTRY
 template <class T> class CPP_TAILQ_HEAD {
 public:

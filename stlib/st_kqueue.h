@@ -7,9 +7,11 @@
 
 #include "st_def.h"
 #include <fcntl.h>
+#include <string.h>
 #include <sys/event.h>
 #include <sys/time.h>
 #include <sys/types.h>
+#include <unistd.h>
 
 namespace stlib {
 
@@ -32,8 +34,11 @@ public:
     m_events_ = (struct kevent *)malloc(sizeof(struct kevent) * size);
     m_file_ = (StFileEvent *)malloc(sizeof(StFileEvent) * size);
     m_fired_ = (StFiredEvent *)malloc(sizeof(StFiredEvent) * size);
+    m_kqfd_ = -1;
+    m_size_ = 0;
 
     if (NULL == m_events_ || NULL == m_file_ || NULL == m_fired_) {
+      Free();
       return ST_ERROR;
     }
 
@@ -56,11 +61,14 @@ public:
   void Free() {
     if (m_kqfd_ > 0) {
       ::close(m_kqfd_);
+      m_kqfd_ = -1;
     }
 
     st_safe_free(m_events_);
     st_safe_free(m_file_);
     st_safe_free(m_fired_);
+
+    m_size_ = 0;
   }
 
   int32_t AddEvent(int32_t fd, int32_t mask) {

@@ -85,18 +85,12 @@ TEST(StStatus, LogReopenAndHelpers) {
   ASSERT_TRUE(StLogger::Instance().Init(LLOG_INFO, (char *)"") == 0);
 }
 
-TEST(StStatus, AnyAndReferenceable) {
-  Any a(3);
-  ASSERT_TRUE(!a.IsEmpty());
-  ASSERT_TRUE(a.GetType() == typeid(int));
-  ASSERT_TRUE(a.operator()<int>() == 3);
-  Any b(a);
-  ASSERT_TRUE(b.operator()<int>() == 3);
-  Any c;
-  c = 9;
-  ASSERT_TRUE(c.operator()<int>() == 9);
-  Any empty;
-  ASSERT_TRUE(empty.IsEmpty());
+TEST(StStatus, AnyCastAndReferenceable) {
+  int x = 42;
+  int *px = any_cast<int>(&x);
+  ASSERT_TRUE(px != NULL && *px == 42);
+  void *vp = &x;
+  ASSERT_TRUE(any_cast<int>(vp) == px);
 
   class R : public referenceable {};
   R r;

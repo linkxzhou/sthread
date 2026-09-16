@@ -93,15 +93,7 @@ extern void makecontext(ucontext_t *, void (*)(), int, ...);
 extern pid_t rfork_thread(int, void *, int (*)(void *), void *);
 #endif
 
-/* SPARC 未支持：上游的 ucontext-sparc.h 并未随本仓库一起 vendor，
- * 因此整块以 `#if 0 &&` 永久关闭。若将来要支持 SPARC，需先补齐该头文件。 */
-#if 0 && defined(__sun__)
-#define mcontext libthread_mcontext
-#define mcontext_t libthread_mcontext_t
-#define ucontext libthread_ucontext
-#define ucontext_t libthread_ucontext_t
-#include "ucontext-sparc.h"
-#endif
+/* SPARC 未 vendor：上游 ucontext-sparc.h 未随仓库提供，故不启用 SPARC 分支。 */
 
 #if defined(__arm__)
 int getmcontext(mcontext_t *);

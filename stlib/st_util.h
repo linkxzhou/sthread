@@ -7,12 +7,13 @@
 
 #include <arpa/inet.h>
 #include <fcntl.h>
+#include <math.h>
 #include <pthread.h>
+#include <queue>
 #include <stdio.h>
 #include <sys/mman.h>
 #include <sys/resource.h>
 #include <sys/time.h>
-#include <typeinfo>
 #include <unistd.h>
 
 #include "st_closure.h"
@@ -133,6 +134,8 @@ class referenceable {
 public:
   referenceable() : m_ref_count_(0) {}
 
+  virtual ~referenceable() {}
+
   inline void incrref() { ++m_ref_count_; }
 
   inline void decref() { --m_ref_count_; }
@@ -141,102 +144,18 @@ public:
 
   virtual void Reset() { m_ref_count_ = 0; }
 
-public:
+private:
   uint32_t m_ref_count_;
 };
 
-class Any {
-public:
-  Any() : m_content_(NULL) {}
-
-  ~Any() { st_safe_delete(m_content_); }
-
-  template <typename ValueType>
-  explicit Any(const ValueType &value)
-      : m_content_(new Holder<ValueType>(value)) {}
-
-  Any(const Any &rhs)
-      : m_content_(rhs.m_content_ ? rhs.m_content_->Clone() : NULL) {}
-
-public:
-  Any &swap(Any &rhs) {
-    std::swap(m_content_, rhs.m_content_);
-    return *this;
-  }
-
-  template <typename ValueType> Any &operator=(const ValueType &rhs) {
-    Any(rhs).swap(*this);
-    return *this;
-  }
-
-  Any &operator=(const Any &rhs) {
-    Any(rhs).swap(*this);
-    return *this;
-  }
-
-  bool IsEmpty() const { return !m_content_; }
-
-  const std::type_info &GetType() const {
-    return m_content_ ? m_content_->GetType() : typeid(void);
-  }
-
-  template <typename ValueType> ValueType operator()() const {
-    if (GetType() == typeid(ValueType)) {
-      return static_cast<Any::Holder<ValueType> *>(m_content_)->m_held_;
-    } else {
-      return ValueType();
-    }
-  }
-
-protected:
-  class PlaceHolder {
-  public:
-    virtual ~PlaceHolder() {}
-
-  public:
-    virtual const std::type_info &GetType() const = 0;
-    virtual PlaceHolder *Clone() const = 0;
-  };
-
-  template <typename ValueType> class Holder : public PlaceHolder {
-  public:
-    Holder(const ValueType &value) : m_held_(value) {}
-
-    virtual const std::type_info &GetType() const { return typeid(ValueType); }
-
-    virtual PlaceHolder *Clone() const { return new Holder(m_held_); }
-
-  public:
-    ValueType m_held_;
-  };
-
-protected:
-  PlaceHolder *m_content_;
-  template <typename ValueType> friend ValueType *any_cast(Any *);
-};
-
-template <typename ValueType> ValueType *any_cast(Any *any) {
-  if (any && any->GetType() == typeid(ValueType)) {
-    return &(static_cast<Any::Holder<ValueType> *>(any->m_content_)->m_held_);
-  }
-  // 如果any为NULL或者其他，则用原始的static_cast方法
+/* D3/C3：any_cast 退化为 static_cast 别名；Holder/Any 机制已移除。 */
+template <typename ValueType> inline ValueType *any_cast(void *any) {
   return static_cast<ValueType *>(any);
 }
 
-template <typename ValueType> ValueType *any_cast(void *any) {
-  return static_cast<ValueType *>(any);
-}
-
-template <typename ValueType> const ValueType *any_cast(const Any *any) {
-  return any_cast<ValueType>(const_cast<Any *>(any));
-}
-
-template <typename ValueType> ValueType any_cast(const Any &any) {
-  const ValueType *result = any_cast<ValueType>(&any);
-  if (!result) {
-    return ValueType();
-  }
-  return *result;
+template <typename ValueType>
+inline const ValueType *any_cast(const void *any) {
+  return static_cast<const ValueType *>(any);
 }
 
 } // namespace stlib

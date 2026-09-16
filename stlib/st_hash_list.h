@@ -12,7 +12,7 @@ namespace stlib {
 
 template <class T> class StHashList;
 
-class StHashKey : public Any, public referenceable {
+class StHashKey : public referenceable {
   template <typename T> friend class StHashList;
 
 public:

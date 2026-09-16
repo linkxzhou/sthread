@@ -240,7 +240,7 @@ sthread 的定位是「基于协程的高性能网络库」，stlib 是它的底
 
 ### D. 优化
 
-- [ ] 堆操作 sift 化完成，基准数据写入落地记录
+- [x] 堆操作 sift 化完成，基准数据写入落地记录
 - [ ] `Any` 简化后调用点零改动（D3）
 - [ ] 日志多线程安全（D5）
 
@@ -306,3 +306,19 @@ sthread 的定位是「基于协程的高性能网络库」，stlib 是它的底
 
 出口条件满足 → 可进 Phase 3。
 
+### Phase 3 · 性能与结构优化落地（2026-09-16）
+
+- C1：`st_heap.h` 重写为标准最小堆 sift-up/sift-down（O(log n)）；删除全堆重建/`HeapUp`/`eOrderType`；`GetIndex`/`SetIndex` 约定不变。`st_heap_test` 加强断言 + `HeapMonotonic100k`；`tests/st_heap_unittest` 补单调性。
+  - 基准（arm64，N=100000，本机一次）：`push_us≈10349–13502`，`pop_us≈45912–46065`（约 10–14 ms push / ~46 ms pop）。
+- C3/D3：`Any`/`Holder` 移除；`any_cast` 退化为 `static_cast` 别名；`StHeap`/`StHashKey` 不再继承 `Any`；调用点未改。
+- C4：`referenceable` 析构改为 `virtual`；`m_ref_count_` 改 private。
+- C2：`st_def.h` 瘦身为宏所需（`stddef`/`stdlib`）；`math.h`/`queue` 下沉到 `st_util.h`。
+- C7：`ST_BUFFER_HASH_BUCKETS` / `ST_BUFFER_DEFAULT_MAX_FREE`（数值仍 128）；`ST_ALGIN` 仅注释拼写（D4）。
+- C8：删除 `ucontext.h` 中 `#if 0 && __sun__` SPARC 死块。
+- C9：各 stlib 头 `g++ -fsyntax-only -std=c++98` 独立通过（mac 跳过 `st_epoll.h`）；为 `st_kqueue`/`st_epoll`/`st_tailq` 补齐自包含 include。
+- C10：epoll/kqueue `Create` 统一失败走 `Free()`；fd 失败路径清 `-1`。
+- C5/C6：此前 Phase 2 已覆盖（singleton 注释 / HashList）。
+- 测试：`Any` 单测改为 `any_cast` + `referenceable`。
+- 三件套：`make test` / `make lib`+`make -C tests run` / `make apps` 全绿；`format-check` 通过。**未 push**（按用户要求）。
+
+出口条件满足 → 可进 Phase 4（文档 / D6 剥离 `st_test`）。

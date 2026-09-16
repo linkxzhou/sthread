@@ -5,23 +5,8 @@
 #ifndef _ST_DEF_H_
 #define _ST_DEF_H_
 
-#include <errno.h>
-#include <map>
-#include <math.h>
-#include <netinet/in.h>
-#include <pthread.h>
-#include <queue>
-#include <set>
 #include <stddef.h>
-#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <sys/ioctl.h>
-#include <sys/syscall.h>
-#include <sys/types.h>
-#include <time.h>
-#include <unistd.h>
-#include <vector>
 
 #if __GNUC__ == 2 && __GNUC_MINOR__ < 96
 #define __builtin_expect(x, expected_value) (x)
@@ -85,6 +70,7 @@
 #define ST_SEND_BUFFSIZE 8192
 #endif
 
+/* 拼写保留为 ST_ALGIN（历史名，非 ALIGN）；按 8 字节上取整式填充（D4）。 */
 #define ST_ALGIN(size) ((size) + (8 - (size) % 8))
 
 #define ST_NELEMS(a) ((sizeof(a)) / sizeof((a)[0]))

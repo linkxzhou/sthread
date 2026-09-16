@@ -9,9 +9,9 @@
 
 namespace stlib {
 
-enum eOrderType { eOrderDesc = 0, eOrderAsc };
-
-class StHeap : public Any, public referenceable {
+/* 最小堆节点：HeapValue 越小越靠前。GetIndex/SetIndex 由堆维护，0
+ * 表示不在堆中。 */
+class StHeap : public referenceable {
 public:
   StHeap() : m_index_(0) {}
 
@@ -19,7 +19,6 @@ public:
 
   virtual int64_t HeapValue() = 0;
 
-  // 迭代处理
   virtual void HeapIterate() { return; }
 
   inline int32_t GetIndex() { return m_index_; }
@@ -42,7 +41,7 @@ private:
 
 typedef StHeap *StHeapNode;
 
-// 堆的list
+/* 1-based 最小堆：Push/Pop/Delete 均为 O(log n) sift（C1）。 */
 template <class T = StHeapNode> class StHeapList {
 public:
   typedef T value_type;
@@ -57,7 +56,6 @@ public:
   }
 
   virtual ~StHeapList() {
-    // 清理元素的数据
     st_safe_free(m_list_);
     m_max_ = 0;
     m_count_ = 0;
@@ -91,9 +89,9 @@ public:
       return -2;
     }
 
-    m_list_[++m_count_] = entry; // 第一个元素不存储数据
+    m_list_[++m_count_] = entry;
     entry->SetIndex(m_count_);
-    this->HeapDown();
+    this->SiftUp(m_count_);
 
     return 0;
   }
@@ -103,13 +101,16 @@ public:
       return NULL;
     }
 
-    StHeap *top = (StHeap *)(m_list_[1]);
+    pointer top = m_list_[1];
     this->Swap(1, m_count_);
+    m_list_[m_count_] = NULL;
     m_count_--;
-    this->HeapDown();
     top->SetIndex(0);
+    if (m_count_ > 0) {
+      this->SiftDown(1);
+    }
 
-    return (pointer)top;
+    return top;
   }
 
   inline int32_t HeapDelete(pointer entry) {
@@ -123,12 +124,24 @@ public:
     }
 
     pointer ptr = m_list_[pos];
+    if (pos == m_count_) {
+      m_list_[pos] = NULL;
+      m_count_--;
+      ptr->SetIndex(0);
+      return 0;
+    }
+
     m_list_[pos] = m_list_[m_count_];
     m_list_[pos]->SetIndex(pos);
-    m_list_[m_count_] = 0;
+    m_list_[m_count_] = NULL;
     m_count_--;
-    this->HeapDown();
     ptr->SetIndex(0);
+
+    if (pos > 1 && m_list_[pos]->HeapValueCmp(m_list_[pos / 2]) < 0) {
+      this->SiftUp(pos);
+    } else {
+      this->SiftDown(pos);
+    }
 
     return 0;
   }
@@ -148,65 +161,36 @@ public:
   inline bool HeapEmpty() { return (m_count_ == 0); }
 
 private:
-  void HeapUp() {
-    for (int32_t pos = m_count_; pos > 0; pos--) {
-      this->ReBuildHeap(pos, m_count_, eOrderAsc);
-    }
-
-    for (int32_t pos = m_count_; pos > 0; pos--) {
-      this->Swap(1, pos);
-      this->ReBuildHeap(1, pos - 1, eOrderAsc);
+  void SiftUp(int32_t pos) {
+    while (pos > 1) {
+      int32_t parent = pos / 2;
+      if (m_list_[pos]->HeapValueCmp(m_list_[parent]) >= 0) {
+        break;
+      }
+      this->Swap(pos, parent);
+      pos = parent;
     }
   }
 
-  void HeapDown() {
-    for (int32_t pos = m_count_; pos > 0; pos--) {
-      this->ReBuildHeap(pos, m_count_, eOrderDesc);
-    }
+  void SiftDown(int32_t pos) {
+    for (;;) {
+      int32_t lchild = 2 * pos;
+      int32_t rchild = 2 * pos + 1;
+      int32_t best = pos;
 
-    for (int32_t pos = m_count_; pos > 0; pos--) {
-      this->Swap(1, pos);
-      this->ReBuildHeap(1, pos - 1, eOrderDesc);
-    }
-  }
-
-  void ReBuildHeap(int32_t index, int32_t len, eOrderType e = eOrderAsc) {
-    int32_t lchild = 2 * index;     // i的左孩子节点序号
-    int32_t rchild = 2 * index + 1; // i的右孩子节点序号
-    int32_t s_son = index;          // 临时变量
-
-    if (s_son > len / 2) {
-      return;
-    }
-
-    // 根据eOrderType调整
-    if (lchild <= len) {
-      if (m_list_[lchild]->HeapValueCmp(m_list_[s_son]) >= 0) {
-        if (e == eOrderDesc) {
-          s_son = lchild;
-        }
-      } else {
-        if (e == eOrderAsc) {
-          s_son = lchild;
-        }
+      if (lchild <= m_count_ &&
+          m_list_[lchild]->HeapValueCmp(m_list_[best]) < 0) {
+        best = lchild;
       }
-    }
-
-    if (rchild <= len) {
-      if (m_list_[rchild]->HeapValueCmp(m_list_[s_son]) >= 0) {
-        if (e == eOrderDesc) {
-          s_son = rchild;
-        }
-      } else {
-        if (e == eOrderAsc) {
-          s_son = rchild;
-        }
+      if (rchild <= m_count_ &&
+          m_list_[rchild]->HeapValueCmp(m_list_[best]) < 0) {
+        best = rchild;
       }
-    }
-
-    if (s_son != index) {
-      this->Swap(index, s_son);
-      this->ReBuildHeap(s_son, len, e); // 避免调整之后以max为父节点的子树不是堆
+      if (best == pos) {
+        break;
+      }
+      this->Swap(pos, best);
+      pos = best;
     }
   }
 

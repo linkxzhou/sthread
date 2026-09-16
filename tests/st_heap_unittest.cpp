@@ -45,6 +45,29 @@ TEST(StStatus, HeapTimer) {
   delete b;
 }
 
+
+TEST(StStatus, HeapMonotonic) {
+  const int N = 1000;
+  StHeapList<Node> h(N + 8);
+  ASSERT_TRUE(h.HeapResize(N + 8) >= 0);
+  Node **nodes = new Node *[N];
+  for (int i = 0; i < N; i++) {
+    nodes[i] = new Node((int64_t)((i * 1103515245u + 12345u) % 9973));
+    ASSERT_TRUE(h.HeapPush(nodes[i]) >= 0);
+  }
+  int64_t last = -0x7fffffffffffffffLL - 1;
+  for (int i = 0; i < N; i++) {
+    Node *p = h.HeapPop();
+    ASSERT_TRUE(p != NULL && p->m_v_ >= last);
+    last = p->m_v_;
+  }
+  ASSERT_TRUE(h.HeapEmpty());
+  for (int i = 0; i < N; i++) {
+    delete nodes[i];
+  }
+  delete[] nodes;
+}
+
 int main(int argc, char *argv[]) {
   (void)argc;
   (void)argv;

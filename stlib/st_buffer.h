@@ -10,8 +10,10 @@
 
 namespace stlib {
 
-#define ST_BUFFER_BUCKET_SIZE 128
-#define ST_MAX_SIZE 128
+/* 哈希桶个数（非字节）；原名 ST_BUFFER_BUCKET_SIZE */
+#define ST_BUFFER_HASH_BUCKETS 128
+/* StBufferPool 默认 max_free 上限（条目数，非字节）；原名 ST_MAX_SIZE */
+#define ST_BUFFER_DEFAULT_MAX_FREE 128
 
 class StBuffer;
 
@@ -135,9 +137,9 @@ private:
  * 所有权：Get/Release（或等价接口）配对，避免泄漏到连接外。 */
 class StBufferPool {
 public:
-  explicit StBufferPool(uint32_t max_free = ST_MAX_SIZE)
+  explicit StBufferPool(uint32_t max_free = ST_BUFFER_DEFAULT_MAX_FREE)
       : m_max_free_(max_free) {
-    m_hash_bucket_ = new StHashList<StBufferBucket>(ST_BUFFER_BUCKET_SIZE);
+    m_hash_bucket_ = new StHashList<StBufferBucket>(ST_BUFFER_HASH_BUCKETS);
   }
 
   ~StBufferPool() {
