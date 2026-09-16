@@ -10,12 +10,12 @@ FLAGS = $(ST_CXXFLAGS) $(ST_LDFLAGS) $(ST_LDLIBS)
 .PHONY: all clean run extra coverage coverage-report \
 	singleton base thread manager connection session keepalive c main server ucontext \
 	util buffer heap hash scheduler connmgr loopback context accept \
-	sysapi connio logbuf harvest httpserver covextra
+	sysapi connio logbuf harvest httpserver covextra dnsproto
 
 # Primary suite (used by make -C tests run and coverage)
 all: singleton base thread manager connection session keepalive main \
 	util buffer heap hash scheduler connmgr loopback context server accept \
-	sysapi connio logbuf harvest httpserver covextra
+	sysapi connio logbuf harvest httpserver covextra dnsproto
 
 extra: c
 
@@ -97,6 +97,9 @@ httpserver: st_http_server_unittest.cpp
 covextra: st_coverage_extra_unittest.cpp
 	$(CC) $< $(ST_TEST_SRC) $(INCLUDE) $(FLAGS) $(LIB) -o st_coverage_extra_unittest
 
+dnsproto: st_dns_proto_unittest.cpp
+	$(CC) $< $(ST_TEST_SRC) $(INCLUDE) $(FLAGS) $(LIB) -o st_dns_proto_unittest
+
 RUN_TESTS = \
 	st_singleton_unittest st_base_unittest st_thread_unittest \
 	st_manager_unittest st_connection_unittest st_session_unittest \
@@ -107,7 +110,8 @@ RUN_TESTS = \
 	st_sys_api_unittest st_conn_io_unittest st_log_buffer_extra_unittest \
 	st_harvest_unittest \
 	st_http_server_unittest \
-	st_coverage_extra_unittest
+	st_coverage_extra_unittest \
+	st_dns_proto_unittest
 
 run: all
 	@set -e; \

@@ -8,6 +8,7 @@
 #include "app/st_sys.h"
 #include "st_poll.h"
 #include "st_public.h"
+#include "st_sys.h"
 #include "st_thread.h"
 #include "stlib/st_buffer.h"
 #include "stlib/st_heap_timer.h"

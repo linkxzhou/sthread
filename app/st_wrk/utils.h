@@ -326,9 +326,11 @@ static int empty_data_cb (http_parser *p, const char *buf, size_t len) { return 
 
 static http_parser_settings settings_null =
   {.on_message_begin = empty_cb
+  ,.on_url = empty_data_cb
+  ,.on_status = empty_data_cb
   ,.on_header_field = empty_data_cb
   ,.on_header_value = empty_data_cb
-  ,.on_url = empty_data_cb
+  ,.on_headers_complete = empty_cb
   ,.on_body = empty_data_cb
   ,.on_message_complete = empty_cb
   ,.on_chunk_header = empty_cb

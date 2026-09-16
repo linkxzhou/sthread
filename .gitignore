@@ -16,10 +16,14 @@
 app/st_dns/main
 app/st_memcacheclient/main
 app/st_httpserver/main
+app/st_dnsserver/main
 app/st_wrk/wrk
 
-# 运行期日志
+# 运行期日志与一次性压测报告（冻结 baseline-*.md 要提交）
 *.log
+reports/http-*.md
+reports/dns-*.md
+reports/*.log
 
 # 编辑器 / 系统垃圾
 .DS_Store

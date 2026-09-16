@@ -12,7 +12,8 @@ CLANG_FORMAT ?= clang-format
 # 以及 app/、tests/ 下尚未整理的历史代码（属 plan/04、plan/05 范围）。
 FORMAT_SRC = $(wildcard stlib/*.h stlib/*.cc src/*.h src/*.cc stlib/tests/*.cc)
 
-.PHONY: all help stlib lib apps tests stlib-tests test format format-check clean
+.PHONY: all help stlib lib apps tests stlib-tests test format format-check clean \
+	bench-http bench-dns bench
 
 # plan/01 的出口条件是「stlib 成为可编译、可运行、C++98 干净的绿色基线」，
 # 所以当前默认目标是 stlib。src/ 还编不过（旧名未定义、st_manager.h 缺失等，
@@ -29,10 +30,11 @@ help:
 	@echo "  make stlib-tests   构建 stlib/tests 的四个测试"
 	@echo "  make test          构建并运行 stlib/tests 的四个测试"
 	@echo "  make lib           构建 libmthread.a / libmthread.so（仓库根目录）"
-	@echo "                     [阻塞于 plan/02、plan/03]"
-	@echo "  make apps          构建 app/st_dns、st_memcacheclient、st_wrk、st_httpserver"
-	@echo "                     [阻塞于 plan/04]"
-	@echo "  make tests         构建 tests/ 下的 unittest [阻塞于 plan/04]"
+	@echo "  make apps          构建 app/st_dns、st_memcacheclient、st_wrk、st_httpserver、st_dnsserver"
+	@echo "  make tests         构建 tests/ 下的 unittest"
+	@echo "  make bench-http    HTTP 压测闭环（默认 BENCH_PROFILE=smoke）"
+	@echo "  make bench-dns     DNS 压测闭环（本地 st_dnsserver，默认 smoke）"
+	@echo "  make bench         bench-http + bench-dns"
 	@echo "  make format        对本仓库自己的代码跑 clang-format -i"
 	@echo "  make format-check  只检查不改写（--dry-run --Werror）"
 	@echo "  make clean         清理所有构建产物"
@@ -58,6 +60,19 @@ apps: lib
 	@$(MAKE) -C app/st_memcacheclient
 	@$(MAKE) -C app/st_wrk
 	@$(MAKE) -C app/st_httpserver
+	@$(MAKE) -C app/st_dnsserver
+
+BENCH_PROFILE ?= smoke
+
+bench-http: apps
+	@mkdir -p reports
+	BENCH_PROFILE=$(BENCH_PROFILE) ./scripts/bench_http.sh
+
+bench-dns: apps
+	@mkdir -p reports
+	BENCH_PROFILE=$(BENCH_PROFILE) ./scripts/bench_dns.sh
+
+bench: bench-http bench-dns
 
 tests: lib
 	@$(MAKE) -C tests
@@ -83,6 +98,7 @@ clean:
 	@$(MAKE) -C app/st_memcacheclient clean
 	@$(MAKE) -C app/st_wrk clean
 	@$(MAKE) -C app/st_httpserver clean
+	@$(MAKE) -C app/st_dnsserver clean
 	@rm -f libmthread.a libmthread.so
 	@rm -f app/st_wrk/wrk
 	@rm -rf *.dSYM

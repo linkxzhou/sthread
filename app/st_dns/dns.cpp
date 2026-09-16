@@ -94,7 +94,7 @@ int DNS::dns_lookup(const char *node, std::vector<int32_t> &vc, time_t *ttl, int
     {
         addr.sin_addr.s_addr = inet_addr(m_dns_svr_);  ///服务器ip
     }
-    addr.sin_port = htons((uint16_t)PUBLIC_DNS_DEFAULT_PORT);
+    addr.sin_port = htons((uint16_t)m_dns_port_);
 
     int query_len = make_dns_query_format();
     if (query_len <= 0) 
@@ -105,6 +105,9 @@ int DNS::dns_lookup(const char *node, std::vector<int32_t> &vc, time_t *ttl, int
     int recv_len = sizeof(m_recv_buf_);
     ret = udp_sendrecv(&addr, m_send_buf_, query_len, m_recv_buf_, recv_len, m_timeout_);
     LOG_DEBUG("ret : %d, recv_buf : %s, recv_len : %d", ret, m_recv_buf_, recv_len);
+    if (ret < 0) {
+        return ret;
+    }
 
     int Anum = 0;
     //只支持A记录

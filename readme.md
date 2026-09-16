@@ -17,7 +17,7 @@ sthread
 6. 跨平台；在内存与句柄足够时可以创建大量协程（见下方「性能」）
 7. 使用简单，只需链接一个 `libmthread.a` 或 `libmthread.so`
 
-示例应用：`app/st_dns`、`app/st_memcacheclient`、`app/st_wrk`、`app/st_httpserver`。
+示例应用：`app/st_dns`、`app/st_memcacheclient`、`app/st_wrk`、`app/st_httpserver`、`app/st_dnsserver`。
 
 # 环境要求
 
@@ -36,17 +36,19 @@ sthread
 - 栈：`makecontext` 保持 SP 16 字节对齐；`InitContext` 使用 `ss_sp + 16`
 - 冒烟与单测记录见 [`plan/04-regression-checklist.md`](plan/04-regression-checklist.md)
 
-# 验证状态（本机 Apple Silicon，2026-09-15）
+# 验证状态（plan/08 起：HTTP/DNS 压测闭环）
 
 | 项 | 状态 |
 | --- | --- |
-| `make lib` / `make -C tests run` | 通过（含 `st_thread_unittest` `Wait(10)`、`st_keepalive_unittest`） |
-| `st_httpserver` | 样例：`app/st_httpserver`，默认 `:8765`，可与 `st_wrk` / curl 联调 |
-| `st_wrk` | **通过**：`./wrk -n 3 -c 3 -d 2s http://127.0.0.1:8765/` → 3 requests，约 832 req/s |
-| `st_memcacheclient` | **通过**：本机 memcached `:11211`，可见 `STORED` / `VALUE k1`（有同 fd `item conflict` 告警） |
-| `st_dns` | **部分通过**：150 协程进 IO wait、切换正常；默认 `www.2000–2149.com` 为合成域名，查询超时属预期；`Frame::Loop(true)` 不退出，需手动结束进程 |
+| `make lib` / `make -C tests run` / `make -C stlib/tests run` | 三件套门禁 |
+| `make apps` | dns / memcache / wrk / httpserver / **dnsserver** |
+| `make bench-http` | 起 `st_httpserver`，`st_wrk` 矩阵，报告 `reports/http-*.md` |
+| `make bench-dns` | 起 `st_dnsserver` `:5353`，`st_dns` 协程压测后**退出** |
+| 冻结基线 | [`reports/baseline-http.md`](reports/baseline-http.md) / [`reports/baseline-dns.md`](reports/baseline-dns.md)（标 OS/arch/commit） |
+| 历史 macOS 冒烟（2026-09-15） | `st_wrk -n 3 -c 3 -d 2s` → 约 832 req/s（连接极少，**不能**当性能结论） |
 | L4 keepalive | **已修**：`eTCP_KEEPLIVE_CONN = 0x11`，`Keeplive()` = `IS_KEEPLIVE(m_type_)` |
-| 万级协程 / QPS 专项 | 待测 |
+
+旧 `st_dns` 默认 `www.2000–2149.com` 合成域名 + `Frame::Loop(true)` 挂死已修：请用 `-s 127.0.0.1 -p 5353` 打本地权威。
 
 # 快速开始
 
@@ -60,9 +62,13 @@ sthread
 
 ```bash
 make lib                 # 产出 libmthread.a 与 libmthread.so（仓库根）
-make apps                # 编译 app/st_dns、st_memcacheclient、st_wrk、st_httpserver
+make apps                # dns / memcache / wrk / httpserver / dnsserver
 make tests               # 编译 tests/ 下的 unittest
 make -C tests run        # 运行核心单测（含 keepalive）
+make bench-http          # HTTP 压测闭环（默认 BENCH_PROFILE=smoke）
+make bench-dns           # DNS 压测闭环（本地 5353，不依赖公网）
+make bench               # bench-http + bench-dns
+make help                # 目标与开关一览
 make -C tests coverage TRACE=0 COVERAGE=1 \
   LLVM_PROFDATA=/opt/homebrew/opt/llvm/bin/llvm-profdata \
   LLVM_COV=/opt/homebrew/opt/llvm/bin/llvm-cov
@@ -94,10 +100,24 @@ otool -L libmthread.so
 make lib && make -C app/st_httpserver
 ./app/st_httpserver/main          # 监听 0.0.0.0:8765
 curl http://127.0.0.1:8765/
-# 另开终端可压测：./app/st_wrk/wrk -n 1000 -c 50 -d 5s http://127.0.0.1:8765/
+# 一键压测（自动起停 server，写 reports/http-*.md）
+make bench-http
+# 或手动：./app/st_wrk/wrk -n 2 -c 10 -d 3s --json http://127.0.0.1:8765/
 ```
 
 详见 [`app/st_httpserver/README.md`](app/st_httpserver/README.md)。
+
+## DNS server / client 样例
+
+```bash
+make lib && make -C app/st_dnsserver && make -C app/st_dns
+./app/st_dnsserver/main 127.0.0.1 5353
+# 另开终端
+./app/st_dns/main -s 127.0.0.1 -p 5353 www.1.bench.local
+make bench-dns
+```
+
+详见 [`app/st_dnsserver/README.md`](app/st_dnsserver/README.md)、[`app/st_dns/README.md`](app/st_dns/README.md)。
 
 ## 最小使用轮廓
 
@@ -120,7 +140,7 @@ int main() {
 }
 ```
 
-完整可编译示例见 `app/st_dns/main.cpp`（DNS）与 `tests/st_server_unittest.cpp`（Listen 路径）。
+完整可编译示例见 `app/st_dns/main.cpp`（DNS 客户端，查询完退出）、`app/st_dnsserver/main.cpp`（UDP 权威样例）与 `tests/st_server_unittest.cpp`（Listen 路径）。
 
 ## 对外头文件（推荐）
 
@@ -304,8 +324,8 @@ MEM_PAGE_SIZE * 2 + (STACK / MEM_PAGE_SIZE + 1) * MEM_PAGE_SIZE
 | 单协程栈占用 | 上式（静态可算） |
 | 高并发创建上限 | 受内存与 `RLIMIT_NOFILE` 限制；事件表容量为 `min(rlim_cur, 65535)`，`setrlimit` 失败仅告警（plan/07 D4） |
 | arm64 协程切换 | 已通（`libthread_makecontext` + asm） |
-| arm64 app 冒烟 | wrk / memcache 通过；dns 合成域名超时，见「验证状态」 |
-| 万级协程 / QPS 专项 | 待测 |
+| arm64 app 冒烟 | wrk / memcache 通过；DNS 请走本地 `st_dnsserver`，见 `make bench-dns` |
+| HTTP / DNS QPS | 冻结基线见 `reports/baseline-*.md`（标平台与 commit）；短连接 HTTP 不可当 keepalive 结论 |
 
 # 已知限制
 
@@ -313,7 +333,7 @@ MEM_PAGE_SIZE * 2 + (STACK / MEM_PAGE_SIZE + 1) * MEM_PAGE_SIZE
 - **keepalive 真复用**：`FreePtr` 仍 `HashRemove` 再入池；仅保证 fd/`Keeplive` 语义诚实（plan/07 D1），完整池复用另立项。
 - **`app/st_c.h`**：在 `extern "C"` 块里使用了 C++ 引用，**不能**被纯 C 编译器直接 include。
 - **单进程内协程不可跨 OS 线程**（由 `Instance<T>()` 线程局部语义决定）。
-- **`Frame::Loop(true)`**：进入 daemon 后默认不返回；示例进程需外部结束。
+- **`Frame::Loop(true)`**：进入 daemon 后默认不返回。`st_dns` 压测已改为 `st_sleep` 等待 worker 后退出，不再依赖 Loop。
 - **同 fd 多 action**：memcache 示例可能打出 `item conflict` 告警，属示例用法问题，不是 ucontext 回归。
 - `app/st_c.*` / `app/st_sys.*` 语义上是库代码，物理路径仍在 `app/`（未搬迁）；`StServer` 已不再 include `app/st_c.h`（plan/07 C4）。
 - **LICENSE**：根目录尚未发布；vendored 许可见 [`COPYRIGHT`](COPYRIGHT)。

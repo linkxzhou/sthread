@@ -15,17 +15,21 @@ int wrk::Util::s_verbose_ = 0;
 static void usage() {
   printf("Usage: wrk <options> <url>                            \n"
          "  Options:                                            \n"
-         "    -c, --connections <N>  Connections to keep open   \n"
-         "    -d, --duration    <T>  Duration of test           \n"
-         "    -n, --numbers     <N>  Number of request to use   \n"
+         "    -c, --connections <N>  Total connections (must be >= numbers)\n"
+         "    -d, --duration    <T>  Duration label (SI time, e.g. 2s)\n"
+         "    -n, --numbers     <N>  Worker processes (fork count)\n"
+         "                           Each worker uses connections/numbers\n"
+         "                           sockets; connections must be >= numbers\n"
          "                                                      \n"
          "    -H, --header      <H>  Add header to request      \n"
          "        --latency          Print latency statistics   \n"
          "        --timeout     <T>  Socket/request timeout     \n"
+         "        --json             Print one JSON summary line\n"
          "    -v, --version          Print version details      \n"
          "                                                      \n"
          "  Numeric arguments may include a SI unit (1k, 1M, 1G)\n"
-         "  Time arguments may include a time unit (2s, 2m, 2h)\n");
+         "  Time arguments may include a time unit (2s, 2m, 2h)\n"
+         "  A greppable SUMMARY line is always printed at the end.\n");
 }
 
 static struct option longopts[] = {
@@ -35,6 +39,7 @@ static struct option longopts[] = {
     {"header", required_argument, NULL, 'H'},
     {"latency", no_argument, NULL, 'L'},
     {"timeout", required_argument, NULL, 'T'},
+    {"json", no_argument, NULL, 'j'},
     {"help", no_argument, NULL, 'h'},
     {"version", no_argument, NULL, 'v'},
     {NULL, 0, NULL, 0}};
@@ -51,7 +56,7 @@ static int parse_args(wrk::config *_cg, char **url,
   _cg->duration = 10;
   _cg->timeout = SOCKET_TIMEOUT_MS;
 
-  while ((c = getopt_long(argc, argv, "n:c:d:s:H:T:Lrv?", longopts, NULL)) !=
+  while ((c = getopt_long(argc, argv, "n:c:d:s:H:T:Ljrv?", longopts, NULL)) !=
          -1) {
     switch (c) {
     case 'n':
@@ -74,6 +79,9 @@ static int parse_args(wrk::config *_cg, char **url,
       break;
     case 'L':
       _cg->latency = true;
+      break;
+    case 'j':
+      _cg->json = true;
       break;
     case 'T':
       if (wrk::Util::scan_time(optarg, &_cg->timeout)) {
@@ -290,7 +298,7 @@ int main(int argc, char **argv) {
   uint64_t complete = numbers->complete;
   uint64_t bytes = numbers->bytes;
 
-  wrk::errors errors = {0, 0, 0, 0, 0};
+  wrk::error_counts errors = {0, 0, 0, 0, 0};
   errors.connect += numbers->errors.connect;
   errors.read += numbers->errors.read;
   errors.write += numbers->errors.write;
@@ -328,6 +336,23 @@ int main(int argc, char **argv) {
   printf("Requests/sec: %9.2Lf\n", req_per_s);
   printf("Transfer/sec: %10sB\n", wrk::Util::format_binary(bytes_per_s));
   printf("All Transfer: %10sB\n", wrk::Util::format_binary(bytes));
+
+  {
+    unsigned int err_all = errors.connect + errors.read + errors.write +
+                           errors.timeout + errors.status;
+    printf("SUMMARY complete=%lu requests=%lu req_per_s=%.2f bytes=%lu "
+           "errors=%u runtime_us=%lu\n",
+           (unsigned long)complete, (unsigned long)numbers->requests,
+           (double)req_per_s, (unsigned long)bytes, err_all,
+           (unsigned long)runtime_us);
+    if (cg.json) {
+      printf("JSON {\"complete\":%lu,\"requests\":%lu,\"req_per_s\":%.2f,"
+             "\"bytes\":%lu,\"errors\":%u,\"runtime_us\":%lu}\n",
+             (unsigned long)complete, (unsigned long)numbers->requests,
+             (double)req_per_s, (unsigned long)bytes, err_all,
+             (unsigned long)runtime_us);
+    }
+  }
 
   return 0;
 }

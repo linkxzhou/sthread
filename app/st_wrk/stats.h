@@ -26,7 +26,7 @@ typedef struct
     uint32_t write;
     uint32_t status;
     uint32_t timeout;
-} errors;
+} error_counts;
 
 typedef struct 
 {
@@ -46,7 +46,7 @@ typedef struct
     uint64_t bytes;
     uint64_t start;
     uint64_t end;
-    errors errors;
+    error_counts errors;
 } number;
 
 typedef struct 
@@ -58,6 +58,7 @@ typedef struct
     bool     delay;
     bool     dynamic;
     bool     latency;
+    bool     json;
     char    *host;
     uint64_t port;
     char    *path;

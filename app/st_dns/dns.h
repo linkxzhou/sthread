@@ -25,9 +25,12 @@
 #define DNS_DEFAULT_DATA_SIZE       512
 #define DNS_TIMEOUT                 10000
 
-#define MT_DNS_NAMESPACE_BEGIN namespace mt_dns {
-#define MT_DNS_NAMESPACE_END   }
-#define MT_DNS_NAMESPACE_USING using namespace mt_dns;
+#define ST_DNS_NAMESPACE_BEGIN namespace st_dns {
+#define ST_DNS_NAMESPACE_END   }
+#define ST_DNS_NAMESPACE_USING using namespace st_dns;
+#define MT_DNS_NAMESPACE_BEGIN ST_DNS_NAMESPACE_BEGIN
+#define MT_DNS_NAMESPACE_END   ST_DNS_NAMESPACE_END
+#define MT_DNS_NAMESPACE_USING ST_DNS_NAMESPACE_USING
 
 MT_DNS_NAMESPACE_BEGIN
 
@@ -78,7 +81,8 @@ typedef struct dns_response
 class DNS
 {
 public:
-    DNS() : m_dns_svr_(NULL), m_timeout_(DNS_TIMEOUT)
+    DNS() : m_dns_svr_(NULL), m_timeout_(DNS_TIMEOUT),
+            m_dns_port_(PUBLIC_DNS_DEFAULT_PORT)
     { 
         memset(m_send_buf_, 0, sizeof(m_send_buf_));
         memset(m_recv_buf_, 0, sizeof(m_recv_buf_));
@@ -92,7 +96,17 @@ public:
 
     inline void set_dns_svr(const char *_ip)
     {
-        m_dns_svr_ = strdup(_ip);
+        if (m_dns_svr_ != NULL) {
+            safe_free(m_dns_svr_);
+        }
+        m_dns_svr_ = (_ip != NULL) ? strdup(_ip) : NULL;
+    }
+
+    inline void set_dns_port(int port)
+    {
+        if (port > 0 && port <= 65535) {
+            m_dns_port_ = port;
+        }
     }
 
 private:
@@ -103,6 +117,7 @@ private:
     char *m_dns_svr_; // dns解析的ip
     char m_send_buf_[DNS_DEFAULT_DATA_SIZE], m_recv_buf_[DNS_DEFAULT_DATA_SIZE*4];
     int m_timeout_;
+    int m_dns_port_;
     const char *m_dns_query_node_;
 };
 

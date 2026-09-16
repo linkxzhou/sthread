@@ -20,7 +20,8 @@ sthread 是一个**基于协程的高性能网络库**，C++98，提供非阻塞
 | --- | --- |
 | `stlib/` | 绿：`-std=c++98`，`make test`（stlib/tests）可跑 |
 | `make lib` | 绿：产出 `libmthread.a` / `.so`，无第三方运行时依赖 |
-| `make apps` | 绿：dns / memcache / wrk / httpserver **可编译** |
+| `make apps` | 绿：dns / memcache / wrk / httpserver / **dnsserver** |
+| `make bench-http` / `make bench-dns` | 绿：脚本起停 server（PID），写 `reports/`；冻结基线见 `reports/baseline-*.md` |
 | `make -C tests` | 绿：核心 unittest 可编译；多数可跑 |
 | Apple Silicon arm64 | **真实 ucontext/asm**（`NEEDARM64CONTEXT`） |
 | keepalive（L4） | **已修**：`eTCP_KEEPLIVE_CONN=0x11`，`Keeplive()`=`IS_KEEPLIVE` |
@@ -97,10 +98,12 @@ C++：`StClientConnection`、`StServer`。示例兼容层：`app/st_action.h`、
 | `stlib/` | 基础库（多为 header-only）+ ucontext；说明见 [`stlib/README.md`](stlib/README.md) |
 | `src/` | 框架核心 → 编进 libmthread |
 | `app/st_c.*` `app/st_sys.*` `app/st_action.*` | **库代码**（物理仍在 app/） |
-| `app/st_dns` 等 | 示例 |
+| `app/st_dns` 等 | 示例（含 `st_dnsserver`） |
+| `scripts/` | `bench_http.sh` / `bench_dns.sh` |
+| `reports/` | 压测报告；提交冻结 `baseline-*.md` |
 | `tests/` | 框架 unittest + scripts |
 | `thirdparty/` | 仅说明文档；无运行时依赖 |
-| `plan/` | 分阶段计划（含 `07-src-refactor-optimize.md`） |
+| `plan/` | 分阶段计划（含 `08-apps-bench-dnsserver.md`） |
 | `make.inc` | 公共编译开关 |
 | `COPYRIGHT` | vendored 第三方许可（非本仓库 LICENSE） |
 
@@ -123,6 +126,7 @@ C++：`StClientConnection`、`StServer`。示例兼容层：`app/st_action.h`、
 
 ```bash
 make lib / apps / tests / clean / format / format-check / help
+make bench-http / bench-dns / bench    # 默认 BENCH_PROFILE=smoke
 make -C tests run
 make -C stlib/tests run    # stlib 单测
 ```
@@ -151,7 +155,7 @@ make -C stlib/tests run    # stlib 单测
 | `app/st_c.h` 非纯 C 可用 | 已知限制 |
 | `app/st_c|st_sys` 未搬入 `src/` | 遗留目录语义（C4 已去掉 server→`st_c.h`） |
 | 根 `LICENSE` 未定 | 待维护者 |
-| 高并发 / wrk QPS 缺 Linux 实测数字 | 文档诚实标注 |
+| 高并发 / wrk QPS | 冻结基线见 `reports/baseline-*.md`（plan/08）；短连接、单 OS 线程事件循环 |
 
 ### 推荐对外 include（libmthread 使用方）
 
