@@ -341,7 +341,7 @@
 
 ### Phase 4 · 通用库收尾（2026-09-16）
 
-- **提交**：见本批 commit
+- **提交**：`ae4a040`
 - **文档**：`AGENTS.md` 已知问题表同步 plan/07；推荐 include 表；`readme.md`/`README.md` 对外头文件、架构（WaitFdReady/D1/D4）、API 与限制
 - **注释**：`StServer` 所有权 / `st_sys.h` C1 说明
 - **产物依赖**：`otool -L libmthread.so` → 仅 `libc++` + `libSystem`（零第三方）
