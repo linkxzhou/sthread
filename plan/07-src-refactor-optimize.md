@@ -338,3 +338,12 @@
 - **三件套**：全绿；重点 sys_api/accept/conn_io/loopback 过
 - **偏差**：C3 未把全局 `StConnection`/`StServer` 迁入 `namespace sthread`（改动面过大）；连接头仍需 `using namespace sthread`
 - **下一步**：Phase 4 文档 / 对外头文件清单
+
+### Phase 4 · 通用库收尾（2026-09-16）
+
+- **提交**：见本批 commit
+- **文档**：`AGENTS.md` 已知问题表同步 plan/07；推荐 include 表；`readme.md`/`README.md` 对外头文件、架构（WaitFdReady/D1/D4）、API 与限制
+- **注释**：`StServer` 所有权 / `st_sys.h` C1 说明
+- **产物依赖**：`otool -L libmthread.so` → 仅 `libc++` + `libSystem`（零第三方）
+- **三件套**：全绿
+- **plan/07 完结**：P-A/P-B/P-C + 文档收尾；未决：keepalive 真复用、StThread 池回收 TODO、LICENSE、Linux QPS

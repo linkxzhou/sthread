@@ -37,8 +37,9 @@ public:
 
 /* 用途：TCP/UDP 服务端；Listen 后 Loop 每接受一个连接创建一个协程。
  * 线程模型：在调用 Loop 的 OS 线程内运行；依赖 StSysSchedule。
- * 所有权：监听 fd 与 accept 出的连接由本对象/连接池管理；Hook 经
- * st_set_hook_flag。 */
+ * 所有权：监听 fd 由本对象持有；accept 出的 ConnectionT 经
+ * StConnectionManager 分配，CallBack 出口 FreePtr 归还（plan/07 B10）。
+ * Hook 经 st_set_hook_flag（前向声明，不 include app/st_c.h）。 */
 template <class ConnetionT, int ServerT = eTCP_CONN> class StServer {
 public:
   StServer() : m_osfd_(-1), m_item_(NULL), m_schedule_(NULL) {

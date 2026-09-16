@@ -100,7 +100,7 @@ C++：`StClientConnection`、`StServer`。示例兼容层：`app/st_action.h`、
 | `app/st_dns` 等 | 示例 |
 | `tests/` | 框架 unittest + scripts |
 | `thirdparty/` | 仅说明文档；无运行时依赖 |
-| `plan/` | 分阶段计划 |
+| `plan/` | 分阶段计划（含 `07-src-refactor-optimize.md`） |
 | `make.inc` | 公共编译开关 |
 | `COPYRIGHT` | vendored 第三方许可（非本仓库 LICENSE） |
 
@@ -144,12 +144,24 @@ make -C stlib/tests run    # stlib 单测
 
 | 项 | 归类 |
 | --- | --- |
-| L4 keepalive | 已修（见 `st_keepalive_unittest`） |
-| keepalive `eTCP_KEEPLIVE_CONN` / `Keeplive()` | 已修（0x11 / `IS_KEEPLIVE`） |
-| `StThread` 回收 TODO | 待办 |
+| L4 / Keeplive 枚举与 `Keeplive()` | **已修**（plan/05–06；见 keepalive 单测） |
+| plan/07 P-A/P-B/P-C（死代码、泄漏、`st_*` 骨架、头依赖） | **已修**（见 `plan/07-src-refactor-optimize.md` §9） |
+| keepalive **真连接池复用** | **未做**（D1：仅诚实注释；`FreePtr` 仍 HashRemove） |
+| `StThread` 池回收 TODO | 待办 |
 | `app/st_c.h` 非纯 C 可用 | 已知限制 |
-| `app/st_c|st_sys` 未搬入 `src/` | 遗留目录语义 |
-| 根 `LICENSE` 未定 | 待维护者（D6） |
+| `app/st_c|st_sys` 未搬入 `src/` | 遗留目录语义（C4 已去掉 server→`st_c.h`） |
+| 根 `LICENSE` 未定 | 待维护者 |
 | 高并发 / wrk QPS 缺 Linux 实测数字 | 文档诚实标注 |
 
-完整清单与验收见各 `plan/0x-*.md` 与 `plan/04-regression-checklist.md`。
+### 推荐对外 include（libmthread 使用方）
+
+| 场景 | 推荐头 |
+| --- | --- |
+| 最简 C 风格入口（init / hook / udp·tcp_sendrecv） | `app/st_c.h` + `app/st_frame.h` |
+| 自写 `StServer` / 连接派生类 | `src/st_server.h`（会拉 `st_connection.h` / `st_sys.h`） |
+| 仅用带超时 `st_read`/`st_write`/… | `src/st_sys.h` |
+| 基础类型 / 连接枚举 | `src/st_public.h`、`stlib/st_netaddr.h` |
+
+不要直接 include `app/st_sys.h`（hook 实现细节），除非自己做 syscall 表扩展。不要 include `stlib/st_test.h`（仅测试）。
+
+完整清单与验收见各 `plan/0x-*.md`、`plan/07-src-refactor-optimize.md`。

@@ -127,7 +127,8 @@ public:
 extern "C" {
 #endif
 
-/* st_* 返回值约定（B15/C9，数值不变）：
+/* 实现：src/st_sys.cc 内 WaitFdReady 统一挂起骨架（plan/07 C1）。
+ * st_* 返回值约定（B15/C9，数值不变）：
  *  >0 : 成功字节数或 connfd；connect 成功多为 0
  *   0 : 对端关闭或 n==0 历史语义（UDP recvfrom 见 D3）
  *  -1 : 硬错误或超时（errno=ETIME）

@@ -122,6 +122,21 @@ int main() {
 
 完整可编译示例见 `app/st_dns/main.cpp`（DNS）与 `tests/st_server_unittest.cpp`（Listen 路径）。
 
+## 对外头文件（推荐）
+
+使用方链接 `libmthread.a` / `.so` 后，按场景 include：
+
+| 场景 | Include |
+| --- | --- |
+| 协程框架最小入口 | `#include "app/st_c.h"` + `#include "app/st_frame.h"` |
+| TCP/UDP `StServer` 服务 | `#include "src/st_server.h"` |
+| 客户端连接 / 连接池 | `#include "src/st_connection.h"` |
+| 带超时的 `st_read` / `st_write` / `st_accept` / … | `#include "src/st_sys.h"` |
+| 连接类型枚举、`ST_CONN_RESET_RECVBUF` 等 | `#include "src/st_public.h"` |
+
+说明：`app/st_c.*` / `app/st_sys.*` 已编进库，但 **hook 头 `app/st_sys.h` 非稳定对外 API**；业务优先走 `st_c` / `st_frame` / `src/st_*.h`。`stlib/` 多为被上述头间接包含的基础设施。
+
+
 # 核心概念
 
 ## 协程模型（每 OS 线程 1:N）
@@ -229,7 +244,7 @@ make -C tests server
               |  RecvData / SendData / udp_sendrecv
               v
       StConnection / StServer / st_c API
-              |  数据未就绪 → 注册事件 + Yield
+              |  数据未就绪 → st_* / WaitFdReady → 注册事件 + Yield
               v
       StEventSchedule ── StEventItem(fd) ──┐
               ^                             |
@@ -241,6 +256,8 @@ make -C tests server
               └── sleep 最小堆 ──────── StHeapTimer
 ```
 
+`src/st_sys.cc` 内 8 个 `st_*` 共用内部 `WaitFdReady`（plan/07 C1）。fd 事件表容量取 `min(rlim_cur, 65535)`（D4）。keepalive 连接 **当前不在 hash 中真复用**（D1，见 `FreePtr` 注释）。
+
 # API 参考（对外）
 
 | API | 位置 |
@@ -249,6 +266,7 @@ make -C tests server
 | `udp_sendrecv` / `tcp_sendrecv` | `app/st_c.h` |
 | `Frame::CreateThread` / `Frame::Loop` | `app/st_frame.h`（薄封装） |
 | `StSysSchedule::CreateThread` | `src/st_sys.h` |
+| `st_read` / `st_write` / `st_recv` / `st_send` / `st_accept` / … | `src/st_sys.h` |
 | `StClientConnection` / `StConnection` | `src/st_connection.h` |
 | `StServer` | `src/st_server.h` |
 | `IMessage` / `IMtAction` / `IMtActionClient` | `app/st_action.h`（示例兼容层） |
@@ -284,7 +302,7 @@ MEM_PAGE_SIZE * 2 + (STACK / MEM_PAGE_SIZE + 1) * MEM_PAGE_SIZE
 | 指标 | 状态 |
 | --- | --- |
 | 单协程栈占用 | 上式（静态可算） |
-| 高并发创建上限 | 受内存与 `RLIMIT_NOFILE` 限制；`StEventSchedule::Init` 会尝试把 fd 上限提到 65535（非 root 可能失败） |
+| 高并发创建上限 | 受内存与 `RLIMIT_NOFILE` 限制；事件表容量为 `min(rlim_cur, 65535)`，`setrlimit` 失败仅告警（plan/07 D4） |
 | arm64 协程切换 | 已通（`libthread_makecontext` + asm） |
 | arm64 app 冒烟 | wrk / memcache 通过；dns 合成域名超时，见「验证状态」 |
 | 万级协程 / QPS 专项 | 待测 |
@@ -292,12 +310,13 @@ MEM_PAGE_SIZE * 2 + (STACK / MEM_PAGE_SIZE + 1) * MEM_PAGE_SIZE
 # 已知限制
 
 - **协程对象回收**：`StThread` 池回收仍有 `TODO`，长时间大量创建需关注内存。
+- **keepalive 真复用**：`FreePtr` 仍 `HashRemove` 再入池；仅保证 fd/`Keeplive` 语义诚实（plan/07 D1），完整池复用另立项。
 - **`app/st_c.h`**：在 `extern "C"` 块里使用了 C++ 引用，**不能**被纯 C 编译器直接 include。
 - **单进程内协程不可跨 OS 线程**（由 `Instance<T>()` 线程局部语义决定）。
 - **`Frame::Loop(true)`**：进入 daemon 后默认不返回；示例进程需外部结束。
 - **同 fd 多 action**：memcache 示例可能打出 `item conflict` 告警，属示例用法问题，不是 ucontext 回归。
-- `app/st_c.*` / `app/st_sys.*` 语义上是库代码，物理路径仍在 `app/`（未搬迁）。
-- **LICENSE**：根目录尚未发布；vendored 许可见 [`COPYRIGHT`](COPYRIGHT)（决策 D6）。
+- `app/st_c.*` / `app/st_sys.*` 语义上是库代码，物理路径仍在 `app/`（未搬迁）；`StServer` 已不再 include `app/st_c.h`（plan/07 C4）。
+- **LICENSE**：根目录尚未发布；vendored 许可见 [`COPYRIGHT`](COPYRIGHT)。
 
 更多执行记录见 [`plan/04-regression-checklist.md`](plan/04-regression-checklist.md)。贡献约定见 [`AGENTS.md`](AGENTS.md)。
 
