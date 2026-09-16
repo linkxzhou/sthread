@@ -564,6 +564,15 @@ bool StEventSchedule::Schedule(StThreadItem *thread, StEventItemQueue *fdset,
     }
   }
   Delete(recv_fdset);
+  /* Schedule 只摘内核兴趣；若不把 item 从线程 m_fdset_ 摘掉，
+   * 下次 WaitFdReady 会带着陈旧 item 再 Delete —— fd 复用时
+   * m_event_[fd] 已是新 item，触发 "item delete failed" 误报。 */
+  {
+    StEventItem *_it = NULL, *_nx = NULL;
+    CPP_TAILQ_FOREACH_SAFE(_it, &recv_fdset, m_next_, _nx) {
+      CPP_TAILQ_REMOVE(&recv_fdset, _it, m_next_);
+    }
+  }
   // 如果没有收到任何recv事件则表示超时或者异常
   if (recv_num == 0) {
     errno = ETIME;
