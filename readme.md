@@ -50,6 +50,10 @@ sthread
 
 # 快速开始
 
+## stlib
+
+基础组件说明、线程模型约定、裸宏清单与最小可运行示例见 [`stlib/README.md`](stlib/README.md)。
+
 ## 编译
 
 在仓库根目录：

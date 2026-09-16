@@ -3,15 +3,15 @@ include $(ST_ROOT)/make.inc
 
 STLIB_SRC = $(ST_ROOT)/stlib
 
-# st_log.cc / st_test.cc 是 stlib 里唯二的非 header-only 实现，
-# 测试直接把它们编进来，不依赖 stlib/libst.a。
+# 测试直接编 st_log.cc + st_test.cc（D6：st_test 不进 libst）。
+# 不依赖 stlib/libst.a，避免和 ucontext 目标重复链接。
 COMMON_SRC = $(STLIB_SRC)/st_log.cc $(STLIB_SRC)/st_test.cc
 
 INCLUDE = $(ST_INC)
 FLAGS   = $(ST_CXXFLAGS) $(ST_LDFLAGS) $(ST_LDLIBS)
 
 TEST_BINS = st_buffer_test st_hash_list_test st_heap_test st_heap_timer_test \
-	st_netaddr_test st_buffer_pool_test
+	st_netaddr_test st_buffer_pool_test st_demo_usage_test
 
 .PHONY: all run clean \
 	stlib_buffer stlib_hash_list stlib_heap stlib_heap_timer

@@ -20,8 +20,8 @@ endif
 #     st_thread.o      协程与调度
 #     st_connection.o  连接对象
 #     st_sys.o         带超时的内部 IO 封装
-#   基础设施（stlib/，唯二的非 header-only 实现 + ucontext 底座）
-#     st_log.o  st_test.o  ucontext/ucontext.o  ucontext/asm.o
+#   基础设施（stlib/ + ucontext；D6：不含 st_test.o）
+#     st_log.o  st_context.o  ucontext/ucontext.o  ucontext/asm.o
 #   对外 C 风格 API 与 syscall hook（当前物理位置仍在 app/ 下）
 #     st_c.o           udp_sendrecv / tcp_sendrecv / st_set_private ...
 #     st_sys.o         socket/close/read/write... 的 hook
@@ -48,7 +48,6 @@ UNAME_M := $(shell uname -m)
 UCONTEXT_ASM_O = $(ST_ROOT)/stlib/ucontext/asm.o
 
 STLIB_O = $(ST_ROOT)/stlib/st_log.o \
-	$(ST_ROOT)/stlib/st_test.o \
 	$(ST_ROOT)/stlib/st_context.o \
 	$(ST_ROOT)/stlib/ucontext/ucontext.o \
 	$(UCONTEXT_ASM_O)

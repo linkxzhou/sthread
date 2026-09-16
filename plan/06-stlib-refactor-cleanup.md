@@ -241,13 +241,13 @@ sthread 的定位是「基于协程的高性能网络库」，stlib 是它的底
 ### D. 优化
 
 - [x] 堆操作 sift 化完成，基准数据写入落地记录
-- [ ] `Any` 简化后调用点零改动（D3）
-- [ ] 日志多线程安全（D5）
+- [x] `Any` 简化后调用点零改动（D3）
+- [x] 日志多线程安全（D5）
 
 ### E. 文档
 
-- [ ] `stlib` 组件文档更新；`AGENTS.md`、`thirdparty/readme.md` 同步
-- [ ] 本文档补「落地记录」节：每 Phase 的实际结果与偏差
+- [x] `stlib` 组件文档更新；`AGENTS.md`、`thirdparty/readme.md` 同步
+- [x] 本文档补「落地记录」节：每 Phase 的实际结果与偏差
 
 ---
 
@@ -322,3 +322,14 @@ sthread 的定位是「基于协程的高性能网络库」，stlib 是它的底
 - 三件套：`make test` / `make lib`+`make -C tests run` / `make apps` 全绿；`format-check` 通过。**未 push**（按用户要求）。
 
 出口条件满足 → 可进 Phase 4（文档 / D6 剥离 `st_test`）。
+
+### Phase 4 · 通用库收尾落地（2026-09-16）
+
+- D6：`st_test.o` 从 `libst` / `libmthread` 移除；`stlib/tests` 与 `tests/` 构建时单独编入 `st_test.cc`。
+  - 验证：`ar t` / `nm` 产物中无 `StTester`；unittest / stlib tests 全绿。
+- 文档：新增 [`stlib/README.md`](../stlib/README.md)（组件清单、线程模型、裸宏清单、最小示例指引）；根 `README.md` / `AGENTS.md` 同步（产物表去掉 `st_test.o`）；`thirdparty/readme.md` 已无 tiny/uthread 残留。
+- 示例：`stlib/tests/st_demo_usage_test.cc`（堆 + 缓冲池 + `TimeMs`，可编译运行）；完整 HTTP 样例仍指向 `app/st_httpserver`。
+- 依赖：`otool -L libmthread.so` / `libst.so` 仅系统库（libc++、libSystem）。
+- 三件套 + `format-check` 全绿。**未 push**。
+
+plan/06 全部 Phase 0–4 出口条件满足。

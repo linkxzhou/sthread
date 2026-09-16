@@ -20,7 +20,7 @@ sthread 是一个**基于协程的高性能网络库**，C++98，提供非阻塞
 | --- | --- |
 | `stlib/` | 绿：`-std=c++98`，`make test`（stlib/tests）可跑 |
 | `make lib` | 绿：产出 `libmthread.a` / `.so`，无第三方运行时依赖 |
-| `make apps` | 绿：dns / memcache / wrk **可编译** |
+| `make apps` | 绿：dns / memcache / wrk / httpserver **可编译** |
 | `make -C tests` | 绿：核心 unittest 可编译；多数可跑 |
 | Apple Silicon arm64 | **真实 ucontext/asm**（`NEEDARM64CONTEXT`） |
 | keepalive（L4） | **已修**：`eTCP_KEEPLIVE_CONN=0x11`，`Keeplive()`=`IS_KEEPLIVE` |
@@ -36,7 +36,7 @@ sthread 是一个**基于协程的高性能网络库**，C++98，提供非阻塞
 
 `libmthread` 零第三方运行时依赖。`ldd` / `otool -L` 只应见系统库。
 
-gperftools / ASan 仅为可选开发期开关，默认关（`make.inc`）。测试用自带 `stlib/st_test.h`，不要引入 gtest。
+gperftools / ASan 仅为可选开发期开关，默认关（`make.inc`）。测试用自带 `stlib/st_test.h` / `st_test.cc`（**仅测试构建**，不进 libmthread），不要引入 gtest。
 
 ### 2. 多平台协程
 
@@ -94,7 +94,7 @@ C++：`StClientConnection`、`StServer`。示例兼容层：`app/st_action.h`、
 
 | 路径 | 职责 |
 | --- | --- |
-| `stlib/` | 基础库（多为 header-only）+ ucontext |
+| `stlib/` | 基础库（多为 header-only）+ ucontext；说明见 [`stlib/README.md`](stlib/README.md) |
 | `src/` | 框架核心 → 编进 libmthread |
 | `app/st_c.*` `app/st_sys.*` `app/st_action.*` | **库代码**（物理仍在 app/） |
 | `app/st_dns` 等 | 示例 |
@@ -111,7 +111,7 @@ C++：`StClientConnection`、`StServer`。示例兼容层：`app/st_action.h`、
 | 目标 | 源 |
 | --- | --- |
 | `src/st_thread.o` `st_connection.o` `st_sys.o` | `src/*.cc` |
-| `stlib/st_log.o` `st_test.o` `st_context.o` | stlib |
+| `stlib/st_log.o` `st_context.o` | stlib（**不含** `st_test.o`，D6） |
 | `stlib/ucontext/ucontext.o` + `asm.o` （含 arm64） | ucontext |
 | `app/st_c.o` `st_sys.o` `st_action.o` | app 下的库文件 |
 

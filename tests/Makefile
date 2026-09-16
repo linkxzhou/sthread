@@ -2,6 +2,8 @@ ST_ROOT = ..
 include $(ST_ROOT)/make.inc
 
 LIB = $(ST_ROOT)/libmthread.a
+# D6：测试框架不进 libmthread，unittest 单独编进 st_test.cc
+ST_TEST_SRC = $(ST_ROOT)/stlib/st_test.cc
 INCLUDE = $(ST_INC)
 FLAGS = $(ST_CXXFLAGS) $(ST_LDFLAGS) $(ST_LDLIBS)
 
@@ -18,82 +20,82 @@ all: singleton base thread manager connection session keepalive main \
 extra: c
 
 singleton: st_singleton_unittest.cpp
-	$(CC) $< $(INCLUDE) $(FLAGS) $(LIB) -o st_singleton_unittest
+	$(CC) $< $(ST_TEST_SRC) $(INCLUDE) $(FLAGS) $(LIB) -o st_singleton_unittest
 
 base: st_base_unittest.cpp
-	$(CC) $< $(INCLUDE) $(FLAGS) $(LIB) -o st_base_unittest
+	$(CC) $< $(ST_TEST_SRC) $(INCLUDE) $(FLAGS) $(LIB) -o st_base_unittest
 
 thread: st_thread_unittest.cpp
-	$(CC) $< $(INCLUDE) $(FLAGS) $(LIB) -o st_thread_unittest
+	$(CC) $< $(ST_TEST_SRC) $(INCLUDE) $(FLAGS) $(LIB) -o st_thread_unittest
 
 manager: st_manager_unittest.cpp
-	$(CC) $< $(INCLUDE) $(FLAGS) $(LIB) -o st_manager_unittest
+	$(CC) $< $(ST_TEST_SRC) $(INCLUDE) $(FLAGS) $(LIB) -o st_manager_unittest
 
 connection: st_connection_unittest.cpp
-	$(CC) $< $(INCLUDE) $(FLAGS) $(LIB) -o st_connection_unittest
+	$(CC) $< $(ST_TEST_SRC) $(INCLUDE) $(FLAGS) $(LIB) -o st_connection_unittest
 
 session: st_session_unittest.cpp
-	$(CC) $< $(INCLUDE) $(FLAGS) $(LIB) -o st_session_unittest
+	$(CC) $< $(ST_TEST_SRC) $(INCLUDE) $(FLAGS) $(LIB) -o st_session_unittest
 
 keepalive: st_keepalive_unittest.cpp
-	$(CC) $< $(INCLUDE) $(FLAGS) $(LIB) -o st_keepalive_unittest
+	$(CC) $< $(ST_TEST_SRC) $(INCLUDE) $(FLAGS) $(LIB) -o st_keepalive_unittest
 
 c: st_c_unittest.cpp
-	$(CC) $< $(INCLUDE) $(FLAGS) $(LIB) -o st_c_unittest
+	$(CC) $< $(ST_TEST_SRC) $(INCLUDE) $(FLAGS) $(LIB) -o st_c_unittest
 
 main: st_main_unittest.cpp
-	$(CC) $< $(INCLUDE) $(FLAGS) $(LIB) -o st_main_unittest
+	$(CC) $< $(ST_TEST_SRC) $(INCLUDE) $(FLAGS) $(LIB) -o st_main_unittest
 
 server: st_server_unittest.cpp
-	$(CC) $< $(INCLUDE) $(FLAGS) $(LIB) -o st_server_unittest
+	$(CC) $< $(ST_TEST_SRC) $(INCLUDE) $(FLAGS) $(LIB) -o st_server_unittest
 
 ucontext: st_ucontext_unittest.cpp
-	$(CC) $< $(INCLUDE) $(FLAGS) $(LIB) -o st_ucontext_unittest
+	$(CC) $< $(ST_TEST_SRC) $(INCLUDE) $(FLAGS) $(LIB) -o st_ucontext_unittest
 
 util: st_util_netaddr_unittest.cpp
-	$(CC) $< $(INCLUDE) $(FLAGS) $(LIB) -o st_util_netaddr_unittest
+	$(CC) $< $(ST_TEST_SRC) $(INCLUDE) $(FLAGS) $(LIB) -o st_util_netaddr_unittest
 
 buffer: st_buffer_unittest.cpp
-	$(CC) $< $(INCLUDE) $(FLAGS) $(LIB) -o st_buffer_unittest
+	$(CC) $< $(ST_TEST_SRC) $(INCLUDE) $(FLAGS) $(LIB) -o st_buffer_unittest
 
 heap: st_heap_unittest.cpp
-	$(CC) $< $(INCLUDE) $(FLAGS) $(LIB) -o st_heap_unittest
+	$(CC) $< $(ST_TEST_SRC) $(INCLUDE) $(FLAGS) $(LIB) -o st_heap_unittest
 
 hash: st_hash_unittest.cpp
-	$(CC) $< $(INCLUDE) $(FLAGS) $(LIB) -o st_hash_unittest
+	$(CC) $< $(ST_TEST_SRC) $(INCLUDE) $(FLAGS) $(LIB) -o st_hash_unittest
 
 scheduler: st_scheduler_unittest.cpp
-	$(CC) $< $(INCLUDE) $(FLAGS) $(LIB) -o st_scheduler_unittest
+	$(CC) $< $(ST_TEST_SRC) $(INCLUDE) $(FLAGS) $(LIB) -o st_scheduler_unittest
 
 connmgr: st_conn_manager_unittest.cpp
-	$(CC) $< $(INCLUDE) $(FLAGS) $(LIB) -o st_conn_manager_unittest
+	$(CC) $< $(ST_TEST_SRC) $(INCLUDE) $(FLAGS) $(LIB) -o st_conn_manager_unittest
 
 loopback: st_loopback_unittest.cpp
-	$(CC) $< $(INCLUDE) $(FLAGS) $(LIB) -o st_loopback_unittest
+	$(CC) $< $(ST_TEST_SRC) $(INCLUDE) $(FLAGS) $(LIB) -o st_loopback_unittest
 
 context: st_context_unittest.cpp
-	$(CC) $< $(INCLUDE) $(FLAGS) $(LIB) -o st_context_unittest
+	$(CC) $< $(ST_TEST_SRC) $(INCLUDE) $(FLAGS) $(LIB) -o st_context_unittest
 
 accept: st_accept_unittest.cpp
-	$(CC) $< $(INCLUDE) $(FLAGS) $(LIB) -o st_accept_unittest
+	$(CC) $< $(ST_TEST_SRC) $(INCLUDE) $(FLAGS) $(LIB) -o st_accept_unittest
 
 sysapi: st_sys_api_unittest.cpp
-	$(CC) $< $(INCLUDE) $(FLAGS) $(LIB) -o st_sys_api_unittest
+	$(CC) $< $(ST_TEST_SRC) $(INCLUDE) $(FLAGS) $(LIB) -o st_sys_api_unittest
 
 connio: st_conn_io_unittest.cpp
-	$(CC) $< $(INCLUDE) $(FLAGS) $(LIB) -o st_conn_io_unittest
+	$(CC) $< $(ST_TEST_SRC) $(INCLUDE) $(FLAGS) $(LIB) -o st_conn_io_unittest
 
 logbuf: st_log_buffer_extra_unittest.cpp
-	$(CC) $< $(INCLUDE) $(FLAGS) $(LIB) -o st_log_buffer_extra_unittest
+	$(CC) $< $(ST_TEST_SRC) $(INCLUDE) $(FLAGS) $(LIB) -o st_log_buffer_extra_unittest
 
 harvest: st_harvest_unittest.cpp
-	$(CC) $< $(INCLUDE) $(FLAGS) $(LIB) -o st_harvest_unittest
+	$(CC) $< $(ST_TEST_SRC) $(INCLUDE) $(FLAGS) $(LIB) -o st_harvest_unittest
 
 httpserver: st_http_server_unittest.cpp
-	$(CC) $< $(INCLUDE) $(FLAGS) $(LIB) -o st_http_server_unittest
+	$(CC) $< $(ST_TEST_SRC) $(INCLUDE) $(FLAGS) $(LIB) -o st_http_server_unittest
 
 covextra: st_coverage_extra_unittest.cpp
-	$(CC) $< $(INCLUDE) $(FLAGS) $(LIB) -o st_coverage_extra_unittest
+	$(CC) $< $(ST_TEST_SRC) $(INCLUDE) $(FLAGS) $(LIB) -o st_coverage_extra_unittest
 
 RUN_TESTS = \
 	st_singleton_unittest st_base_unittest st_thread_unittest \
