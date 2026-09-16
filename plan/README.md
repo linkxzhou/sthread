@@ -2,9 +2,9 @@
 
 本目录是 sthread 的**文档化改进计划**。本目录下所有文件**只描述计划，不包含任何功能代码变更**。
 
-> 阅读顺序建议：先读本文「关键结论」与「硬约束」，再按「执行顺序」阅读；06/07 已完成，下一篇是 [`08`](08-apps-bench-dnsserver.md)。
+> 阅读顺序建议：先读本文「关键结论」与「硬约束」，再按「执行顺序」阅读；01～08 均已完成。
 
-> **进度（2026-09-16）**：`01`～`07` 均已落地并合入 `origin/master`。
+> **进度（2026-09-16）**：`01`～`08` 均已落地（`08` 在 PR 中，基线冻结于 Linux agent VM）。
 > - `01`：stlib 绿基线、根 makefile、D1/D2/D5/D6（COPYRIGHT）
 > - `02`：协程调度可编译（PR #4）
 > - `03`：IO/网络与 `libmthread`（PR #5）
@@ -12,7 +12,7 @@
 > - `05`：README / AGENTS / 关键类三件套注释
 > - `06`：**✅ 已完成** — stlib 清理/优化（Phase 0–4，收尾 `cf62edd`）——[`06`](06-stlib-refactor-cleanup.md)
 > - `07`：**✅ 已完成** — src 清理/优化（Phase 0–4，收尾 `ae4a040`/`43bc36f`）——[`07`](07-src-refactor-optimize.md)
-> - `08`：**📝 计划中** — apps 压测闭环 + `st_dnsserver` + 结构整理——[`08`](08-apps-bench-dnsserver.md)
+> - `08`：**✅ 已完成** — apps 压测闭环 + `st_dnsserver` + 结构整理——[`08`](08-apps-bench-dnsserver.md)
 >
 > 各份 `0x-*.md` 正文含计划原文 + §9 落地记录；**当前状态以各文顶部「状态」行、根 README、AGENTS 为准**。
 
@@ -89,7 +89,7 @@
             06 stlib 清理/优化 ──→ 07 src 清理/优化     （✅ 已完成）
                                          │
                                          ▼
-                               08 apps 压测 / dnsserver   （📝 计划中）
+                               08 apps 压测 / dnsserver   （✅ 已完成）
 ```
 
 | 序号 | 文档 | 范围 | 出口条件（Definition of Done） |
@@ -101,7 +101,7 @@
 | 05 ✅ | [`05-docs-agents-readme.md`](05-docs-agents-readme.md) | `readme.md`、代码注释、`AGENTS.md` | readme 示例与真实 API 一致且可复制运行；`AGENTS.md` 生效 |
 | 06 ✅ | [`06-stlib-refactor-cleanup.md`](06-stlib-refactor-cleanup.md) | stlib 死代码 / 潜伏 bug / 堆 sift / 去 st_test | 三件套全绿；§9 落地完整 |
 | 07 ✅ | [`07-src-refactor-optimize.md`](07-src-refactor-optimize.md) | src 清理 / 泄漏修复 / `WaitFdReady` / 文档 | 三件套全绿；§9 落地完整 |
-| 08 📝 | [`08-apps-bench-dnsserver.md`](08-apps-bench-dnsserver.md) | HTTP×wrk 报告、`st_dnsserver`、dns 压测、apps 结构 | `make bench-http`/`bench-dns` 可复现；报告入库策略见 08-D3 |
+| 08 ✅ | [`08-apps-bench-dnsserver.md`](08-apps-bench-dnsserver.md) | HTTP×wrk 报告、`st_dnsserver`、dns 压测、apps 结构 | `make bench-http`/`bench-dns` 可复现；冻结基线见 `reports/baseline-*.md` |
 
 ---
 
@@ -317,6 +317,6 @@ app/st_sys.h:  ssize_t __sendto(int fd, const void *message, size_t length, int 
 | `05-docs-agents-readme.md` | `readme.md` 重写 / 注释规范 / `AGENTS.md` |
 | `06-stlib-refactor-cleanup.md` | stlib 清理与优化（✅ 已完成） |
 | `07-src-refactor-optimize.md` | src 清理与优化（✅ 已完成） |
-| `08-apps-bench-dnsserver.md` | apps 压测闭环 + `st_dnsserver`（📝 计划中） |
+| `08-apps-bench-dnsserver.md` | apps 压测闭环 + `st_dnsserver`（✅ 已完成） |
 
 根目录另有 [`../AGENTS.md`](../AGENTS.md)：面向 AI 助手与新贡献者的仓库约定。

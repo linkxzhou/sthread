@@ -1,6 +1,6 @@
 # 08 · apps 优化：HTTP/DNS 压测闭环 + st_dnsserver + 结构整理
 
-> **状态：📝 计划中（未实现）** · 2026-09-16 起草。
+> **状态：✅ 已完成** · 2026-09-16 落地（Phases 0–4）。冻结基线：[`reports/baseline-http.md`](../reports/baseline-http.md) / [`reports/baseline-dns.md`](../reports/baseline-dns.md)。
 >
 > **决策：D1–D6 已接受**（2026-09-16）：D1=b 内嵌后抽、D2=b 空 ANSWER、D3=c 冻结 baseline、D4=a 短连接为主、D5=a 5353、D6=b wrk 小改 SUMMARY/JSON。
 >
@@ -225,22 +225,22 @@ scripts/bench_http.sh   # 或 make bench-http
 
 ### A. HTTP
 
-- [ ] `make bench-http` 可复现
-- [ ] 报告含 req/s、错误、commit、平台
-- [ ] curl 冒烟仍过
+- [x] `make bench-http` 可复现
+- [x] 报告含 req/s、错误、commit、平台
+- [x] curl 冒烟仍过
 
 ### B. DNS
 
-- [ ] `st_dnsserver` 监听并可被 `st_dns` 查到 A 记录
-- [ ] `make bench-dns` 产出 QPS 报告；进程正常退出
-- [ ] 默认压测不依赖公网
+- [x] `st_dnsserver` 监听并可被 `st_dns` 查到 A 记录
+- [x] `make bench-dns` 产出 QPS 报告；进程正常退出
+- [x] 默认压测不依赖公网
 
 ### C. 工程
 
-- [ ] `make apps` 含 dnsserver
-- [ ] 无新增第三方；`otool -L` 样例仍只链系统库 + libmthread
-- [ ] README / AGENTS 命令与真实一致
-- [ ] 工作树无强制提交的 app 二进制
+- [x] `make apps` 含 dnsserver
+- [x] 无新增第三方；`ldd` / `otool -L` 样例仍只链系统库 + libmthread
+- [x] README / AGENTS 命令与真实一致
+- [x] 工作树无强制提交的 app 二进制
 
 ---
 
@@ -266,7 +266,40 @@ plan/08-apps-bench-dnsserver.md  # 本文
 
 > 每完成一个 Phase，在此追加：日期、提交号、三件套/`make apps`/`make bench-*` 结果、报告路径、偏差。
 
-（待填写）
+### 2026-09-16 · Linux x86_64 agent VM（g++ 13.3）
+
+| Phase | 提交 | 结果 |
+| --- | --- | --- |
+| 0–3 | `ea5d8f5` | `st_dnsserver`、`st_dns` CLI/退出、`st_wrk` SUMMARY/`--json`、`scripts/bench_*.sh`、根 `make bench-*`、docs |
+| 修 g++13 / 测试 | `959ac78` | `tcp_sendrecv` `_release_conn`；harvest 去掉 `st_kqueue.h`；loopback TCP 先于 UDP；app 二进制依赖 `libmthread.a`；`make bench-*` 强制 `TRACE=0` |
+| 修压测可跑 | `2ed314b` | `StConnection::Reset` 归还后再取 buffer（否则第二次 accept `recvbuf==NULL`）；`LOG_TRACE` 无 `-DTRACE` 时编掉；dnsserver UDP fd 只听 IN；DNS 矩阵 `-n == -c` |
+| 4 冻结 | 本提交 | [`reports/baseline-http.md`](../reports/baseline-http.md) / [`reports/baseline-dns.md`](../reports/baseline-dns.md)；本文与 `plan/README.md` 标完成 |
+
+**验证（冻结跑，commit `2ed314b`，`TRACE=0 DEBUG=1`）：**
+
+| 命令 | 结果 |
+| --- | --- |
+| `make lib` | 绿（`libmthread.a` / `.so`） |
+| `make -C stlib/tests run` | 绿 `ALL STLIB TESTS PASSED` |
+| `make apps` | 绿：dns / memcache / wrk / httpserver / dnsserver；`ldd` 仅系统库 |
+| `BENCH_PROFILE=smoke make bench-http` | 绿。`SUMMARY complete=10 requests=10 req_per_s=2590.67 bytes=1500 errors=0 runtime_us=3860` |
+| `BENCH_PROFILE=smoke make bench-dns` | 绿。`SUMMARY success=10 fail=0 qps=1000.00 elapsed_ms=10 pending=0`；进程退出 |
+| curl 5× `GET /` | 全过（`hello from sthread`） |
+| `make -C tests run` | **未全绿**（见偏差） |
+
+**偏差（相对计划原文）：**
+
+1. **DNS 矩阵 `-n == -c`（每协程 1 次查询）。** 计划示例 `-c 100 -n 1000`。同进程里**一条协程连续多次** `udp_sendrecv` 目前只有第一次成功（epoll/item 残留）；多协程并行（各 1 次）与多进程各 1 次均成功。已写进 `st_dns` README / `bench_dns.sh` / baseline-dns。
+2. **`make bench-*` 强制 `TRACE=0`。** `make.inc` 默认 `TRACE=1`；本落地让 `LOG_TRACE` 真正受 `#ifdef TRACE` 控制，否则 PVERB 会淹没 SUMMARY 并把 dnsserver 打出 GB 级日志。
+3. **`StConnection::Reset` 补取 buffer。** 属 plan/07 B12 池化缺口（`FreePtr`→Reset 把 recv/send 置 NULL，第二次 accept 失败）。不是调度器/栈/枚举布局改动。HTTP 短连接主路径因此才能 `errors=0`。
+4. **`st_wrk -d` 仍是时长标签。** 每 worker 一批就退出；smoke 的 2590 req/s 来自 ~4 ms 内 10 个短连接，不是 3 s 稳态。help 文案已说明（D6）。
+5. **Linux `make -C tests run`：** `st_context_unittest` 仍 SIGABRT（64 KiB `makecontext` 栈，suite `set -e` 在此停下）。其后单独跑：harvest / http_server / dns_proto / loopback / accept 等过；`st_sys_api_unittest` 的 UDP `st_recvfrom==4` 仍 FAIL（同进程 TCP 测试之后的 UDP，与偏差 1 同类）。**未改** `STACK` / `MEM_PAGE_SIZE`。macOS 三件套以既有 CI 为准。
+6. **g++ 13：** `st_connection.h` include `st_sys.h`（two-phase lookup `st_connect`）；`st_wrk`：`sys/wait.h`、`error_counts` 改名、http_parser designated initializer 顺序。
+7. **keepalive HTTP 矩阵未做**（D4=a）。httpserver 无 `-k`。
+8. **未发明 `LICENSE`。**
+
+**未改：** `src/`/`stlib` 调度模型、`STACK` 260096、`MEM_PAGE_SIZE` 2048、枚举数值、`Instance<T>()` TLS。
+
 
 ---
 

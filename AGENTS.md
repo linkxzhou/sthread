@@ -155,7 +155,9 @@ make -C stlib/tests run    # stlib 单测
 | `app/st_c.h` 非纯 C 可用 | 已知限制 |
 | `app/st_c|st_sys` 未搬入 `src/` | 遗留目录语义（C4 已去掉 server→`st_c.h`） |
 | 根 `LICENSE` 未定 | 待维护者 |
-| 高并发 / wrk QPS | 冻结基线见 `reports/baseline-*.md`（plan/08）；短连接、单 OS 线程事件循环 |
+| 高并发 / wrk QPS | 冻结基线见 `reports/baseline-*.md`（plan/08，Linux smoke）；短连接、单 OS 线程；`-d` 为时长标签 |
+| 同进程连续 UDP | 一条协程多次 `udp_sendrecv` 目前只有第一次成功；DNS 压测用 `-n == -c` |
+| Linux `st_context_unittest` | 64 KiB `makecontext` 栈 SIGABRT（未改 `STACK`） |
 
 ### 推荐对外 include（libmthread 使用方）
 
