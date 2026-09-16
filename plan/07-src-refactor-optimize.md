@@ -296,7 +296,7 @@
 
 ### Phase 2 · P-B 潜伏 bug（2026-09-16）
 
-- **提交**：见本批 commit
+- **提交**：`69fb180`
 - **落地（按 D1–D6）**
   - **B1** `FreeStack` 先 `free(m_vaddr_)` 再释放 `Stack`
   - **B2** `Reset` 不再 `free(m_private_)`；`SetPrivate`/`st_set_private` 注明所有权归调用方
