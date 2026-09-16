@@ -11,8 +11,10 @@
 
 #include "app/st_c.h"
 #include "app/st_dns/dns_proto.h"
+#include "src/st_public.h"
 #include "src/st_server.h"
 #include "src/st_sys.h"
+#include "stlib/st_log.h"
 #include "stlib/st_util.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -55,6 +57,8 @@ int main(int argc, char *argv[]) {
     }
   }
 
+  LOG_LEVEL(LLOG_ERR);
+
   if (!st_init_frame()) {
     fprintf(stderr, "st_init_frame failed\n");
     return 1;
@@ -73,9 +77,19 @@ int main(int argc, char *argv[]) {
     fprintf(stderr, "CreateSocket failed: %d\n", fd);
     return 1;
   }
+  /* CreateSocket 默认 EnableOutput；UDP 常可写会导致 st_recvfrom 空转。 */
+  {
+    StEventItem *item = GlobalEventSchedule()->GetEventItem(fd);
+    if (item != NULL) {
+      item->DisableOutput();
+      item->EnableInput();
+      GlobalEventSchedule()->Add(item);
+    }
+  }
 
   printf("sthread dns server listening on udp://%s:%d/\n", bind_ip, port);
   printf("zone: *.bench.local / *.bench.sthread.local -> 127.0.0.1 (A)\n");
+  fflush(stdout);
 
   for (;;) {
     char qbuf[ST_DNS_MAX_PKT];

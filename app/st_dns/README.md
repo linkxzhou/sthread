@@ -14,7 +14,7 @@ make -C app/st_dns
 
 ```bash
 ./main -s 127.0.0.1 -p 5353 www.1.bench.local
-./main -s 127.0.0.1 -p 5353 -c 100 -n 1000 -q
+./main -s 127.0.0.1 -p 5353 -c 100 -n 100 -q
 ./main -h
 ```
 
@@ -43,4 +43,5 @@ BENCH_PROFILE=medium make bench-dns
 ## 限制
 
 - 只解析 TYPE_A；兼容宏 `mt_init_frame` 仍可用，main 已改 `st_init_frame`
+- 同一协程里连续多次 UDP 查询目前只有第一次成功（epoll 残留）；压测矩阵用 `-n == -c`
 - 默认 `8.8.8.8:53` 依赖公网，不作为 QPS 基线

@@ -7,6 +7,7 @@
 #include "process.h"
 #include "stats.h"
 #include "utils.h"
+#include "stlib/st_log.h"
 #include <vector>
 
 static wrk::config cg;
@@ -154,6 +155,9 @@ void callback(void *data) {
 
   int ret = mt_init_frame();
   mt_set_hook_flag();
+  if (!wrk::Util::s_verbose_) {
+    LOG_LEVEL(LLOG_ERR);
+  }
   IMtActionClient *actionframe = Instance<IMtActionClient>();
 
   // -------------- 2.创建action --------------

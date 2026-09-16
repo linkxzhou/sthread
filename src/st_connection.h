@@ -32,7 +32,10 @@ public:
 
   virtual ~StConnection() {
     this->Close();
-    this->Reset();
+    stlib::Instance<stlib::StBufferPool>()->FreeBuffer(m_sendbuf_);
+    stlib::Instance<stlib::StBufferPool>()->FreeBuffer(m_recvbuf_);
+    m_sendbuf_ = NULL;
+    m_recvbuf_ = NULL;
   }
 
   /* Client path must override; server accept path does not use Create. */
@@ -69,13 +72,15 @@ public:
   inline int32_t GetTimeout() { return m_timeout_; }
 
   virtual void Reset() {
-    /* B12: 池化 FreePtr→Reset 必须关 socket，避免 fd 泄漏。 */
+    /* B12: 池化 FreePtr→Reset 必须关 socket，避免 fd 泄漏。
+     * 归还 buffer 后再取新的，否则二次 AllocPtr 得到 recvbuf==NULL。 */
     Close();
     stlib::Instance<stlib::StBufferPool>()->FreeBuffer(m_sendbuf_);
     stlib::Instance<stlib::StBufferPool>()->FreeBuffer(m_recvbuf_);
-
-    m_sendbuf_ = NULL;
-    m_recvbuf_ = NULL;
+    m_sendbuf_ =
+        stlib::Instance<stlib::StBufferPool>()->GetBuffer(ST_SEND_BUFFSIZE);
+    m_recvbuf_ =
+        stlib::Instance<stlib::StBufferPool>()->GetBuffer(ST_RECV_BUFFSIZE);
     m_type_ = eUNDEF_CONN;
     m_timeout_ = 30000;
   }

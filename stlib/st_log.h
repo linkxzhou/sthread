@@ -99,6 +99,7 @@ private:
     }                                                                          \
   } while (0)
 
+#ifdef TRACE
 #define LOG_TRACE(...)                                                         \
   do {                                                                         \
     if (::stlib::StLogger::Instance().LogAble(LLOG_PVERB) != 0) {              \
@@ -106,6 +107,11 @@ private:
                                           ##__VA_ARGS__);                      \
     }                                                                          \
   } while (0)
+#else
+#define LOG_TRACE(...)                                                         \
+  do {                                                                         \
+  } while (0)
+#endif
 
 #define LOG_LEVEL(level) ::stlib::StLogger::Instance().SetLevel(level)
 

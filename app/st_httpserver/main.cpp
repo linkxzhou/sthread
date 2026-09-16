@@ -9,6 +9,7 @@
 
 #include "app/st_c.h"
 #include "src/st_server.h"
+#include "stlib/st_log.h"
 #include "stlib/st_util.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -76,6 +77,9 @@ int main(int argc, char *argv[]) {
     }
   }
 
+  /* 压测默认关掉 PVERB：LOG_TRACE 会淹没 wrk SUMMARY 并拖垮 QPS */
+  LOG_LEVEL(LLOG_ERR);
+
   if (!st_init_frame()) {
     fprintf(stderr, "st_init_frame failed\n");
     return 1;
@@ -100,6 +104,7 @@ int main(int argc, char *argv[]) {
 
   printf("sthread http server listening on http://0.0.0.0:%d/\n", port);
   printf("try: curl http://127.0.0.1:%d/\n", port);
+  fflush(stdout);
   server->Loop();
   return 0;
 }

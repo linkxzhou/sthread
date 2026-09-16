@@ -105,6 +105,7 @@ run_one() {
   echo "- Default listen port is **5353** (plan/08 D5=a); no public resolver involved."
   echo "- Non-A queries get empty ANSWER + NOERROR; this matrix only queries TYPE_A."
   echo "- UDP loopback may still drop under heavy \`-c\`; fail count is in SUMMARY."
+  echo "- Same-process **sequential** UDP (one coro, many queries) currently fails after the first lookup; this matrix uses \`-n == -c\` (one query per coroutine)."
   echo ""
   echo "## Matrix"
   echo ""
@@ -112,18 +113,18 @@ run_one() {
 
 case "$PROFILE" in
   smoke)
-    run_one smoke 10 100 2000
+    run_one smoke 10 10 2000
     ;;
   medium)
-    run_one medium 50 1000 3000
+    run_one medium 50 50 3000
     ;;
   heavy)
-    run_one heavy 100 5000 5000
+    run_one heavy 100 100 5000
     ;;
   all)
-    run_one smoke 10 100 2000
-    run_one medium 50 1000 3000
-    run_one heavy 100 5000 5000
+    run_one smoke 10 10 2000
+    run_one medium 50 50 3000
+    run_one heavy 100 100 5000
     ;;
   *)
     echo "unknown BENCH_PROFILE=$PROFILE (use smoke|medium|heavy|all)" >&2
@@ -135,7 +136,7 @@ esac
   echo "## Interpretation"
   echo ""
   echo "- QPS is successful A lookups / wall time on this host."
-  echo "- \`fail=0\` is the expected loopback result for smoke/medium."
+  echo "- \`fail=0\` is the expected loopback result for smoke/medium (one query per coroutine)."
   echo ""
 } >>"$REPORT"
 

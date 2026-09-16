@@ -47,7 +47,9 @@ static void usage(const char *prog) {
           "\n"
           "If name is omitted, queries www.{i}.bench.local (use with local "
           "st_dnsserver).\n"
-          "Process always exits after queries finish.\n",
+          "Process always exits after queries finish.\n"
+          "Note: sequential UDP in one coroutine currently only the first\n"
+          "query succeeds; bench scripts use -n == -c (one query per coro).\n",
           prog, DNS_TIMEOUT);
 }
 
@@ -213,6 +215,7 @@ int main(int argc, char *argv[]) {
 
   printf("SUMMARY success=%d fail=%d qps=%.2f elapsed_ms=%lu pending=%d\n",
          g_ok, g_fail, qps, (unsigned long)elapsed, g_pending);
+  fflush(stdout);
 
   delete[] args;
   return (g_ok > 0 && g_pending == 0) ? 0 : 1;
