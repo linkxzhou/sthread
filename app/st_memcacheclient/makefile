@@ -9,7 +9,7 @@ LIBS = $(ST_ROOT)/libmthread.a $(ST_LDFLAGS) $(ST_LDLIBS)
 
 all: main
 
-main: mt_array.cpp memcache.cpp main.cpp
+main: mt_array.cpp memcache.cpp main.cpp $(ST_ROOT)/libmthread.a
 	$(CC) mt_array.cpp memcache.cpp main.cpp $(INCLUDE) $(FLAGS) $(LIBS) -o main
 
 clean:

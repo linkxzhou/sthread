@@ -15,7 +15,7 @@ endif
 
 all: wrk
 
-wrk: http_parser.c wrk.cpp
+wrk: http_parser.c wrk.cpp $(ST_ROOT)/libmthread.a
 	$(CC) -c http_parser.c $(ST_INC) -I. -g -o http_parser.o
 	$(CC) wrk.cpp http_parser.o $(INCLUDE) $(FLAGS) $(LIBS) -o wrk
 

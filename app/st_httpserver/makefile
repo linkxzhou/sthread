@@ -9,7 +9,7 @@ LIBS = $(ST_ROOT)/libmthread.a $(ST_LDFLAGS) $(ST_LDLIBS)
 
 all: main
 
-main: main.cpp
+main: main.cpp $(ST_ROOT)/libmthread.a
 	$(CC) main.cpp $(INCLUDE) $(FLAGS) $(LIBS) -o main
 
 clean:

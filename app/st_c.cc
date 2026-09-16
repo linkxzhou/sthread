@@ -36,6 +36,29 @@ static StExecClientConnection *_get_conn(struct sockaddr_in *dst, int32_t &sock,
   return conn;
 }
 
+static void _release_conn(StExecClientConnection *conn, int32_t &sock) {
+  int fd = -1;
+  if (conn != NULL) {
+    fd = conn->GetOsfd();
+  }
+  if (fd < 0) {
+    fd = sock;
+  }
+  if (fd >= 0 && GlobalEventSchedule() != NULL) {
+    StEventItem *item = GlobalEventSchedule()->GetEventItem(fd);
+    if (item != NULL) {
+      GlobalEventSchedule()->ClearItem(item);
+      item->Reset();
+    }
+  }
+  if (conn != NULL) {
+    conn->Close();
+  } else if (sock > 0) {
+    sys_close(sock);
+  }
+  sock = -1;
+}
+
 // 获取tcp的接收信息
 static int32_t _tcp_check_recv(int32_t sock, char *recvbuf, int32_t &len,
                                int32_t flags, int32_t timeout,
@@ -141,17 +164,7 @@ int32_t udp_sendrecv(struct sockaddr_in *dst, void *pkg, int32_t len,
   bufsize = rc;
 
 UDP_SENDRECV_EXIT_LABEL:
-  if (sock > 0) {
-    sys_close(sock);
-    sock = -1;
-  }
-
-  // 释放连接
-  if (conn != NULL) {
-    // Instance<
-    //     StConnectionManager<StClientConnection>
-    // >()->FreePtr(conn);
-  }
+  _release_conn(conn, sock);
 
   return ret;
 }
@@ -205,10 +218,9 @@ int32_t tcp_sendrecv(struct sockaddr_in *dst, void *pkg, int32_t len,
   }
 
 TCP_SENDRECV_EXIT_LABEL:
-  // 短连接close
+  // 短连接归还（含 ClearItem，避免 fd 复用后 epoll 残留）
   if (!keeplive) {
-    conn->Close();
-    // 释放链接
+    _release_conn((StExecClientConnection *)conn, sock);
   }
 
   return ret;

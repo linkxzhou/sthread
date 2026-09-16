@@ -16,11 +16,13 @@ sthread 端到端压测报告目录（plan/08）。
 
 ```bash
 make apps
-make bench-http          # 默认 BENCH_PROFILE=smoke
+make bench-http          # 默认 BENCH_PROFILE=smoke；内部 TRACE=0 重编
 make bench-dns
 BENCH_PROFILE=medium make bench-http
 BENCH_PROFILE=all make bench
 ```
+
+`make bench-*` 会以 **TRACE=0** 重编 lib/apps（默认 `TRACE=1` 的 `LOG_TRACE` 会淹没 SUMMARY 并拖垮 QPS）。冻结基线见 `baseline-*.md`。
 
 环境变量：
 

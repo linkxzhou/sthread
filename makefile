@@ -32,8 +32,8 @@ help:
 	@echo "  make lib           构建 libmthread.a / libmthread.so（仓库根目录）"
 	@echo "  make apps          构建 app/st_dns、st_memcacheclient、st_wrk、st_httpserver、st_dnsserver"
 	@echo "  make tests         构建 tests/ 下的 unittest"
-	@echo "  make bench-http    HTTP 压测闭环（默认 BENCH_PROFILE=smoke）"
-	@echo "  make bench-dns     DNS 压测闭环（本地 st_dnsserver，默认 smoke）"
+	@echo "  make bench-http    HTTP 压测闭环（默认 BENCH_PROFILE=smoke，TRACE=0）"
+	@echo "  make bench-dns     DNS 压测闭环（本地 st_dnsserver，默认 smoke，TRACE=0）"
 	@echo "  make bench         bench-http + bench-dns"
 	@echo "  make format        对本仓库自己的代码跑 clang-format -i"
 	@echo "  make format-check  只检查不改写（--dry-run --Werror）"
@@ -64,13 +64,16 @@ apps: lib
 
 BENCH_PROFILE ?= smoke
 
-bench-http: apps
+# 压测编 TRACE=0：默认 TRACE=1 会把 LOG_TRACE 打进 stdout，SUMMARY 难 grep 且 QPS 无意义。
+bench-http:
+	@$(MAKE) apps TRACE=0
 	@mkdir -p reports
-	BENCH_PROFILE=$(BENCH_PROFILE) ./scripts/bench_http.sh
+	TRACE=0 BENCH_PROFILE=$(BENCH_PROFILE) ./scripts/bench_http.sh
 
-bench-dns: apps
+bench-dns:
+	@$(MAKE) apps TRACE=0
 	@mkdir -p reports
-	BENCH_PROFILE=$(BENCH_PROFILE) ./scripts/bench_dns.sh
+	TRACE=0 BENCH_PROFILE=$(BENCH_PROFILE) ./scripts/bench_dns.sh
 
 bench: bench-http bench-dns
 

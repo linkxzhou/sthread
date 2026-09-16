@@ -5,7 +5,6 @@
 #include "stlib/st_buffer.h"
 #include "stlib/st_def.h"
 #include "stlib/st_hash_list.h"
-#include "stlib/st_kqueue.h"
 #include "stlib/st_log.h"
 #include "stlib/st_netaddr.h"
 #include "stlib/st_util.h"

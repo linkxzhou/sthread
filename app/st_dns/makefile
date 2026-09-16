@@ -9,7 +9,7 @@ LIBS = $(ST_ROOT)/libmthread.a $(ST_LDFLAGS) $(ST_LDLIBS)
 
 all: main
 
-main: dns.cpp main.cpp
+main: dns.cpp dns.h dns_proto.h main.cpp $(ST_ROOT)/libmthread.a
 	$(CC) dns.cpp main.cpp $(INCLUDE) $(FLAGS) $(LIBS) -o main
 
 clean:
