@@ -324,7 +324,7 @@
 
 ### Phase 3 · P-C 结构优化（2026-09-16）
 
-- **提交**：见本批 commit
+- **提交**：`5f4b55a`
 - **落地**
   - **C1** `WaitFdReady` / `NormalizeTimeoutMs` / `RequireActiveThread`；8 个 `st_*` 迁完；`st_sys.cc` 522→419 行
   - **C2/C8** 已在 Phase 1 完成（CreateThread 转发、Startup 收敛）
