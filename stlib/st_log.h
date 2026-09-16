@@ -49,23 +49,17 @@ public:
 
   void SetLevel(int32_t level);
 
-  void Stacktrace();
-
   int LogAble(int32_t level);
 
   void __log(const char *file, int32_t line, int32_t level, const char *fmt,
              ...);
-
-  void __loga(const char *fmt, ...);
 
   inline static StLogger &Instance() {
     static StLogger logger;
     return logger;
   }
 
-  // 日志特殊的indexOf和lastOf
-  static int StringIndexOf(const char *s, char c);
-
+  // 取路径最后一段用
   static int StringLastOf(const char *s, char c);
 
 private:
@@ -113,17 +107,7 @@ private:
     }                                                                          \
   } while (0)
 
-#define LOGA(...)                                                              \
-  do {                                                                         \
-    if (StLogger::Instance().LogAble(LLOG_PVERB) != 0) {                       \
-      StLogger::Instance().__loga(##__VA_ARGS__);                              \
-    }                                                                          \
-  } while (0)
-
 #define LOG_LEVEL(level) StLogger::Instance().SetLevel(level)
-
-#define LOG_FUNCMARK(cls)                                                      \
-  LOG_DEBUG("<<< mark function(%s: %s) >>>", #cls, __FUNCTION__)
 
 #define LOG_ASSERT(exp) assert((exp))
 

@@ -5,7 +5,6 @@
 #ifndef _ST_PUBLIC_H_
 #define _ST_PUBLIC_H_
 
-#include "stlib/st_test.h"
 #include <errno.h>
 #include <map>
 #include <math.h>

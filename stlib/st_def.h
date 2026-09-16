@@ -75,7 +75,6 @@
 #endif
 
 #define ST_MAXINT 0x7fffffff
-#define ST_MAXTIME 2177280000
 
 #ifndef ST_RECV_BUFFSIZE
 #define ST_RECV_BUFFSIZE 8192
@@ -92,9 +91,7 @@
 #define ST_MIN(a, b) ((a) < (b) ? (a) : (b))
 #define ST_MAX(a, b) ((a) > (b) ? (a) : (b))
 
-#define ST_SQUARE(d) ((d) * (d))
-#define ST_VAR(s, s2, n)                                                       \
-  (((n) < 2) ? 0.0 : ((s2) - ST_SQUARE(s) / (n)) / ((n) - 1))
-#define ST_STDDEV(s, s2, n) (((n) < 2) ? 0.0 : sqrt(ST_VAR((s), (s2), (n))))
+/* 毫秒时间戳等用途；原在 st_tailq.h，随 BSD TAILQ 清理迁到此 */
+typedef long long time64_t;
 
 #endif

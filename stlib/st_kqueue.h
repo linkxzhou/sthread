@@ -13,11 +13,9 @@
 
 namespace stlib {
 
-#define DATA_SIZE 1
 typedef struct {
   int32_t fd;
   int32_t mask;
-  void *data[DATA_SIZE];
 } StFiredEvent;
 
 typedef struct {
@@ -51,17 +49,6 @@ public:
     memset(m_fired_, 0, sizeof(StFiredEvent) * size);
 
     fcntl(m_kqfd_, F_SETFD, FD_CLOEXEC);
-
-    return ST_OK;
-  }
-
-  int32_t ApiResize(int32_t setsize) {
-    m_events_ =
-        (struct kevent *)realloc(m_events_, sizeof(struct kevent) * setsize);
-    m_file_ = (StFileEvent *)malloc(sizeof(StFileEvent) * setsize);
-    m_fired_ = (StFiredEvent *)malloc(sizeof(StFiredEvent) * setsize);
-
-    m_size_ = setsize;
 
     return ST_OK;
   }

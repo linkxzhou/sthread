@@ -74,15 +74,12 @@ TEST(StStatus, LogReopenAndHelpers) {
   LOG_DEBUG("before-reopen");
   StLogger::Instance().Reopen();
   LOG_WARN("after-reopen");
-  StLogger::Instance().Stacktrace();
   ASSERT_TRUE(StLogger::Instance().LogAble(LLOG_DEBUG) == 1);
   StLogger::Instance().SetLevel(LLOG_EMERG);
   ASSERT_TRUE(StLogger::Instance().LogAble(LLOG_DEBUG) == 0);
   StLogger::Instance().SetLevel(LLOG_PVERB);
-  ASSERT_TRUE(StLogger::Instance().StringIndexOf("abc/def", '/') == 3);
   ASSERT_TRUE(StLogger::Instance().StringLastOf("a/b/c", '/') == 3);
-  ASSERT_TRUE(StLogger::Instance().StringIndexOf(NULL, 'x') == -1);
-  StLogger::Instance().__loga("loga-%s", "x");
+  ASSERT_TRUE(StLogger::Instance().StringLastOf(NULL, 'x') == -1);
   unlink(path);
   /* empty name -> stderr */
   ASSERT_TRUE(StLogger::Instance().Init(LLOG_INFO, (char *)"") == 0);

@@ -60,6 +60,6 @@ pprof --text ./你的程序 /tmp/st.prof
 
 | 位置 | 来源 | 许可 |
 | --- | --- | --- |
-| `stlib/ucontext/`（`ucontext.c`、`asm.S`、`ucontext-*.h`、`uthread.*`） | Russ Cox, libtask | MIT，见根目录 [`COPYRIGHT`](../COPYRIGHT) |
+| `stlib/ucontext/`（`ucontext.c`、`asm.S`、`ucontext-*.h`） | Russ Cox, libtask | MIT，见根目录 [`COPYRIGHT`](../COPYRIGHT) |
 | `stlib/tests/ucontext/`（`task.c`、`channel.c`、`primes.c` …） | Russ Cox, libtask 上游示例，**不参与构建** | 同上 |
 | `app/st_wrk/http_parser.{c,h}` | nodejs http-parser | MIT |

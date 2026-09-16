@@ -5,31 +5,6 @@
 #ifndef _ST_TAILQ_H_
 #define _ST_TAILQ_H_
 
-#define TAILQ_EMPTY(head) ((head)->tqh_first == NULL)
-#define TAILQ_FIRST(head) ((head)->tqh_first)
-#define TAILQ_NEXT(elm, field) ((elm)->field.tqe_next)
-
-#define TAILQ_FOREACH(var, head, field)                                        \
-  for ((var) = TAILQ_FIRST((head)); (var); (var) = TAILQ_NEXT((var), field))
-
-#define TAILQ_CONCAT(head1, head2, field)                                      \
-  do {                                                                         \
-    if (!TAILQ_EMPTY(head2)) {                                                 \
-      *(head1)->tqh_last = (head2)->tqh_first;                                 \
-      (head2)->tqh_first->field.tqe_prev = (head1)->tqh_last;                  \
-      (head1)->tqh_last = (head2)->tqh_last;                                   \
-      TAILQ_INIT((head2));                                                     \
-    }                                                                          \
-  } while (0)
-
-#ifndef TAILQ_FOREACH_SAFE
-#define TAILQ_FOREACH_SAFE(var, head, field, tvar)                             \
-  for ((var) = TAILQ_FIRST((head));                                            \
-       (var) && ((tvar) = TAILQ_NEXT((var), field), 1); (var) = (tvar))
-#endif
-
-typedef long long time64_t;
-
 // 使用c++封装的linux的TAILQ_ENTRY
 template <class T> class CPP_TAILQ_HEAD {
 public:

@@ -84,26 +84,6 @@ template <typename T>
 pthread_mutex_t Singleton<T>::m_mutex_ = PTHREAD_MUTEX_INITIALIZER;
 template <typename T> typename Singleton<T>::Deleter Singleton<T>::m_deleter_;
 
-#define DECLARE_SINGLETON(ClassName)                                           \
-public:                                                                        \
-  ClassName();                                                                 \
-  ~ClassName();                                                                \
-                                                                               \
-private:                                                                       \
-  ClassName(const ClassName &);                                                \
-  ClassName &operator=(const ClassName &);
-
-#define DECLARE_VIRTUAL_SINGLETON(ClassName)                                   \
-public:                                                                        \
-  ClassName();                                                                 \
-  ~ClassName();                                                                \
-                                                                               \
-private:                                                                       \
-  ClassName(const ClassName &);                                                \
-  ClassName &operator=(const ClassName &);
-
-#define IMPLEMENT_SINGLETON(ClassName)
-
 template <typename T> T *Instance() { return Singleton<T>::Instance(); }
 
 } // namespace stlib

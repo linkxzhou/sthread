@@ -22,9 +22,6 @@ Applies to:
     stlib/ucontext/ucontext-mips.h
     stlib/ucontext/ucontext-power.h
     stlib/ucontext/asm.S
-    stlib/ucontext/uthread.c
-    stlib/ucontext/uthread.h
-    stlib/ucontext/ucontext_test.c
     stlib/tests/ucontext/*        (upstream sample programs; not part of the build)
 
 Upstream: https://swtch.com/libtask/ (see also https://github.com/jamwt/libtask)

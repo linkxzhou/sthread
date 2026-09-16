@@ -8,7 +8,7 @@ CLANG_FORMAT ?= clang-format
 
 # 参与格式检查的范围：本仓库自己写的代码。
 # 排除 stlib/ucontext/（Russ Cox libtask，见 COPYRIGHT）、stlib/tests/ucontext/、
-# stlib/tiny/、app/st_wrk/http_parser.*（nodejs http-parser）等 vendor 代码，
+# app/st_wrk/http_parser.*（nodejs http-parser）等 vendor 代码，
 # 以及 app/、tests/ 下尚未整理的历史代码（属 plan/04、plan/05 范围）。
 FORMAT_SRC = $(wildcard stlib/*.h stlib/*.cc src/*.h src/*.cc stlib/tests/*.cc)
 
