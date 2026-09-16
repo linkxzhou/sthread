@@ -278,7 +278,7 @@
 
 ### Phase 1 · P-A 死代码（2026-09-16）
 
-- **提交**：本 Phase 随同本次 commit 落地（标题含 Phase 1 P-A）
+- **提交**：`6431b0f`
 - **落地**
   - **A1** 删除未使用 `StEventSchedule::BindItem`
   - **A2/D2** 删除 `StSysSchedule::WaitEvents`；`tests/st_log_buffer_extra_unittest` 改为 `StReadSmoke`（`st_read`）
