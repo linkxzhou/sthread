@@ -4,18 +4,22 @@
 
 > 阅读顺序建议：先读本文「关键结论」与「硬约束」，再按「执行顺序」逐份阅读 01～05。
 
-> **进度**：`01`～`04` 已实现并合入或可开 PR；`05` 文档收尾见本分支。
-> - `01`：stlib 绿基线、根 makefile、D1/D2/D5/D6（COPYRIGHT）——[`01` 第 10 节](01-foundation-build-style.md#10-落地记录plan01-实现结果)
+> **进度（2026-09-16）**：`01`～`07` 均已落地并合入 `origin/master`。
+> - `01`：stlib 绿基线、根 makefile、D1/D2/D5/D6（COPYRIGHT）
 > - `02`：协程调度可编译（PR #4）
 > - `03`：IO/网络与 `libmthread`（PR #5）
-> - `04`：apps/tests 可编译 + 回归清单（分支 `impl-plan-04-apps-tests`）
-> - `05`：README / AGENTS / 关键类三件套注释（本阶段）
+> - `04`：apps/tests 可编译 + 回归清单
+> - `05`：README / AGENTS / 关键类三件套注释
+> - `06`：**✅ 已完成** — stlib 清理/优化（Phase 0–4，收尾 `cf62edd`）——[`06`](06-stlib-refactor-cleanup.md)
+> - `07`：**✅ 已完成** — src 清理/优化（Phase 0–4，收尾 `ae4a040`/`43bc36f`）——[`07`](07-src-refactor-optimize.md)
 >
-> 各份 `0x-*.md` 正文多为当初计划原文；读「当前状态」时以 README、AGENTS 与 `04-regression-checklist.md` 为准。
+> 各份 `0x-*.md` 正文含计划原文 + §9 落地记录；**当前状态以各文顶部「状态」行、根 README、AGENTS 为准**。
 
 ---
 
 ## 关键结论（先看这个）
+
+> **更新（2026-09-16）**：下列「无法编译」结论是写 plan 当时的实测快照。`01`～`07` 落地后仓库已可 `make lib` / 三件套全绿；历史分析仍保留供对照。当前进度见上文「进度」块与 `06`/`07` 文首状态。
 
 在编写本计划前，对仓库做了实际核对（逐文件读取 + `g++ -fsyntax-only` 试编译）。最重要的结论是：
 

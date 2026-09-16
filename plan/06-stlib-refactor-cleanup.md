@@ -1,8 +1,9 @@
 # 06 · stlib 重构计划：清理 + 优化，打磨通用 server + 协程库底座
 
-> 本文档**只描述计划，不包含任何代码变更**。实现按 Phase 0 → 4 串行推进，每个 Phase 以「构建 + 单测全绿」为出口条件。
+> **状态：✅ 已完成（2026-09-16）** · Phase 0–4 均已落地并推送 `origin/master`（收尾提交 `cf62edd`，其后 plan/07 继续演进）。
+> 平台验证：macOS arm64 三件套全绿；Linux CI 仍欠（风险 R5，已知偏差）。
 >
-> 与 plan/01～05 的关系：01～05 把仓库从「编译不过」修到「全绿可用」；本计划做**减法与优化**——删掉死代码、修掉潜伏 bug、把热点数据结构从「能跑」优化到「高效」，最终让 stlib 成为一个干净、可独立使用的通用 server + 协程基础库。
+> 本文档原为计划正文；实现按 Phase 0 → 4 串行推进。与 plan/01～05 的关系：01～05 把仓库修到「全绿可用」；本篇做 stlib **减法与优化**。落地细节见 §9。
 
 ---
 
@@ -220,23 +221,25 @@ sthread 的定位是「基于协程的高性能网络库」，stlib 是它的底
 
 ## 8. 验收总清单（可作 PR checklist）
 
+> 勾选口径：macOS arm64 已验收；标注「Linux」的项在本机未跑 CI（R5）。
+
 ### A. 构建与测试
 
-- [ ] `make -C stlib/tests run` 全绿（macOS + Linux）
-- [ ] `make lib` 产出 `libmthread.a/.so`，零第三方依赖（`otool -L`/`ldd`）
-- [ ] `make -C tests run` 全绿，覆盖率不低于基线
-- [ ] stlib 每个头文件可独立编译（`-std=c++98`）
+- [x] `make -C stlib/tests run` 全绿（macOS；Linux 仍欠）
+- [x] `make lib` 产出 `libmthread.a/.so`，零第三方依赖（`otool -L`）
+- [x] `make -C tests run` 全绿，覆盖率不低于基线（~74%）
+- [x] stlib 每个头文件可独立编译（`-std=c++98`；mac 跳过 `st_epoll.h`）
 
 ### B. 清理
 
-- [ ] P-A 清单全部落地（含 D1/D2 决策项）
-- [ ] 全仓库 grep 无已删符号残留引用
-- [ ] 库导出符号清单 diff 逐项有解释
+- [x] P-A 清单全部落地（含 D1/D2 决策项）
+- [x] 全仓库 grep 无已删符号残留引用
+- [x] 库导出符号清单 diff 逐项有解释
 
 ### C. 修复
 
-- [ ] P-B 清单逐项修复并各有回归单测
-- [ ] 无新增 `-Wall` 警告（在现有基线之上只减不增）
+- [x] P-B 清单逐项修复并各有回归单测
+- [x] 无新增 `-Wall` 警告（在现有基线之上只减不增）
 
 ### D. 优化
 
@@ -319,7 +322,7 @@ sthread 的定位是「基于协程的高性能网络库」，stlib 是它的底
 - C10：epoll/kqueue `Create` 统一失败走 `Free()`；fd 失败路径清 `-1`。
 - C5/C6：此前 Phase 2 已覆盖（singleton 注释 / HashList）。
 - 测试：`Any` 单测改为 `any_cast` + `referenceable`。
-- 三件套：`make test` / `make lib`+`make -C tests run` / `make apps` 全绿；`format-check` 通过。**未 push**（按用户要求）。
+- 三件套：`make test` / `make lib`+`make -C tests run` / `make apps` 全绿；`format-check` 通过。后已随 `418650f..cf62edd` 推送 origin/master。
 
 出口条件满足 → 可进 Phase 4（文档 / D6 剥离 `st_test`）。
 
@@ -330,6 +333,7 @@ sthread 的定位是「基于协程的高性能网络库」，stlib 是它的底
 - 文档：新增 [`stlib/README.md`](../stlib/README.md)（组件清单、线程模型、裸宏清单、最小示例指引）；根 `README.md` / `AGENTS.md` 同步（产物表去掉 `st_test.o`）；`thirdparty/readme.md` 已无 tiny/uthread 残留。
 - 示例：`stlib/tests/st_demo_usage_test.cc`（堆 + 缓冲池 + `TimeMs`，可编译运行）；完整 HTTP 样例仍指向 `app/st_httpserver`。
 - 依赖：`otool -L libmthread.so` / `libst.so` 仅系统库（libc++、libSystem）。
-- 三件套 + `format-check` 全绿。**未 push**。
+- 三件套 + `format-check` 全绿；已推送 origin/master（`cf62edd`）。
 
-plan/06 全部 Phase 0–4 出口条件满足。
+**结论：plan/06 全部 Phase 0–4 出口条件满足，状态 = 已完成。**
+
