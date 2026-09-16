@@ -547,15 +547,3 @@ bool StEventSchedule::Schedule(StThreadItem *thread, StEventItemQueue *fdset,
   LOG_TRACE("recv_num: %d", recv_num);
   return true;
 }
-
-void StThreadSchedule::Startup(StThreadSchedule *ss) {
-  (void)ss;
-  // Precondition: StSysSchedule must have been constructed so Init rebound
-  // the daemon callback to StSysSchedule::StartUp. Forward to that loop.
-  StSysSchedule *sys = Instance<StSysSchedule>();
-  if (NULL == sys) {
-    LOG_ERROR("StSysSchedule instance is NULL");
-    return;
-  }
-  StSysSchedule::StartUp(sys);
-}

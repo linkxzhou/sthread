@@ -7,6 +7,10 @@ ST_NAMESPACE_USING
 
 class CovConn : public StConnection {
 public:
+  virtual int32_t Create(const StNetAddr &addr) {
+    (void)addr;
+    return -1;
+  }
   virtual void Reset() { StConnection::Reset(); }
 };
 

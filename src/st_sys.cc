@@ -27,13 +27,6 @@ int st_sendto(int fd, const void *msg, int len, int flags,
   int n = 0;
   while ((n = REAL_FUNC(sendto)(fd, msg, (size_t)len, flags, to,
                                 (socklen_t)tolen)) < 0) {
-    // 对端关闭
-    if (n == 0) {
-      LOG_ERROR("[n=0]sendto failed, errno: %d, strerr : %s", errno,
-                strerror(errno));
-      return 0;
-    }
-
     // 判断是否超时
     now = Util::TimeMs();
     if ((int)(now - start) > timeout) {
@@ -226,12 +219,6 @@ ssize_t st_read(int fd, void *buf, size_t nbyte, int timeout) {
 
   ssize_t n = 0;
   while ((n = REAL_FUNC(read)(fd, buf, nbyte)) < 0) {
-    if (n == 0) // 句柄关闭
-    {
-      LOG_ERROR("[n=0]read failed, errno: %d", errno);
-      return 0;
-    }
-
     now = Util::TimeMs();
     if ((int)(now - start) > timeout) {
       errno = ETIME;

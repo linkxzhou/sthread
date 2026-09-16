@@ -37,7 +37,6 @@ public:
   }
 
   // 启动函数入口
-  static void Startup(StThreadSchedule *ss);
 
   StThreadItem *DaemonThread(void);
 
@@ -147,12 +146,6 @@ public:
 
   inline bool IsValidFd(int32_t fd) {
     return ((fd >= m_maxfd_) || (fd < 0)) ? false : true;
-  }
-
-  inline void BindItem(int32_t fd, StEventItem *item) {
-    if (unlikely(IsValidFd(fd))) {
-      m_event_[fd] = item;
-    }
   }
 
   inline StEventItem *GetEventItem(int32_t fd) {
@@ -308,14 +301,9 @@ protected:
     if (thread->IsSubStThread()) {
       thread_schedule->WakeupParent(thread);
     }
+    /* Yield 切走后本协程不再入队，其后原 SwitchThread/context_exit
+     * 不可达（A9）。 */
     thread_schedule->Yield(thread);
-    LOG_TRACE("---------- [///name: %s///] -----------", thread->GetName());
-    if (thread == thread_schedule->DaemonThread()) {
-      thread_schedule->SwitchThread(thread_schedule->PrimoThread(), thread);
-    } else {
-      thread_schedule->SwitchThread(thread_schedule->DaemonThread(), thread);
-    }
-    context_exit(0);
   }
 };
 
@@ -324,7 +312,7 @@ inline StThreadItem *StThreadSchedule::DaemonThread(void) {
     m_daemon_ = new StThread();
     m_daemon_->SetType(eDAEMON);
     m_daemon_->SetState(eRUNABLE);
-    m_daemon_->SetCallback(NewStClosure(Startup, this));
+    /* Callback set in StSysSchedule::Init → StSysSchedule::StartUp (C8/A3). */
     m_daemon_->SetName(THREAD_DAEMON_NAME);
   }
   return m_daemon_;

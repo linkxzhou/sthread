@@ -26,8 +26,17 @@ TEST(StStatus, KeepliveEnumValues) {
   LOG_ASSERT(!IS_UDP_CONN(eTCP_CONN));
 }
 
+/* Minimal concrete type: StConnection::Create is pure virtual (A5). */
+class KeepliveProbeConn : public StConnection {
+public:
+  virtual int32_t Create(const StNetAddr &addr) {
+    (void)addr;
+    return -1;
+  }
+};
+
 TEST(StStatus, KeepliveMethod) {
-  StConnection c;
+  KeepliveProbeConn c;
   c.SetConnType(eTCP_CONN);
   LOG_ASSERT(!c.Keeplive());
   c.SetConnType(eTCP_KEEPLIVE_CONN);

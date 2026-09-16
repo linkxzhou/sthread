@@ -21,6 +21,12 @@ using namespace stlib;
 template <class ConnectionT> class StServerConnection : public StConnection {
 public:
   StServerConnection() : StConnection() {}
+
+  /* Server conns are accept()-created; Create() is unused (A5 default). */
+  virtual int32_t Create(const StNetAddr &addr) {
+    (void)addr;
+    return -1;
+  }
 };
 
 /* 用途：TCP/UDP 服务端；Listen 后 Loop 每接受一个连接创建一个协程。

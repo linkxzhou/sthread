@@ -33,7 +33,8 @@ public:
     this->Reset();
   }
 
-  virtual int32_t Create(const StNetAddr &addr) { return -1; }
+  /* Client path must override; server accept path does not use Create. */
+  virtual int32_t Create(const StNetAddr &addr) = 0;
 
   void Close() {
     if (m_osfd_ > 0) {

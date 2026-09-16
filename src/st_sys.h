@@ -78,71 +78,14 @@ public:
     }
   }
 
-  int WaitEvents(int fd, int events, int timeout) {
-    int64_t start = GetLastClock();
-    StThread *thread = (StThread *)(GlobalThreadSchedule()->GetActiveThread());
-
-    int64_t now = 0;
-    timeout = (timeout <= -1) ? 0x7fffffff : timeout;
-
-    while (true) {
-      now = GetLastClock();
-      if ((int)(now - start) > timeout) {
-        LOG_TRACE("timeout is over");
-        errno = ETIME;
-        return -1;
-      }
-
-      StEventItem *item = GlobalEventSchedule()->GetEventItem(fd);
-      if (NULL == item) {
-        LOG_TRACE("item is NULL");
-        return -2;
-      }
-
-      item->SetOwnerThread(thread);
-
-      if (events & ST_READABLE) {
-        item->EnableInput();
-      }
-
-      if (events & ST_WRITEABLE) {
-        item->EnableOutput();
-      }
-
-      int64_t wakeup_timeout = timeout + GetLastClock();
-      bool rc =
-          GlobalEventSchedule()->Schedule(thread, NULL, item, wakeup_timeout);
-      if (!rc) {
-        LOG_ERROR("item schedule failed, errno: %d, strerr: %s", errno,
-                  strerror(errno));
-        // 释放item数据
-        UtilPtrPoolFree(item);
-        return -3;
-      }
-
-      if (item->GetRecvEvents() > 0) {
-        return 0;
-      }
-    }
-  }
+  /* WaitEvents removed (A2/D2); use st_read/st_write/... instead. */
 
   StThread *CreateThread(StClosure *closure, bool runable = true) {
-    StThread *thread = AllocThread();
-    if (NULL == thread) {
-      LOG_ERROR("alloc thread failed");
-      return NULL;
-    }
-
-    thread->SetCallback(closure);
-    if (runable) {
-      GlobalThreadSchedule()->InsertRunable(thread); // 插入运行线程
-    }
-
-    return thread;
+    return GlobalThreadSchedule()->CreateThread(closure, runable);
   }
 
   inline StThread *AllocThread() {
-    return (StThread *)(Instance<UtilPtrPool<StThread> >()->AllocPtr());
+    return GlobalThreadSchedule()->AllocThread();
   }
 
   static void StartUp(StSysSchedule *schedule) {

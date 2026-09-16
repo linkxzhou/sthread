@@ -47,7 +47,8 @@ TEST(StStatus, BufferBucketPoolEdges) {
   ASSERT_TRUE(stack.GetBuffer() != NULL);
 }
 
-TEST(StStatus, WaitEventsSmoke) {
+TEST(StStatus, StReadSmoke) {
+  /* Replaces WaitEvents smoke (A2/D2): exercise st_read path instead. */
   ASSERT_TRUE(st_init_frame());
   st_set_hook_flag();
   int fds[2];
@@ -56,16 +57,16 @@ TEST(StStatus, WaitEventsSmoke) {
   item->SetOsfd(fds[0]);
   item->EnableInput();
   GlobalEventSchedule()->Add(item);
-  write(fds[1], "1", 1);
-  StSysSchedule *sched = Instance<StSysSchedule>();
-  int rc = sched->WaitEvents(fds[0], ST_READABLE, 200);
-  ASSERT_TRUE(rc >= 0 || rc == -1);
+  ASSERT_TRUE(write(fds[1], "1", 1) == 1);
+  char buf[8];
+  ssize_t n = st_read(fds[0], buf, sizeof(buf), 200);
+  ASSERT_TRUE(n == 1);
+  ASSERT_TRUE(buf[0] == '1');
   GlobalEventSchedule()->ClearItem(item);
   UtilPtrPoolFree(item);
   close(fds[0]);
   close(fds[1]);
 }
-
 
 TEST(StStatus, LogReopenAndHelpers) {
   char path[256];

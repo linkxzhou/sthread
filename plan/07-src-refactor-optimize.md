@@ -275,3 +275,21 @@
   - Linux/Docker 验证（R7）本机未做，仍欠
   - `make -C tests run` 全程 PVERB 很吵；`TRACE=0` 未关掉 verbose（记一笔，可后续收口）
   - 下一步：Phase 1 P-A（A1/A5/A6/A8 直删 + A7 grep；A2 按 D2）
+
+### Phase 1 · P-A 死代码（2026-09-16）
+
+- **提交**：本 Phase 随同本次 commit 落地（标题含 Phase 1 P-A）
+- **落地**
+  - **A1** 删除未使用 `StEventSchedule::BindItem`
+  - **A2/D2** 删除 `StSysSchedule::WaitEvents`；`tests/st_log_buffer_extra_unittest` 改为 `StReadSmoke`（`st_read`）
+  - **A3/C8** 删除 `StThreadSchedule::Startup` 转发器；`DaemonThread` 不再预绑回调，由 `StSysSchedule::Init` 绑 `StartUp`
+  - **A4/C2** `StSysSchedule::{CreateThread,AllocThread}` 薄转发到 `StThreadSchedule`
+  - **A5** `StConnection::Create` 改为纯虚；`StServerConnection` 提供默认 `return -1`；测试侧 `KeepliveProbeConn`/`CovConn` 补 stub
+  - **A6** 重写 `src/makefile` 过时注释为当前产物说明
+  - **A7** **保留** `StServerConnection`（grep：accept/server 单测与 Http/Echo/Udp 等仍作基类）——与原「可删」假设偏差，已记
+  - **A8** 删除 `st_sendto`/`st_read` 中 `while (n<0)` 内不可达的 `n==0` 分支
+  - **A9** 删除 `ActiveThreadStartUp` 在 `Yield` 之后的不可达 `SwitchThread`/`context_exit`，留注释
+- **三件套**：`make lib` / stlib tests / `make -C tests run` 全绿；format-check 绿
+- **产物**：`libmthread.so` 195488 B（Phase0 216000）；`nm -gU` 128 符号（Phase0 129，少 `Startup`）
+- **偏差**：A7 保留；A5 引发两处测试改调用点（允许，因纯虚化）
+- **下一步**：Phase 2 P-B（优先 B1/B2/B10/B12/B18）
