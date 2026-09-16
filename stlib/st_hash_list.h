@@ -70,7 +70,8 @@ private:
   StNetAddr m_srcaddr_, m_destaddr_;
 };
 
-// 实现StHashList
+/* 开链哈希：桶内直接挂首元素，无哑元头（C6/B8）。
+ * HashRemove 只摘除并返回节点，所有权归调用方（B10）。 */
 template <class T = StHashKey> class StHashList : public referenceable {
 public:
   typedef T value_type;
@@ -101,27 +102,14 @@ public:
 
     key->m_hash_value_ = key->HashValue();
     int32_t idx = (key->m_hash_value_) % m_max_;
-    // 如果为空，初始化m_buckets_
-    if (NULL == m_buckets_[idx]) {
-      m_buckets_[idx] = any_cast<value_type>(malloc(sizeof(value_type)));
-      m_buckets_[idx]->m_next_ptr_ = NULL;
-      m_buckets_[idx]->m_hash_value_ = 0;
-    }
-
-    pointer _next = any_cast<value_type>(m_buckets_[idx]->m_next_ptr_);
-    LOG_TRACE("buckets : %p, next : %p, idx : %d", m_buckets_, _next, idx);
-    // 第一个元素不存储任何对象，只存储当前开链列表中的list的个数到hash_value_中
-    m_buckets_[idx]->m_next_ptr_ = key;
-    key->m_next_ptr_ = _next;
-    (m_buckets_[idx]->m_hash_value_)++;
+    key->m_next_ptr_ = m_buckets_[idx];
+    m_buckets_[idx] = key;
     m_count_++;
     if (ST_DEBUG) {
-      for (pointer item = any_cast<value_type>(m_buckets_[idx]->m_next_ptr_);
-           item != NULL; item = any_cast<value_type>(item->m_next_ptr_)) {
+      for (pointer item = m_buckets_[idx]; item != NULL;
+           item = any_cast<value_type>(item->m_next_ptr_)) {
         LOG_TRACE("item : %p", item);
       }
-      LOG_TRACE("item : %p, key : %p",
-                any_cast<value_type>(m_buckets_[idx]->m_next_ptr_), key);
     }
     return 0;
   }
@@ -133,11 +121,7 @@ public:
 
     uint32_t hash = key->HashValue();
     int32_t idx = hash % m_max_;
-    if (NULL == m_buckets_[idx]) {
-      return NULL;
-    }
-
-    pointer item = any_cast<value_type>(m_buckets_[idx]->m_next_ptr_);
+    pointer item = m_buckets_[idx];
     for (; item != NULL; item = any_cast<value_type>(item->m_next_ptr_)) {
       if (item->m_hash_value_ != hash) {
         continue;
@@ -159,32 +143,32 @@ public:
     return item->m_data_ptr_;
   }
 
-  void HashRemove(pointer key) {
+  /* 摘除匹配节点并返回；调用方负责 delete。键只用于查找。 */
+  pointer HashRemove(pointer key) {
     if (!key || !m_buckets_) {
-      return;
+      return NULL;
     }
 
     uint32_t hash = key->HashValue();
     int32_t idx = hash % m_max_;
-    if (NULL == m_buckets_[idx]) {
-      return;
-    }
-
-    pointer prev = m_buckets_[idx];
-    pointer item = any_cast<value_type>(prev->m_next_ptr_);
+    pointer prev = NULL;
+    pointer item = m_buckets_[idx];
     while (item != NULL) {
       if ((item->m_hash_value_ == hash) && (item->HashCmp(key) == 0)) {
-        prev->m_next_ptr_ = item->m_next_ptr_;
-        pointer temp = item;
-        item = any_cast<value_type>(item->m_next_ptr_);
+        if (prev != NULL) {
+          prev->m_next_ptr_ = item->m_next_ptr_;
+        } else {
+          m_buckets_[idx] = any_cast<value_type>(item->m_next_ptr_);
+        }
+        item->m_next_ptr_ = NULL;
+        item->m_hash_value_ = 0;
         m_count_--;
-        (m_buckets_[idx]->m_hash_value_)--;
-        st_safe_delete(temp); // 释放指针
-      } else {
-        prev = item;
-        item = any_cast<value_type>(item->m_next_ptr_);
+        return item;
       }
+      prev = item;
+      item = any_cast<value_type>(item->m_next_ptr_);
     }
+    return NULL;
   }
 
   void HashForeach() {
@@ -194,7 +178,7 @@ public:
 
     for (int32_t i = 0; i < m_max_; i++) {
       pointer item = m_buckets_[i];
-      for (; item != NULL; item = item->m_next_ptr_) {
+      for (; item != NULL; item = any_cast<value_type>(item->m_next_ptr_)) {
         item->HashIterate();
       }
     }
@@ -206,7 +190,7 @@ public:
     }
 
     for (int32_t i = 0; i < m_max_; i++) {
-      if (m_buckets_[i]) {
+      if (m_buckets_[i] != NULL) {
         return m_buckets_[i];
       }
     }

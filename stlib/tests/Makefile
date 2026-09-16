@@ -10,7 +10,8 @@ COMMON_SRC = $(STLIB_SRC)/st_log.cc $(STLIB_SRC)/st_test.cc
 INCLUDE = $(ST_INC)
 FLAGS   = $(ST_CXXFLAGS) $(ST_LDFLAGS) $(ST_LDLIBS)
 
-TEST_BINS = st_buffer_test st_hash_list_test st_heap_test st_heap_timer_test
+TEST_BINS = st_buffer_test st_hash_list_test st_heap_test st_heap_timer_test \
+	st_netaddr_test st_buffer_pool_test
 
 .PHONY: all run clean \
 	stlib_buffer stlib_hash_list stlib_heap stlib_heap_timer

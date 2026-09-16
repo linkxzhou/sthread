@@ -1,7 +1,7 @@
-#include "stlib/st_util.h"
-#include "stlib/st_netaddr.h"
 #include "stlib/st_closure.h"
 #include "stlib/st_log.h"
+#include "stlib/st_netaddr.h"
+#include "stlib/st_util.h"
 #include "tests/st_test_compat.h"
 
 ST_NAMESPACE_USING
@@ -64,6 +64,28 @@ TEST(StStatus, NetAddr) {
   (void)e.GetSock6Addr();
   (void)e.IP();
   (void)e.IPPort();
+}
+
+TEST(StStatus, NetAddrEqualityAndIpv6) {
+  StNetAddr a, b, c;
+  a.SetAddr("127.0.0.1", 8080);
+  b.SetAddr("127.0.0.1", 8080);
+  c.SetAddr("127.0.0.1", 8081);
+  ASSERT_TRUE(a == b);
+  ASSERT_TRUE(!(a == c));
+
+  StNetAddr v6a, v6b, v6c;
+  v6a.SetAddr("::1", 443, true);
+  v6b.SetAddr("::1", 443, true);
+  v6c.SetAddr("::1", 444, true);
+  ASSERT_TRUE(!v6a.IsError());
+  ASSERT_TRUE(v6a.IsIPV6());
+  ASSERT_TRUE(v6a.Port() == 443);
+  ASSERT_TRUE(v6a == v6b);
+  ASSERT_TRUE(!(v6a == v6c));
+  ASSERT_TRUE(strstr(v6a.IP(), "::1") != NULL ||
+              strstr(v6a.IP(), "0:0:0:0:0:0:0:1") != NULL);
+  ASSERT_TRUE(strstr(v6a.IPPort(), "443") != NULL);
 }
 
 TEST(StStatus, Closure) {

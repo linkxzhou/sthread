@@ -50,6 +50,9 @@ public:
 #endif
   }
 
+  /* B19: after InstanceDestroy, same-thread Instance() may assert in
+   * Deleter::Set (pthread_setspecific still points at freed object).
+   * Do not destroy then re-Instance in one thread this release. */
   static void InstanceDestroy(void *ins = NULL) {
     if (m_pinstance_ != NULL) {
       st_safe_delete(m_pinstance_);

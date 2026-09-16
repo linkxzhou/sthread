@@ -14,9 +14,9 @@ class StHeapTimer;
 
 class StTimer : public StHeap {
 public:
-  StTimer() : m_time_expired_(-1) {}
+  StTimer() : m_time_expired_(0) {}
 
-  virtual ~StTimer() { m_time_expired_ = -1; }
+  virtual ~StTimer() { m_time_expired_ = 0; }
 
   virtual void Timeout() { return; }
 
@@ -24,17 +24,21 @@ public:
 
   inline void SetExpiredTime(int64_t expired) { m_time_expired_ = expired; }
 
-  inline uint64_t GetExpiredTime() { return m_time_expired_; }
+  inline int64_t GetExpiredTime() { return m_time_expired_; }
 
   inline bool IsExpired() {
-    if (m_time_expired_ < Util::TimeMs()) {
+    /* 0 = not started (B13) */
+    if (m_time_expired_ == 0) {
+      return false;
+    }
+    if (m_time_expired_ < (int64_t)Util::TimeMs()) {
       return true;
     }
     return false;
   }
 
 private:
-  uint64_t m_time_expired_;
+  int64_t m_time_expired_;
 };
 
 // 时间控制器
@@ -90,7 +94,8 @@ public:
 
     int32_t count = 0;
     StTimer *timer = any_cast<StTimer>(m_heap_->HeapTop());
-    while (timer && (timer->GetExpiredTime() <= now)) {
+    while (timer && (timer->GetExpiredTime() > 0) &&
+           (timer->GetExpiredTime() <= now)) {
       m_heap_->HeapDelete(timer); // 删除对应的过期时间
       timer->Timeout();           // 传递超时事件
       timer = any_cast<StTimer>(m_heap_->HeapTop());

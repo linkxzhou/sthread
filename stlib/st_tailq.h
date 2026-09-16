@@ -46,9 +46,8 @@ public:
        (var) = CPP_TAILQ_NEXT((var), field))
 
 #define CPP_TAILQ_FOREACH_SAFE(var, head, field, _var)                         \
-  for ((var) = CPP_TAILQ_FIRST((head));                       \ 
-        (var) && ((_var) = CPP_TAILQ_NEXT((var), field), 1);    \ 
-        (var) = (_var))
+  for ((var) = CPP_TAILQ_FIRST((head));                                        \
+       (var) && ((_var) = CPP_TAILQ_NEXT((var), field), 1); (var) = (_var))
 
 #define CPP_TAILQ_REMOVE(head, elm, field)                                     \
   do {                                                                         \

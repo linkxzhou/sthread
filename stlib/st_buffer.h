@@ -49,7 +49,7 @@ public:
   inline void *GetBuffer() { return m_msg_buf_; }
 
   inline int SetBuffer(void *buf, uint32_t len) {
-    if (buf == NULL || len >= m_max_len_) {
+    if (buf == NULL || len > m_max_len_) {
       return -1;
     }
 
@@ -146,14 +146,10 @@ public:
     }
 
     StBufferBucket *_bucket = NULL;
-    StHashKey *hash_item = m_hash_bucket_->HashGetFirst();
-    while (hash_item) {
-      m_hash_bucket_->HashRemove(any_cast<StBufferBucket>(hash_item));
-      _bucket = any_cast<StBufferBucket>(hash_item);
-      if (_bucket != NULL) {
-        st_safe_delete(_bucket);
-      }
-      hash_item = m_hash_bucket_->HashGetFirst();
+    while ((_bucket = any_cast<StBufferBucket>(
+                m_hash_bucket_->HashGetFirst())) != NULL) {
+      (void)m_hash_bucket_->HashRemove(_bucket);
+      st_safe_delete(_bucket);
     }
     st_safe_delete(m_hash_bucket_);
   }
@@ -178,8 +174,9 @@ public:
       if (_bucket) {
         return _bucket->GetBuffer();
       } else {
-        m_hash_bucket_->HashRemove(any_cast<StBufferBucket>(hash_item));
-        st_safe_delete(hash_item);
+        StBufferBucket *dead =
+            m_hash_bucket_->HashRemove(any_cast<StBufferBucket>(hash_item));
+        st_safe_delete(dead);
         LOG_ERROR("hash item: %p, msg_bucket: %p impossible, clean it",
                   hash_item, _bucket);
         return NULL;

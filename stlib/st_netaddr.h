@@ -10,6 +10,7 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <netinet/in.h>
+#include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
@@ -26,12 +27,16 @@ public:
       : m_addr6_(addr), m_errno_(0), m_isipv6_(true) {}
 
   bool operator==(const StNetAddr &addr) {
+    if (m_isipv6_ != addr.m_isipv6_) {
+      return false;
+    }
     if (m_isipv6_) {
-      return (m_addr6_.sin6_addr.s6_addr == addr.m_addr6_.sin6_addr.s6_addr) &&
-             (m_addr6_.sin6_port = addr.m_addr6_.sin6_port);
+      return (::memcmp(&m_addr6_.sin6_addr, &addr.m_addr6_.sin6_addr,
+                       sizeof(m_addr6_.sin6_addr)) == 0) &&
+             (m_addr6_.sin6_port == addr.m_addr6_.sin6_port);
     } else {
       return (m_addr_.sin_addr.s_addr == addr.m_addr_.sin_addr.s_addr) &&
-             (m_addr_.sin_port = addr.m_addr_.sin_port);
+             (m_addr_.sin_port == addr.m_addr_.sin_port);
     }
   }
 
@@ -69,9 +74,9 @@ public:
     if (is_ipv6) {
       m_isipv6_ = true;
       bzero(&m_addr6_, sizeof(m_addr6_));
-      m_addr6_.sin6_family = AF_INET;
+      m_addr6_.sin6_family = AF_INET6;
       m_addr6_.sin6_port = htons(port);
-      if (::inet_pton(AF_INET, ip, &m_addr6_.sin6_addr) <= 0) {
+      if (::inet_pton(AF_INET6, ip, &m_addr6_.sin6_addr) <= 0) {
         m_errno_ = -1;
       }
     } else {
@@ -85,7 +90,7 @@ public:
   }
 
   inline const char *IP() const {
-    static char buf[64] = "";
+    static __thread char buf[64];
     socklen_t size = sizeof(buf);
 
     if (!m_isipv6_) {
@@ -105,15 +110,23 @@ public:
   }
 
   inline const char *IPPort() const {
-    static char buf[64] = "";
+    static __thread char buf[64];
     socklen_t size = sizeof(buf);
+    const char *ip = IP();
+    size_t end = ::strlen(ip);
+    if (end >= (size_t)size) {
+      end = (size_t)size - 1;
+    }
+    ::memcpy(buf, ip, end);
+    buf[end] = '\0';
 
-    memcpy(buf, IP(), size);
-    size_t end = ::strlen(buf);
-    const struct sockaddr_in *addr4 =
-        static_cast<const struct sockaddr_in *>(&m_addr_);
-    uint16_t port = ntohs(addr4->sin_port);
-    snprintf(buf + end, size - end, ":%u", port);
+    uint16_t port = 0;
+    if (!m_isipv6_) {
+      port = ntohs(m_addr_.sin_port);
+    } else {
+      port = ntohs(m_addr6_.sin6_port);
+    }
+    ::snprintf(buf + end, size - end, ":%u", port);
 
     return buf;
   }
@@ -128,7 +141,12 @@ public:
     return (struct sockaddr_in6 *)(&m_addr6_);
   }
 
-  inline uint16_t PortNetEndian() const { return m_addr_.sin_port; }
+  inline uint16_t PortNetEndian() const {
+    if (m_isipv6_) {
+      return m_addr6_.sin6_port;
+    }
+    return m_addr_.sin_port;
+  }
 
   inline bool IsError() const { return (m_errno_ == 0) ? false : true; }
 

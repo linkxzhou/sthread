@@ -37,7 +37,7 @@ public:
       return ST_ERROR;
     }
 
-    m_epfd_ = epoll_create(EVENT_SIZE);
+    m_epfd_ = epoll_create(size);
     if (m_epfd_ == -1) {
       Free();
       return ST_ERROR;

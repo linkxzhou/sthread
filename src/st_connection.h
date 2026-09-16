@@ -234,7 +234,8 @@ public:
       StNetAddrKey probe;
       probe.SetDestAddr(conn->GetDestAddr());
       probe.SetSrcAddr(conn->GetAddr());
-      m_hashlist_.HashRemove(&probe);
+      StNetAddrKey *dead = m_hashlist_.HashRemove(&probe);
+      st_safe_delete(dead);
     }
     UtilPtrPoolFree(conn);
   }

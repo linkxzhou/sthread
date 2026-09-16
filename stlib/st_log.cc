@@ -6,16 +6,17 @@ static const char *g_level_cn[12] = {"EMERG", "ALERT",  "CRIT",   "ERR",
                                      "WARN",  "NOTICE", "INFO",   "DEBUG",
                                      "VERB",  "VVERB",  "VVVERB", "PVERB"};
 
-StLogger::StLogger() {
-  // 默认输出/dev/stdout
-  m_fd_ = 1;
-  m_level_ = LLOG_PVERB;
-}
+StLogger::StLogger()
+    : m_name_(NULL), m_level_(LLOG_PVERB), m_fd_(1), m_nerror_(0) {}
 
 StLogger::~StLogger() {
   if (m_fd_ > 0 && m_fd_ != STDERR_FILENO) {
     ::close(m_fd_);
+    m_fd_ = -1;
+  }
+  if (m_name_ != NULL) {
     ::free(m_name_);
+    m_name_ = NULL;
   }
 }
 
@@ -80,12 +81,13 @@ int32_t StLogger::StringLastOf(const char *s, char c) {
 
 void StLogger::__log(const char *file, int32_t line, int32_t level,
                      const char *fmt, ...) {
-  static char buf[LOG_MAX_LEN];
+  static __thread char buf[LOG_MAX_LEN];
 
   int32_t len, size, errno_save;
   va_list args;
   ssize_t n;
   struct timeval tv;
+  struct tm tm_now;
 
   if (m_fd_ < 0) {
     return;
@@ -96,9 +98,9 @@ void StLogger::__log(const char *file, int32_t line, int32_t level,
   size = LOG_MAX_LEN; /* size of output buffer */
 
   ::gettimeofday(&tv, NULL);
+  ::localtime_r(&tv.tv_sec, &tm_now);
   buf[len++] = '[';
-  len += ::strftime(buf + len, size - len, "%Y-%m-%d %H:%M:%S.",
-                    localtime(&tv.tv_sec));
+  len += ::strftime(buf + len, size - len, "%Y-%m-%d %H:%M:%S.", &tm_now);
   len += ::snprintf(buf + len, size - len, "%03ld", tv.tv_usec / 1000);
 
   char filetemp[256];

@@ -10,8 +10,8 @@ TEST(StStatus, HashList) {
   dest.SetAddr("127.0.0.1", 1);
   src.SetAddr("127.0.0.1", 2);
 
-  /* HashInsert stores the key pointer; key must outlive the list entry.
-   * HashRemove frees that pointer. */
+  /* HashInsert stores the key pointer; HashRemove returns it for caller free.
+   */
   StNetAddrKey *k1 = new StNetAddrKey();
   k1->SetDestAddr(dest);
   k1->SetSrcAddr(src);
@@ -26,7 +26,9 @@ TEST(StStatus, HashList) {
   ASSERT_TRUE(p == &dummy);
   ASSERT_TRUE(hl.HashSize() == 1);
 
-  hl.HashRemove(&probe);
+  StNetAddrKey *dead = hl.HashRemove(&probe);
+  ASSERT_TRUE(dead == k1);
+  st_safe_delete(dead);
   ASSERT_TRUE(hl.HashFindData(&probe) == NULL);
   ASSERT_TRUE(hl.HashSize() == 0);
 }

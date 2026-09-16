@@ -10,8 +10,8 @@
 #include "stlib/st_netaddr.h"
 #include "stlib/st_util.h"
 #include "tests/st_test_compat.h"
-#include <sys/wait.h>
 #include <signal.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 ST_NAMESPACE_USING
@@ -74,7 +74,8 @@ TEST(StStatus, HashManyInsertRemove) {
     StNetAddrKey probe;
     probe.SetDestAddr(d);
     probe.SetSrcAddr(s);
-    hl.HashRemove(&probe);
+    StNetAddrKey *dead = hl.HashRemove(&probe);
+    st_safe_delete(dead);
   }
   ASSERT_TRUE(hl.HashSize() == 0);
 }

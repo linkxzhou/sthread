@@ -68,7 +68,8 @@
 #define ST_MAX_FD 65535 * 2
 #define ST_LISTEN_LEN 1024
 
-#if ST_DEBUG
+#ifdef ST_DEBUG
+#undef ST_DEBUG
 #define ST_DEBUG true
 #else
 #define ST_DEBUG false

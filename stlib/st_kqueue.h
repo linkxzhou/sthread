@@ -76,6 +76,7 @@ public:
       }
     } else {
       EV_SET(&ke[0], fd, EVFILT_READ, EV_DELETE, 0, 0, NULL);
+      /* ENOENT when filter absent is expected; ignore. */
       if (kevent(m_kqfd_, ke, 1, NULL, 0, NULL) == -1) {
       }
     }
@@ -87,6 +88,7 @@ public:
       }
     } else {
       EV_SET(&ke[0], fd, EVFILT_WRITE, EV_DELETE, 0, 0, NULL);
+      /* ENOENT when filter absent is expected; ignore. */
       if (kevent(m_kqfd_, ke, 1, NULL, 0, NULL) == -1) {
       }
     }
@@ -126,6 +128,9 @@ public:
           mask |= ST_READABLE;
         if (e->filter == EVFILT_WRITE)
           mask |= ST_WRITEABLE;
+        /* Align with epoll EPOLLERR/EPOLLHUP → ST_EVERR (D7). */
+        if (e->flags & (EV_ERROR | EV_EOF))
+          mask |= ST_EVERR;
         m_fired_[j].fd = e->ident;
         m_fired_[j].mask = mask;
       }

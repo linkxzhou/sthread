@@ -58,15 +58,13 @@ public:
   // 解决多线程情况，生成唯一的uniqid
   static uint64_t GetUniqid() {
     static uint64_t id = 0;
-    static pthread_mutex_t mutex;
+    static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
-    uint64_t rid = id;
     pthread_mutex_lock(&mutex);
-    if (unlikely(id >= 0xFFFFFFFF)) {
+    if (unlikely(id >= 0xFFFFFFFFULL)) {
       id = 1;
     }
-
-    rid = ++id;
+    uint64_t rid = ++id;
     pthread_mutex_unlock(&mutex);
     return rid;
   }

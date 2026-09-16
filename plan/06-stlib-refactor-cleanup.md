@@ -285,3 +285,24 @@ sthread 的定位是「基于协程的高性能网络库」，stlib 是它的底
 
 出口条件满足 → 可进 Phase 2。
 
+### Phase 2 · 潜伏 bug 修复落地（2026-09-16）
+
+- B1/B2/B3：`operator==` 端口赋值→比较；IPv6 `AF_INET6`+`inet_pton`；`IP`/`IPPort` 改 `__thread`，补 IPv6 端口；`PortNetEndian` 分族
+- B4/B5/B6：日志缓冲 `__thread` + `localtime_r`；构造全员初始化、析构判空；`LOG_ERROR`→`LLOG_ERR`
+- B7：随 Phase 1 A7 已删 `StringIndexOf`
+- B8/B9/B10/C6：`StHashList` 去哑元；`HashRemove` 返回摘除节点（调用方释放）；`~StBufferPool` 重写；同步 `src/st_connection.h` / 单测
+- B11：`GetUniqid` `PTHREAD_MUTEX_INITIALIZER`
+- B12：`CPP_TAILQ_FOREACH_SAFE` 去续行尾空格
+- B13：timer 统一 `int64_t`，未启动=0，`IsExpired`/`CheckExpired` 跳过 0
+- B14：`epoll_create(size)`
+- B15/D7：kqueue `EV_ERROR|EV_EOF`→`ST_EVERR`
+- B16：`ST_DEBUG` 改 `#ifdef` 写法
+- B17：`g_context_running` 重命名
+- B18：kqueue `EV_DELETE` ENOENT 注释
+- B19：singleton 限制注释（不改语义）
+- B20：`SetBuffer` 边界 `len > max`
+- 新增：`stlib/tests/st_netaddr_test`、`st_buffer_pool_test`；扩展框架 netaddr/hash/harvest 单测
+- 三件套全绿；`format-check` 通过
+
+出口条件满足 → 可进 Phase 3。
+

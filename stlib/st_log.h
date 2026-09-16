@@ -69,9 +69,8 @@ private:
 
 #define LOG_ERROR(...)                                                         \
   do {                                                                         \
-    if (StLogger::Instance().LogAble(LLOG_ALERT) != 0) {                       \
-      StLogger::Instance().__log(__FILE__, __LINE__, LLOG_ALERT,               \
-                                 ##__VA_ARGS__);                               \
+    if (StLogger::Instance().LogAble(LLOG_ERR) != 0) {                         \
+      StLogger::Instance().__log(__FILE__, __LINE__, LLOG_ERR, ##__VA_ARGS__); \
     }                                                                          \
   } while (0)
 
