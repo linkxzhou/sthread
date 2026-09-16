@@ -84,7 +84,9 @@ typedef enum {
 #define THREAD_DAEMON_NAME "daemon"
 #define THREAD_PRIMO_NAME "primo"
 
-#define GlobalEventSchedule() (Instance<StEventSchedule>())   // 事件调度器
-#define GlobalThreadSchedule() (Instance<StThreadSchedule>()) // 协程调度器
+#define GlobalEventSchedule() (::stlib::Instance< ::sthread::StEventSchedule>())
+#define GlobalThreadSchedule()                                                 \
+  (::stlib::Instance< ::sthread::StThreadSchedule>())
 
+#define ST_CONN_RESET_RECVBUF (-65535)
 #endif

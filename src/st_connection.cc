@@ -121,7 +121,7 @@ int32_t StConnection::RecvData() {
     m_recvbuf_->SetMsgLen(ret);
   } else if (ret == 0) {
     return 0;
-  } else if (ret == -65535) {
+  } else if (ret == ST_CONN_RESET_RECVBUF) {
     m_recvbuf_->SetHaveRecvLen(0);
     return 0;
   } else {

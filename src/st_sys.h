@@ -2,8 +2,8 @@
  * Copyright (C) zhoulv2000@163.com
  */
 
-#ifndef _ST_MANAGER_H__
-#define _ST_MANAGER_H__
+#ifndef _ST_SYS_H_
+#define _ST_SYS_H_
 
 #include "st_public.h"
 #include "st_thread.h"

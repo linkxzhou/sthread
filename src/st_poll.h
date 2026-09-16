@@ -20,9 +20,9 @@
 #include "stlib/st_heap.h"
 #include "stlib/st_netaddr.h"
 
-using namespace stlib;
-
 namespace sthread {
+
+using namespace stlib; /* C3: 嵌套 using，避免污染全局 */
 
 class StEventItem;
 class StThreadItem;
@@ -102,6 +102,7 @@ protected:
   StThreadItem *m_thread_;
 
 public:
+  /* C10: TAILQ 侵入式链接，保持 public 数据成员不动 */
   StEventItemNext m_next_;
 };
 
@@ -109,7 +110,7 @@ public:
  * 线程模型：绑定所属 StThreadSchedule（线程局部）；m_state_ 是枚举值，m_flag_
  * 是位掩码，勿混用。 所有权：由调度器/对象池管理；m_callback_（StClosure*）在
  * Reset() 中 delete。 */
-class StThreadItem : public StHeap {
+class StThreadItem : public stlib::StHeap {
 public:
   StThreadItem()
       : StHeap(), m_wakeup_time_(0), m_type_(eNORMAL), m_state_(eINITIAL),
@@ -154,7 +155,9 @@ public:
 
   inline eThreadState GetState() { return m_state_; }
 
-  inline void SetCallback(StClosure *callback) { m_callback_ = callback; }
+  inline void SetCallback(stlib::StClosure *callback) {
+    m_callback_ = callback;
+  }
 
   inline int64_t GetWakeupTime() { return m_wakeup_time_; }
 
@@ -265,7 +268,7 @@ protected:
   int64_t m_wakeup_time_;
   Stack *m_stack_; // 堆栈信息
   void *m_private_;
-  StClosure *m_callback_; // 启动函数
+  stlib::StClosure *m_callback_; // 启动函数
 
 public:
   StEventItemQueue m_fdset_;

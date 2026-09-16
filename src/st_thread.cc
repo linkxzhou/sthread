@@ -499,11 +499,10 @@ void StEventSchedule::Wait(int timeout) {
   if (wait_time <= 0) {
     nfd = m_iostate_->Poll(NULL);
   } else {
-    struct timeval tv = {0, wait_time * 1000};
-    if (wait_time >= 1000) {
-      tv.tv_sec = (int)(wait_time / 1000);
-      tv.tv_usec = (wait_time % 1000) * 1000;
-    }
+    /* C6: 一次拆分 tv_sec/tv_usec */
+    struct timeval tv;
+    tv.tv_sec = (time_t)(wait_time / 1000);
+    tv.tv_usec = (suseconds_t)((wait_time % 1000) * 1000);
     nfd = m_iostate_->Poll(&tv);
   }
   {

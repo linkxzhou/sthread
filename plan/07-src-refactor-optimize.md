@@ -321,3 +321,20 @@
 - **三件套**：全绿；format-check 绿
 - **偏差**：未单独加 IPv6 loopback CI 单测（本机仍以 v4 回归为主）；B18 的 fdset 非空回滚未实现（现网调用 fdset 恒 NULL）
 - **下一步**：Phase 3 P-C（C1 `st_sys` 骨架为主）
+
+### Phase 3 · P-C 结构优化（2026-09-16）
+
+- **提交**：见本批 commit
+- **落地**
+  - **C1** `WaitFdReady` / `NormalizeTimeoutMs` / `RequireActiveThread`；8 个 `st_*` 迁完；`st_sys.cc` 522→419 行
+  - **C2/C8** 已在 Phase 1 完成（CreateThread 转发、Startup 收敛）
+  - **C3** `st_connection.h`/`st_server.h` 去掉全局 `using namespace stlib`，改 `stlib::` 前缀；`st_poll.h` 改为 namespace 内嵌 using；`LOG_*` 宏改为 `::stlib::StLogger`；`Global*Schedule` 宏全限定。全局连接类仍 `using namespace sthread`（类型在 sthread）
+  - **C4** `st_server.h` 去掉 `app/st_c.h`，`extern "C"` 前向声明 `st_set_hook_flag`；保留 `app/st_sys.h`（`sys_close`）
+  - **C5** `ST_CONN_RESET_RECVBUF`（-65535）
+  - **C6** `Wait()` timeval 一次拆分
+  - **C7** `st_sys.h` guard → `_ST_SYS_H_`
+  - **C9/B15** 已在 Phase 2
+  - **C10** TAILQ public 成员注释保留不动
+- **三件套**：全绿；重点 sys_api/accept/conn_io/loopback 过
+- **偏差**：C3 未把全局 `StConnection`/`StServer` 迁入 `namespace sthread`（改动面过大）；连接头仍需 `using namespace sthread`
+- **下一步**：Phase 4 文档 / 对外头文件清单

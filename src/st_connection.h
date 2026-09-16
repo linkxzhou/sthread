@@ -13,19 +13,20 @@
 #include "stlib/st_heap_timer.h"
 #include "stlib/st_util.h"
 
-using namespace stlib;
-using namespace sthread;
+using namespace sthread; /* C3: 全局连接/服务类需 sthread 类型 */
 
 /* 用途：连接基类；SendData/RecvData 对业务是同步语义，内部可能 Yield。
  * 线程模型：绑定当前 OS 线程的事件/协程调度器。
  * 所有权：收发 StBuffer 从池借用，Reset() 归还；派生类勿泄漏 buffer。 */
-class StConnection : public referenceable {
+class StConnection : public stlib::referenceable {
 public:
   StConnection()
       : m_type_(eUNDEF_CONN), m_osfd_(-1), m_timeout_(30000), m_sendbuf_(NULL),
         m_recvbuf_(NULL), m_item_(NULL) {
-    m_recvbuf_ = Instance<StBufferPool>()->GetBuffer(ST_RECV_BUFFSIZE);
-    m_sendbuf_ = Instance<StBufferPool>()->GetBuffer(ST_SEND_BUFFSIZE);
+    m_recvbuf_ =
+        stlib::Instance<stlib::StBufferPool>()->GetBuffer(ST_RECV_BUFFSIZE);
+    m_sendbuf_ =
+        stlib::Instance<stlib::StBufferPool>()->GetBuffer(ST_SEND_BUFFSIZE);
   }
 
   virtual ~StConnection() {
@@ -34,7 +35,7 @@ public:
   }
 
   /* Client path must override; server accept path does not use Create. */
-  virtual int32_t Create(const StNetAddr &addr) = 0;
+  virtual int32_t Create(const stlib::StNetAddr &addr) = 0;
 
   void Close() {
     if (m_osfd_ >= 0) { /* B8: fd==0 也要关；-1 为无效哨兵 */
@@ -43,13 +44,15 @@ public:
     }
   }
 
-  inline void SetAddr(const StNetAddr &addr) { m_addr_ = addr; }
+  inline void SetAddr(const stlib::StNetAddr &addr) { m_addr_ = addr; }
 
-  inline StNetAddr &GetAddr() { return m_addr_; }
+  inline stlib::StNetAddr &GetAddr() { return m_addr_; }
 
-  inline void SetDestAddr(const StNetAddr &destaddr) { m_destaddr_ = destaddr; }
+  inline void SetDestAddr(const stlib::StNetAddr &destaddr) {
+    m_destaddr_ = destaddr;
+  }
 
-  inline StNetAddr &GetDestAddr() { return m_destaddr_; }
+  inline stlib::StNetAddr &GetDestAddr() { return m_destaddr_; }
 
   inline void SetOsfd(int fd) { m_osfd_ = fd; }
 
@@ -67,8 +70,8 @@ public:
   virtual void Reset() {
     /* B12: 池化 FreePtr→Reset 必须关 socket，避免 fd 泄漏。 */
     Close();
-    Instance<StBufferPool>()->FreeBuffer(m_sendbuf_);
-    Instance<StBufferPool>()->FreeBuffer(m_recvbuf_);
+    stlib::Instance<stlib::StBufferPool>()->FreeBuffer(m_sendbuf_);
+    stlib::Instance<stlib::StBufferPool>()->FreeBuffer(m_recvbuf_);
 
     m_sendbuf_ = NULL;
     m_recvbuf_ = NULL;
@@ -79,9 +82,9 @@ public:
   // 判断是否支持 keepalive（与 eConnType 末位 0x1 规则一致）
   inline bool Keeplive() { return IS_KEEPLIVE(m_type_); }
 
-  inline StBuffer *GetSendBuffer() { return m_sendbuf_; }
+  inline stlib::StBuffer *GetSendBuffer() { return m_sendbuf_; }
 
-  inline StBuffer *GetRecvBuffer() { return m_recvbuf_; }
+  inline stlib::StBuffer *GetRecvBuffer() { return m_recvbuf_; }
 
   int32_t SendData();
 
@@ -98,8 +101,8 @@ public:
 
 protected:
   int m_osfd_;
-  StBuffer *m_sendbuf_, *m_recvbuf_;
-  StNetAddr m_addr_, m_destaddr_;
+  stlib::StBuffer *m_sendbuf_, *m_recvbuf_;
+  stlib::StNetAddr m_addr_, m_destaddr_;
   eConnType m_type_;
   int32_t m_timeout_;
   StEventItem *m_item_;
@@ -109,11 +112,11 @@ template <class ConnectionT>
 /* 用途：客户端连接；Create 建 socket、注册事件，TCP 时 connect。
  * 线程模型：同 StConnection；兼 StTimer 可入定时器堆。
  * 所有权：通常经 StConnectionManager 分配/复用（仅 keepalive 类型走 hash）。 */
-class StClientConnection : public StConnection, public StTimer {
+class StClientConnection : public StConnection, public stlib::StTimer {
 public:
   StClientConnection() : StConnection() {}
 
-  virtual int32_t Create(const StNetAddr &addr) {
+  virtual int32_t Create(const stlib::StNetAddr &addr) {
     m_destaddr_ = addr;
 
     int protocol = SOCK_STREAM;
@@ -128,7 +131,7 @@ public:
       return -1;
     }
 
-    m_item_ = Instance<UtilPtrPool<ConnectionT> >()->AllocPtr();
+    m_item_ = stlib::Instance<stlib::UtilPtrPool<ConnectionT> >()->AllocPtr();
     LOG_ASSERT(m_item_ != NULL);
 
     m_item_->SetOsfd(m_osfd_);
@@ -141,7 +144,7 @@ public:
       if (rc < 0) {
         LOG_ERROR("connect error, rc: %d", rc);
         GlobalEventSchedule()->ClearItem(m_item_); // TODO:
-        UtilPtrPoolFree(m_item_);
+        stlib::UtilPtrPoolFree(m_item_);
         Close();
         return -2;
       }
@@ -150,7 +153,7 @@ public:
     return m_osfd_;
   }
 
-  virtual int32_t Connect(const StNetAddr &addr) {
+  virtual int32_t Connect(const stlib::StNetAddr &addr) {
     /* B6: IPv6 用 sockaddr_in6；B7: st_connect 已处理 EISCONN/进度态 */
     socklen_t addrlen = addr.IsIPV6() ? sizeof(struct sockaddr_in6)
                                       : sizeof(struct sockaddr_in);
@@ -174,9 +177,10 @@ template <class ConnectionT> class StConnectionManager {
 public:
   typedef ConnectionT *ConnectionTPtr;
 
-  ConnectionTPtr AllocPtr(eConnType type, const StNetAddr *destaddr = NULL,
-                          const StNetAddr *srcaddr = NULL) {
-    StNetAddrKey probe;
+  ConnectionTPtr AllocPtr(eConnType type,
+                          const stlib::StNetAddr *destaddr = NULL,
+                          const stlib::StNetAddr *srcaddr = NULL) {
+    stlib::StNetAddrKey probe;
     if (IS_KEEPLIVE(type) && destaddr != NULL) {
       probe.SetDestAddr(*destaddr);
     }
@@ -190,7 +194,7 @@ public:
     }
 
     if (conn == NULL) {
-      conn = Instance<UtilPtrPool<ConnectionT> >()->AllocPtr();
+      conn = stlib::Instance<stlib::UtilPtrPool<ConnectionT> >()->AllocPtr();
       conn->SetConnType(type);
       if (destaddr != NULL) {
         conn->SetDestAddr(*destaddr);
@@ -200,7 +204,7 @@ public:
       }
       if (IS_KEEPLIVE(type)) {
         /* HashInsert stores the key pointer; must be heap-owned. */
-        StNetAddrKey *key = new StNetAddrKey();
+        stlib::StNetAddrKey *key = new stlib::StNetAddrKey();
         if (destaddr != NULL) {
           key->SetDestAddr(*destaddr);
         }
@@ -225,17 +229,17 @@ public:
     if (IS_KEEPLIVE(type)) {
       /* D1/B11: 当前仍 HashRemove 再入池——keepalive 只保语义标记，
        * 并不在 hash 中做真复用；真池复用另立项。 */
-      StNetAddrKey probe;
+      stlib::StNetAddrKey probe;
       probe.SetDestAddr(conn->GetDestAddr());
       probe.SetSrcAddr(conn->GetAddr());
-      StNetAddrKey *dead = m_hashlist_.HashRemove(&probe);
+      stlib::StNetAddrKey *dead = m_hashlist_.HashRemove(&probe);
       st_safe_delete(dead);
     }
-    UtilPtrPoolFree(conn); /* → Reset() → Close()（B12） */
+    stlib::UtilPtrPoolFree(conn); /* → Reset() → Close()（B12） */
   }
 
 private:
-  StHashList<StNetAddrKey> m_hashlist_;
+  stlib::StHashList<stlib::StNetAddrKey> m_hashlist_;
 };
 
 #endif

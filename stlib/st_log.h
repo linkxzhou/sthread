@@ -69,44 +69,45 @@ private:
 
 #define LOG_ERROR(...)                                                         \
   do {                                                                         \
-    if (StLogger::Instance().LogAble(LLOG_ERR) != 0) {                         \
-      StLogger::Instance().__log(__FILE__, __LINE__, LLOG_ERR, ##__VA_ARGS__); \
+    if (::stlib::StLogger::Instance().LogAble(LLOG_ERR) != 0) {                \
+      ::stlib::StLogger::Instance().__log(__FILE__, __LINE__, LLOG_ERR,        \
+                                          ##__VA_ARGS__);                      \
     }                                                                          \
   } while (0)
 
 #define LOG_WARN(...)                                                          \
   do {                                                                         \
-    if (StLogger::Instance().LogAble(LLOG_WARN) != 0) {                        \
-      StLogger::Instance().__log(__FILE__, __LINE__, LLOG_WARN,                \
-                                 ##__VA_ARGS__);                               \
+    if (::stlib::StLogger::Instance().LogAble(LLOG_WARN) != 0) {               \
+      ::stlib::StLogger::Instance().__log(__FILE__, __LINE__, LLOG_WARN,       \
+                                          ##__VA_ARGS__);                      \
     }                                                                          \
   } while (0)
 
 #define LOG_PANIC(...)                                                         \
   do {                                                                         \
-    if (StLogger::Instance().LogAble(LLOG_EMERG) != 0) {                       \
-      StLogger::Instance().__log(__FILE__, __LINE__, LLOG_EMERG,               \
-                                 ##__VA_ARGS__);                               \
+    if (::stlib::StLogger::Instance().LogAble(LLOG_EMERG) != 0) {              \
+      ::stlib::StLogger::Instance().__log(__FILE__, __LINE__, LLOG_EMERG,      \
+                                          ##__VA_ARGS__);                      \
     }                                                                          \
   } while (0)
 
 #define LOG_DEBUG(...)                                                         \
   do {                                                                         \
-    if (StLogger::Instance().LogAble(LLOG_VVVERB) != 0) {                      \
-      StLogger::Instance().__log(__FILE__, __LINE__, LLOG_VVVERB,              \
-                                 ##__VA_ARGS__);                               \
+    if (::stlib::StLogger::Instance().LogAble(LLOG_VVVERB) != 0) {             \
+      ::stlib::StLogger::Instance().__log(__FILE__, __LINE__, LLOG_VVVERB,     \
+                                          ##__VA_ARGS__);                      \
     }                                                                          \
   } while (0)
 
 #define LOG_TRACE(...)                                                         \
   do {                                                                         \
-    if (StLogger::Instance().LogAble(LLOG_PVERB) != 0) {                       \
-      StLogger::Instance().__log(__FILE__, __LINE__, LLOG_PVERB,               \
-                                 ##__VA_ARGS__);                               \
+    if (::stlib::StLogger::Instance().LogAble(LLOG_PVERB) != 0) {              \
+      ::stlib::StLogger::Instance().__log(__FILE__, __LINE__, LLOG_PVERB,      \
+                                          ##__VA_ARGS__);                      \
     }                                                                          \
   } while (0)
 
-#define LOG_LEVEL(level) StLogger::Instance().SetLevel(level)
+#define LOG_LEVEL(level) ::stlib::StLogger::Instance().SetLevel(level)
 
 #define LOG_ASSERT(exp) assert((exp))
 

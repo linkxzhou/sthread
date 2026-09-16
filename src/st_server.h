@@ -5,8 +5,15 @@
 #ifndef _ST_SERVER_H__
 #define _ST_SERVER_H__
 
-#include "app/st_c.h"
 #include "app/st_sys.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+void st_set_hook_flag(); /* C4: 避免 include app/st_c.h */
+#ifdef __cplusplus
+}
+#endif
 #include "st_connection.h"
 #include "st_manager.h"
 #include "st_poll.h"
@@ -15,15 +22,14 @@
 #include "stlib/st_netaddr.h"
 #include "stlib/st_util.h"
 
-using namespace sthread;
-using namespace stlib;
+using namespace sthread; /* C3: 全局连接/服务类需 sthread 类型 */
 
 template <class ConnectionT> class StServerConnection : public StConnection {
 public:
   StServerConnection() : StConnection() {}
 
   /* Server conns are accept()-created; Create() is unused (A5 default). */
-  virtual int32_t Create(const StNetAddr &addr) {
+  virtual int32_t Create(const stlib::StNetAddr &addr) {
     (void)addr;
     return -1;
   }
@@ -36,13 +42,13 @@ public:
 template <class ConnetionT, int ServerT = eTCP_CONN> class StServer {
 public:
   StServer() : m_osfd_(-1), m_item_(NULL), m_schedule_(NULL) {
-    m_schedule_ = Instance<StSysSchedule>();
+    m_schedule_ = stlib::Instance<StSysSchedule>();
   }
 
   ~StServer() {
     if (m_item_ != NULL) {
       GlobalEventSchedule()->ClearItem(m_item_);
-      UtilPtrPoolFree(m_item_);
+      stlib::UtilPtrPoolFree(m_item_);
       m_item_ = NULL;
     }
     if (m_osfd_ >= 0) {
@@ -53,7 +59,7 @@ public:
 
   inline void SetHookFlag() { st_set_hook_flag(); }
 
-  int32_t CreateSocket(const StNetAddr &addr) {
+  int32_t CreateSocket(const stlib::StNetAddr &addr) {
     m_addr_ = addr;
 
     int protocol = SOCK_STREAM;
@@ -71,7 +77,7 @@ public:
       ::setsockopt(m_osfd_, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
     }
 
-    m_item_ = Instance<UtilPtrPool<StEventItem> >()->AllocPtr();
+    m_item_ = stlib::Instance<stlib::UtilPtrPool<StEventItem> >()->AllocPtr();
     LOG_ASSERT(m_item_ != NULL);
     m_item_->SetOsfd(m_osfd_);
     m_item_->EnableOutput();
@@ -111,9 +117,9 @@ public:
         continue;
       }
 
-      StNetAddr addr(*((struct sockaddr_in *)&clientaddr));
+      stlib::StNetAddr addr(*((struct sockaddr_in *)&clientaddr));
       StConnection *conn =
-          (StConnection *)(Instance<StConnectionManager<ConnetionT> >()
+          (StConnection *)(stlib::Instance<StConnectionManager<ConnetionT> >()
                                ->AllocPtr((eConnType)ServerT, &addr));
       if (conn == NULL) {
         LOG_ERROR("AllocPtr failed, close connfd: %d", connfd);
@@ -131,7 +137,8 @@ public:
   static void CallBack(StConnection *conn,
                        StServer<ConnetionT, ServerT> *server) {
     (void)server;
-    StEventItem *item = Instance<UtilPtrPool<StEventItem> >()->AllocPtr();
+    StEventItem *item =
+        stlib::Instance<stlib::UtilPtrPool<StEventItem> >()->AllocPtr();
     LOG_ASSERT(item != NULL);
 
     item->SetOsfd(conn->GetOsfd());
@@ -139,10 +146,10 @@ public:
     if (thread == NULL) {
       LOG_ERROR("CallBack active thread is NULL");
       GlobalEventSchedule()->ClearItem(item);
-      UtilPtrPoolFree(item);
+      stlib::UtilPtrPoolFree(item);
       if (conn != NULL) {
         /* B20/D5: 错误路径也归还连接池 */
-        Instance<StConnectionManager<ConnetionT> >()->FreePtr(
+        stlib::Instance<StConnectionManager<ConnetionT> >()->FreePtr(
             (ConnetionT *)conn);
       }
       return;
@@ -174,15 +181,16 @@ public:
 
   CALLBACK_EXIT1:
     GlobalEventSchedule()->ClearItem(item);
-    UtilPtrPoolFree(item);
+    stlib::UtilPtrPoolFree(item);
     /* B10/D5: Close 由 FreePtr→Reset 统一完成，并归还连接池 */
-    Instance<StConnectionManager<ConnetionT> >()->FreePtr((ConnetionT *)conn);
+    stlib::Instance<StConnectionManager<ConnetionT> >()->FreePtr(
+        (ConnetionT *)conn);
   }
 
 private:
   StSysSchedule *m_schedule_;
   int m_osfd_;
-  StNetAddr m_addr_;
+  stlib::StNetAddr m_addr_;
   StEventItem *m_item_;
 };
 
