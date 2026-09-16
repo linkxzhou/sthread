@@ -188,7 +188,10 @@ protected:
 class StThread : public StThreadItem {
 public:
   StThread() : StThreadItem() {
-    LOG_ASSERT(InitStack());
+    if (!InitStack()) {
+      LOG_ERROR("StThread: InitStack failed");
+      return;
+    }
     InitContext();
   }
 
@@ -236,6 +239,8 @@ protected:
       LOG_WARN("m_stack_ == NULL");
       return;
     }
+    /* B1: Stack 结构体与 m_vaddr_ 分别 malloc，须先释栈再释结构体。 */
+    st_safe_free(m_stack_->m_vaddr_);
     st_safe_free(m_stack_);
   }
 

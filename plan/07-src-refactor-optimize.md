@@ -293,3 +293,31 @@
 - **产物**：`libmthread.so` 195488 B（Phase0 216000）；`nm -gU` 128 符号（Phase0 129，少 `Startup`）
 - **偏差**：A7 保留；A5 引发两处测试改调用点（允许，因纯虚化）
 - **下一步**：Phase 2 P-B（优先 B1/B2/B10/B12/B18）
+
+### Phase 2 · P-B 潜伏 bug（2026-09-16）
+
+- **提交**：见本批 commit
+- **落地（按 D1–D6）**
+  - **B1** `FreeStack` 先 `free(m_vaddr_)` 再释放 `Stack`
+  - **B2** `Reset` 不再 `free(m_private_)`；`SetPrivate`/`st_set_private` 注明所有权归调用方
+  - **B3** `st_accept` Schedule 用 `TimeMs()+0x7fffffff` 替代 `-1`
+  - **B4** Dispatch `ST_EVERR`：`IOWaitToRunable` + `ClearItem`
+  - **B5** Dispatch 无 owner：日志 + continue（去 `LOG_ASSERT`）
+  - **B6** Connect/UDP RecvData/bind 按 `IsIPV6` 选 `sockaddr_in6` 与长度
+  - **B7** Connect 外层简化为 `<0` 失败
+  - **B8** `Close` 条件改为 `m_osfd_ >= 0`
+  - **B9** 二进制缓冲日志改 `%p`/长度，去掉 `%s`
+  - **B10/B20/D5** `CallBack` 正常/错误出口 `FreePtr(conn)`
+  - **B11/D1** `FreePtr` 注释声明 keepalive 不真复用（仍 HashRemove）
+  - **B12** `Reset` 内调用 `Close()`
+  - **B13/D4** fd 容量 `min(rlim_cur, 65535)`；`setrlimit` 失败告警
+  - **B14** `InitStack` 失败显式日志（去裸 `LOG_ASSERT`）
+  - **B15/C9** `st_sys.h` 补返回值约定注释表
+  - **B16/D3** `st_recvfrom` `n==0` 保持 + 注释
+  - **B17** `WakeupParent` 去掉无意义 `dynamic_cast`
+  - **B18** `Schedule` Add 失败回滚 `item` 出线程 fdset
+  - **B19** `GetStThreadid` 无栈返回 0
+- **单测**：`st_coverage_extra` +3（FreeStack / PrivateNotFreed / ThreadId）→ 15 PASSED
+- **三件套**：全绿；format-check 绿
+- **偏差**：未单独加 IPv6 loopback CI 单测（本机仍以 v4 回归为主）；B18 的 fdset 非空回滚未实现（现网调用 fdset 恒 NULL）
+- **下一步**：Phase 3 P-C（C1 `st_sys` 骨架为主）

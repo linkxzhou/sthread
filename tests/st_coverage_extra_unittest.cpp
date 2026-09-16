@@ -9,10 +9,10 @@
 #include "tests/st_test_compat.h"
 #include <fcntl.h>
 #include <signal.h>
+#include <stdlib.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <sys/wait.h>
-#include <stdlib.h>
 #include <unistd.h>
 
 ST_NAMESPACE_USING
@@ -203,7 +203,8 @@ TEST(StStatus, ConnectTimeoutPath) {
   /* TEST-NET-1 — typically blackholed / slow to fail */
   dst.sin_addr.s_addr = htonl(0xCB007101); /* 203.0.113.1 */
   errno = 0;
-  /* Exercise connect wait/timeout/error branches; outcome is network-dependent. */
+  /* Exercise connect wait/timeout/error branches; outcome is network-dependent.
+   */
   (void)st_connect(fd, (struct sockaddr *)&dst, sizeof(dst), 8);
 
   GlobalEventSchedule()->ClearItem(item);
@@ -261,11 +262,11 @@ TEST(StStatus, UdpServerCreateListen) {
   addr.SetAddr("127.0.0.1", 19401);
   int fd = server->CreateSocket(addr);
   ASSERT_TRUE(fd >= 0);
-  /* UDP sockets do not listen(2); CreateSocket already covers SOCK_DGRAM path. */
+  /* UDP sockets do not listen(2); CreateSocket already covers SOCK_DGRAM path.
+   */
   (void)server->Listen();
   delete server;
 }
-
 
 TEST(StStatus, SysNullActiveThread) {
   ASSERT_TRUE(st_init_frame());
@@ -280,7 +281,8 @@ TEST(StStatus, SysNullActiveThread) {
   dst.sin_port = htons(9);
   dst.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
   errno = 0;
-  ASSERT_TRUE(st_sendto(0, buf, 1, 0, (struct sockaddr *)&dst, sizeof(dst), 10) < 0);
+  ASSERT_TRUE(
+      st_sendto(0, buf, 1, 0, (struct sockaddr *)&dst, sizeof(dst), 10) < 0);
   ASSERT_TRUE(errno == EINVAL);
   errno = 0;
   ASSERT_TRUE(st_recvfrom(0, buf, 1, 0, NULL, NULL, 10) < 0);
@@ -327,7 +329,8 @@ TEST(StStatus, UdpRecvfromTimeout) {
   struct sockaddr_in from;
   socklen_t flen = sizeof(from);
   errno = 0;
-  int n = st_recvfrom(fd, rbuf, sizeof(rbuf), 0, (struct sockaddr *)&from, &flen, 5);
+  int n = st_recvfrom(fd, rbuf, sizeof(rbuf), 0, (struct sockaddr *)&from,
+                      &flen, 5);
   ASSERT_TRUE(n < 0 && errno == ETIME);
 
   GlobalEventSchedule()->ClearItem(item);
@@ -359,6 +362,37 @@ TEST(StStatus, ConnectBlackholeTimeout) {
   close(fd);
 }
 
+TEST(StStatus, FreeStackReleasesVaddr) {
+  /* B1: new/delete 多轮（烟雾，配合 RSS 基线人工对比） */
+  for (int i = 0; i < 32; i++) {
+    StThread *th = new StThread();
+    ASSERT_TRUE(th != NULL);
+    ASSERT_TRUE(th->GetStack() != NULL);
+    delete th;
+  }
+}
+
+TEST(StStatus, PrivateNotFreedOnReset) {
+  /* B2: 栈上 private 经 Reset 不得 free */
+  ASSERT_TRUE(st_init_frame());
+  StThread *th = GlobalThreadSchedule()->AllocThread();
+  ASSERT_TRUE(th != NULL);
+  int stack_probe = 42;
+  th->SetPrivate(&stack_probe);
+  th->Reset();
+  ASSERT_TRUE(th->GetPrivate() == NULL);
+  ASSERT_TRUE(stack_probe == 42);
+  UtilPtrPoolFree(th);
+}
+
+TEST(StStatus, ThreadIdPositiveWithStack) {
+  /* B19 相关：有栈时 id 非 0 */
+  ASSERT_TRUE(st_init_frame());
+  StThread *th = GlobalThreadSchedule()->AllocThread();
+  ASSERT_TRUE(th != NULL);
+  ASSERT_TRUE(th->GetStThreadid() != 0);
+  UtilPtrPoolFree(th);
+}
 
 int main(int argc, char *argv[]) {
   (void)argc;

@@ -110,7 +110,7 @@ int st_recvfrom(int fd, void *buf, int len, int flags, struct sockaddr *from,
     }
 
     int n = REAL_FUNC(recvfrom)(fd, buf, (size_t)len, flags, from, fromlen);
-    LOG_TRACE("recvfrom return n: %d, buf: %s, fd: %d, len: %d, flags: %d", n,
+    LOG_TRACE("recvfrom return n: %d, buf: %p, fd: %d, len: %d, flags: %d", n,
               buf, fd, len, flags);
     if (n < 0) {
       if (errno == EINTR) {
@@ -121,8 +121,8 @@ int st_recvfrom(int fd, void *buf, int len, int flags, struct sockaddr *from,
         LOG_ERROR("recvfrom failed, errno: %d", errno);
         return -1;
       }
-    } else if (n == 0) // 对端关闭
-    {
+    } else if (n == 0) {
+      /* D3/B16: 历史语义当对端关闭；UDP 零长包合法但保持兼容 */
       LOG_ERROR("[n=0]recvfrom failed, errno: %d", errno);
       return 0;
     } else {
@@ -370,7 +370,7 @@ int st_recv(int fd, void *buf, int len, int flags, int timeout) {
     }
 
     int n = REAL_FUNC(recv)(fd, buf, (size_t)len, flags);
-    LOG_TRACE("recv return n: %d, buf: %s, fd: %d, len: %d, flags: %d", n, buf,
+    LOG_TRACE("recv return n: %d, buf: %p, fd: %d, len: %d, flags: %d", n, buf,
               fd, len, flags);
     if (n < 0) {
       LOG_ERROR("recv failed, errno: %d, strerr: %s", errno, strerror(errno));
@@ -508,7 +508,10 @@ int st_accept(int fd, struct sockaddr *addr, socklen_t *addrlen) {
     item->DisableOutput();
     item->EnableInput();
     item->SetOwnerThread(thread);
-    if (!(GlobalEventSchedule()->Schedule(thread, NULL, item, -1))) {
+    /* B3: 无限等待规范化为远端 deadline，避免 -1 被当成立即过期 */
+    int64_t wakeup_timeout = Util::TimeMs() + 0x7fffffff;
+    if (!(GlobalEventSchedule()->Schedule(thread, NULL, item,
+                                          wakeup_timeout))) {
       LOG_ERROR("item schedule failed, errno: %d, strerr: %s", errno,
                 strerror(errno));
       /* Do not UtilPtrPoolFree(item): it is the live GetEventItem(fd). */

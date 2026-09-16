@@ -37,7 +37,7 @@ public:
   virtual int32_t Create(const StNetAddr &addr) = 0;
 
   void Close() {
-    if (m_osfd_ > 0) {
+    if (m_osfd_ >= 0) { /* B8: fd==0 也要关；-1 为无效哨兵 */
       sys_close(m_osfd_);
       m_osfd_ = -1;
     }
@@ -65,10 +65,11 @@ public:
   inline int32_t GetTimeout() { return m_timeout_; }
 
   virtual void Reset() {
+    /* B12: 池化 FreePtr→Reset 必须关 socket，避免 fd 泄漏。 */
+    Close();
     Instance<StBufferPool>()->FreeBuffer(m_sendbuf_);
     Instance<StBufferPool>()->FreeBuffer(m_recvbuf_);
 
-    m_osfd_ = -1;
     m_sendbuf_ = NULL;
     m_recvbuf_ = NULL;
     m_type_ = eUNDEF_CONN;
@@ -150,28 +151,18 @@ public:
   }
 
   virtual int32_t Connect(const StNetAddr &addr) {
-    struct sockaddr *destaddr = addr.GetSockAddr();
-
-    int32_t err = 0;
-    int32_t ret =
-        st_connect(m_osfd_, destaddr, sizeof(struct sockaddr_in), m_timeout_);
+    /* B6: IPv6 用 sockaddr_in6；B7: st_connect 已处理 EISCONN/进度态 */
+    socklen_t addrlen = addr.IsIPV6() ? sizeof(struct sockaddr_in6)
+                                      : sizeof(struct sockaddr_in);
+    struct sockaddr *destaddr = addr.IsIPV6()
+                                    ? (struct sockaddr *)addr.GetSock6Addr()
+                                    : addr.GetSockAddr();
+    int32_t ret = st_connect(m_osfd_, destaddr, (int)addrlen, m_timeout_);
     if (ret < 0) {
-      err = errno;
-      if (err == EISCONN) {
-        return 0;
-      } else {
-        if ((err == EINPROGRESS) || (err == EALREADY) || (err == EINTR)) {
-          LOG_ERROR("connect not ok, sock: %d, errno: %d, strerr: %s", m_osfd_,
-                    err, strerror(err));
-          return -1;
-        } else {
-          LOG_ERROR("connect not ok, sock: %d, errno: %d, strerr: %s", m_osfd_,
-                    err, strerror(err));
-          return -2;
-        }
-      }
+      LOG_ERROR("connect not ok, sock: %d, errno: %d, strerr: %s", m_osfd_,
+                errno, strerror(errno));
+      return (errno == ETIME) ? -1 : -2;
     }
-
     return 0;
   }
 };
@@ -232,13 +223,15 @@ public:
     }
     eConnType type = conn->GetConnType();
     if (IS_KEEPLIVE(type)) {
+      /* D1/B11: 当前仍 HashRemove 再入池——keepalive 只保语义标记，
+       * 并不在 hash 中做真复用；真池复用另立项。 */
       StNetAddrKey probe;
       probe.SetDestAddr(conn->GetDestAddr());
       probe.SetSrcAddr(conn->GetAddr());
       StNetAddrKey *dead = m_hashlist_.HashRemove(&probe);
       st_safe_delete(dead);
     }
-    UtilPtrPoolFree(conn);
+    UtilPtrPoolFree(conn); /* → Reset() → Close()（B12） */
   }
 
 private:

@@ -126,7 +126,8 @@ public:
     m_type_ = eNORMAL;
     m_state_ = eINITIAL;
     st_safe_delete(m_callback_);
-    st_safe_free(m_private_);
+    /* B2: m_private_ 归调用方（st_set_private / SetPrivate），此处只摘引用。 */
+    m_private_ = NULL;
 
     CPP_TAILQ_INIT(&m_fdset_);
     CPP_TAILQ_INIT(&m_sub_threadlist_);
@@ -163,6 +164,7 @@ public:
 
   inline int64_t HeapValue() { return m_wakeup_time_; }
 
+  /* 私有数据所有权归调用方；Reset/析构不会 free。 */
   inline void SetPrivate(void *data) { m_private_ = data; }
 
   inline void *GetPrivate() { return m_private_; }
@@ -176,7 +178,7 @@ public:
 
   inline uint64_t GetStThreadid() {
     if (NULL == m_stack_) {
-      return -1;
+      return 0; /* B19: 无栈视为无效 id */
     }
 
     return m_stack_->m_id_;

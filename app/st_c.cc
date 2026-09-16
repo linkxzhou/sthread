@@ -15,7 +15,7 @@ static StExecClientConnection *_get_conn(struct sockaddr_in *dst, int32_t &sock,
   StNetAddr addr(*dst);
   StExecClientConnection *conn =
       Instance<StConnectionManager<StExecClientConnection> >()->AllocPtr(type,
-                                                                        &addr);
+                                                                         &addr);
   if (NULL == conn) {
     LOG_ERROR("get connection failed, dst[%p]", dst);
     return NULL;
@@ -215,6 +215,7 @@ TCP_SENDRECV_EXIT_LABEL:
 }
 
 // 设置私有数据
+/* B2: private 数据所有权归调用方，框架 Reset 不会 free。 */
 void st_set_private(void *data) {
   StThread *athread = (StThread *)(GlobalThreadSchedule()->GetActiveThread());
   LOG_ASSERT(athread == NULL);

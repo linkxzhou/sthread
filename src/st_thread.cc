@@ -179,7 +179,7 @@ StThreadItem *StThreadSchedule::PopRunable() {
 }
 
 void StThreadSchedule::WakeupParent(StThreadItem *thread) {
-  StThreadItem *parent = dynamic_cast<StThread *>(thread->GetParent());
+  StThreadItem *parent = thread->GetParent(); /* B17: 无需 dynamic_cast */
   if (parent) {
     parent->RemoveSubStThread(thread);
     if (parent->HasNoSubStThread()) {
@@ -217,7 +217,29 @@ StThread *StThreadSchedule::CreateThread(StClosure *closure, bool runable) {
 }
 
 int StEventSchedule::Init(int max_num) {
-  m_maxfd_ = ST_MAX(max_num, m_maxfd_);
+  /* B13/D4: 容量取 min(rlim_cur, 65535)，避免默认按 65535 吃 ~2.3MB/线程 */
+  int cap = max_num;
+  struct rlimit rlim;
+  memset(&rlim, 0, sizeof(rlim));
+  if (getrlimit(RLIMIT_NOFILE, &rlim) == 0) {
+    int lim = (int)rlim.rlim_cur;
+    if (lim > 65535) {
+      lim = 65535;
+    }
+    if (lim > 0 && (cap <= 0 || cap > lim)) {
+      cap = lim;
+    }
+    if ((int)rlim.rlim_max < cap) {
+      rlim.rlim_cur = cap;
+      rlim.rlim_max = cap;
+      if (setrlimit(RLIMIT_NOFILE, &rlim) != 0) {
+        LOG_WARN("setrlimit(RLIMIT_NOFILE) failed, errno: %d", errno);
+      }
+    }
+  } else if (cap > 65535) {
+    cap = 65535;
+  }
+  m_maxfd_ = ST_MAX(cap, m_maxfd_);
   int rc = m_iostate_->Create(m_maxfd_);
   if (rc < 0) {
     rc = -2;
@@ -232,18 +254,6 @@ int StEventSchedule::Init(int max_num) {
 
   // 初始化设置为空指针
   memset(m_event_, 0, sizeof(StEventItemPtr) * m_maxfd_);
-
-  // 设置系统参数
-  struct rlimit rlim;
-  memset(&rlim, 0, sizeof(rlim));
-  if (getrlimit(RLIMIT_NOFILE, &rlim) == 0) {
-    if ((int)rlim.rlim_max < m_maxfd_) {
-      // 重新设置句柄大小
-      rlim.rlim_cur = m_maxfd_;
-      rlim.rlim_max = m_maxfd_;
-      setrlimit(RLIMIT_NOFILE, &rlim);
-    }
-  }
 
   m_thread_schedule_ = Instance<StThreadSchedule>();
   LOG_ASSERT(m_thread_schedule_ != NULL);
@@ -435,13 +445,23 @@ void StEventSchedule::Dispatch(int fdnum) {
     }
 
     StThreadItem *thread = item->GetOwnerStThread();
-    LOG_ASSERT(thread != NULL);
 
     item->SetRecvEvents(revents); // 设置收到的事件
     if (revents & ST_EVERR) {
       LOG_TRACE("ST_EVERR osfd: %d fdnum: %d", osfd, fdnum);
       item->EvHangup();
-      Delete(item);
+      /* B4: 唤醒等待协程并清 m_event_ 槽，避免僵死到 sleep 超时 */
+      if (thread != NULL && thread->HasFlag(eIO_LIST)) {
+        m_thread_schedule_->IOWaitToRunable(thread);
+      }
+      ClearItem(item);
+      continue;
+    }
+
+    /* B5: listen 等无 owner 的 item 不可 abort */
+    if (thread == NULL) {
+      LOG_ERROR("Dispatch: owner thread NULL, fd: %d, revents: %d", osfd,
+                revents);
       continue;
     }
 
@@ -518,6 +538,13 @@ bool StEventSchedule::Schedule(StThreadItem *thread, StEventItemQueue *fdset,
   thread->SetWakeupTime(wakeup_timeout);
   if (!Add(thread->GetFdSet())) {
     LOG_ERROR("add fdset, errno: %d", errno);
+    /* B18: Add 失败时回滚本次链入线程 fdset 的 item，避免池化复用脏链表 */
+    if (NULL != item) {
+      CPP_TAILQ_REMOVE_SELF(item, m_next_);
+    }
+    /* 现网 Schedule 调用 fdset 恒为 NULL；若将来传入，CONCAT
+     * 后源已空，需另册回滚。 */
+    (void)fdset;
     return false;
   }
 

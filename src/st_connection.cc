@@ -1,3 +1,4 @@
+#include <string.h>
 /*
  * Copyright (C) zhoulv2000@163.com
  */
@@ -37,7 +38,8 @@ int32_t StConnection::SendData() {
                   m_timeout_);
   }
 
-  LOG_TRACE("send: %s", buf + have_send_len);
+  LOG_TRACE("send: %p len_left: %d", (void *)(buf + have_send_len),
+            buf_len - have_send_len);
 
   if (ret == -1) {
     if ((errno == EINTR) || (errno == EAGAIN) || (errno == EINPROGRESS)) {
@@ -75,13 +77,24 @@ int32_t StConnection::RecvData() {
 
   int ret = 0;
   if (IS_UDP_CONN(m_type_)) {
-    // 设置目的IP地址
-    struct sockaddr clientaddr;
-    socklen_t addrlen = sizeof(struct sockaddr);
-    ret = st_recvfrom(m_osfd_, (char *)buf + have_recv_len,
-                      buf_maxlen - have_recv_len, 0, &clientaddr, &addrlen,
-                      m_timeout_);
-    m_destaddr_ = StNetAddr(*((struct sockaddr_in *)&clientaddr));
+    /* B6: 按地址族接收对端，避免 IPv6 截断 */
+    if (m_addr_.IsIPV6() || m_destaddr_.IsIPV6()) {
+      struct sockaddr_in6 clientaddr6;
+      socklen_t addrlen = sizeof(clientaddr6);
+      memset(&clientaddr6, 0, sizeof(clientaddr6));
+      ret = st_recvfrom(m_osfd_, (char *)buf + have_recv_len,
+                        buf_maxlen - have_recv_len, 0,
+                        (struct sockaddr *)&clientaddr6, &addrlen, m_timeout_);
+      m_destaddr_ = StNetAddr(clientaddr6);
+    } else {
+      struct sockaddr_in clientaddr;
+      socklen_t addrlen = sizeof(clientaddr);
+      memset(&clientaddr, 0, sizeof(clientaddr));
+      ret = st_recvfrom(m_osfd_, (char *)buf + have_recv_len,
+                        buf_maxlen - have_recv_len, 0,
+                        (struct sockaddr *)&clientaddr, &addrlen, m_timeout_);
+      m_destaddr_ = StNetAddr(clientaddr);
+    }
   } else {
     ret = st_recv(m_osfd_, (char *)buf + have_recv_len,
                   buf_maxlen - have_recv_len, 0, m_timeout_);

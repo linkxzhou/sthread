@@ -78,8 +78,12 @@ public:
     m_item_->DisableInput();
     GlobalEventSchedule()->Add(m_item_);
 
-    struct sockaddr *servaddr = m_addr_.GetSockAddr();
-    if (::bind(m_osfd_, servaddr, sizeof(struct sockaddr)) < 0) {
+    socklen_t bindlen = m_addr_.IsIPV6() ? sizeof(struct sockaddr_in6)
+                                         : sizeof(struct sockaddr_in);
+    struct sockaddr *servaddr = m_addr_.IsIPV6()
+                                    ? (struct sockaddr *)m_addr_.GetSock6Addr()
+                                    : m_addr_.GetSockAddr();
+    if (::bind(m_osfd_, servaddr, bindlen) < 0) {
       LOG_ERROR("bind socket error: %s(errno: %d)", strerror(errno), errno);
       return -2;
     }
@@ -137,7 +141,9 @@ public:
       GlobalEventSchedule()->ClearItem(item);
       UtilPtrPoolFree(item);
       if (conn != NULL) {
-        conn->Close();
+        /* B20/D5: 错误路径也归还连接池 */
+        Instance<StConnectionManager<ConnetionT> >()->FreePtr(
+            (ConnetionT *)conn);
       }
       return;
     }
@@ -168,8 +174,9 @@ public:
 
   CALLBACK_EXIT1:
     GlobalEventSchedule()->ClearItem(item);
-    conn->Close();
     UtilPtrPoolFree(item);
+    /* B10/D5: Close 由 FreePtr→Reset 统一完成，并归还连接池 */
+    Instance<StConnectionManager<ConnetionT> >()->FreePtr((ConnetionT *)conn);
   }
 
 private:
