@@ -44,6 +44,16 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM HUP
 
+# Fail fast if listen port is taken (common: leftover `python3 -m http.server 8765`).
+if command -v lsof >/dev/null 2>&1; then
+  busy=$(lsof -nP -iTCP:"$PORT" -sTCP:LISTEN 2>/dev/null | awk 'NR>1 {print $1"/"$2; exit}') || true
+  if [ -n "${busy:-}" ]; then
+    echo "HTTP port $PORT already in use by $busy" >&2
+    echo "free it, or: BENCH_HTTP_PORT=<free> make bench-http" >&2
+    exit 1
+  fi
+fi
+
 "$HTTP_BIN" "$PORT" >"$REPORT_DIR/httpserver-${STAMP}.log" 2>&1 &
 SERVER_PID=$!
 sleep 1

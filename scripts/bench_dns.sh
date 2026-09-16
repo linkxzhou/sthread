@@ -39,6 +39,20 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM HUP
 
+# Prefer a free port if default 5353 clashes with mDNS/Chrome on macOS.
+if command -v lsof >/dev/null 2>&1; then
+  # If something that is NOT st_dnsserver holds UDP $PORT, try 15353 once when using default.
+  holders=$(lsof -nP -iUDP:"$PORT" 2>/dev/null | awk 'NR>1 {print $1}' | sort -u | tr '\n' ' ') || true
+  if echo " $holders " | grep -q ' st_dnsserver '; then
+    echo "DNS port $PORT already has st_dnsserver; kill it or set BENCH_DNS_PORT" >&2
+    exit 1
+  fi
+  if [ -n "${holders:-}" ] && [ "$PORT" = "5353" ] && [ -z "${BENCH_DNS_PORT:-}" ]; then
+    echo "note: UDP 5353 held by [$holders]; trying BENCH_DNS_PORT=15353" >&2
+    PORT=15353
+  fi
+fi
+
 "$DNS_SRV" "$HOST" "$PORT" >"$REPORT_DIR/dnsserver-${STAMP}.log" 2>&1 &
 SERVER_PID=$!
 sleep 1
