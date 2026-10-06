@@ -1,4 +1,5 @@
 #include "app/st_c.h"
+#include "src/st_connection.h"
 #include "src/st_sys.h"
 #include "stlib/st_netaddr.h"
 #include "tests/st_test_compat.h"
@@ -18,8 +19,7 @@ static int tcp_check(void *buf, int len) {
   return 0;
 }
 
-/* TCP 放在 UDP 之前：同进程里 UDP 先跑会弄脏 primo fdset，
- * 随后 st_connect 的 Schedule 把残留 item 一并 Add（Linux epoll）。 */
+/* TCP 与 UDP 共享同一调度器，回归时保留此顺序。 */
 TEST(StStatus, TcpLoopback) {
   int port = 19012;
   pid_t pid = fork();
@@ -105,6 +105,57 @@ TEST(StStatus, UdpLoopback) {
   waitpid(pid, &st, 0);
   ASSERT_TRUE(rc == 0);
   ASSERT_TRUE(bufsize >= 4 && memcmp(recvbuf, "PONG", 4) == 0);
+}
+
+TEST(StStatus, UdpSequentialLoopback) {
+  int port = 19013;
+  pid_t pid = fork();
+  ASSERT_TRUE(pid >= 0);
+  if (pid == 0) {
+    int fd = socket(AF_INET, SOCK_DGRAM, 0);
+    struct sockaddr_in addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(port);
+    addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    if (fd < 0 || bind(fd, (struct sockaddr *)&addr, sizeof(addr)) != 0)
+      _exit(1);
+    for (int i = 0; i < 4; i++) {
+      char buf[16];
+      struct sockaddr_in from;
+      socklen_t fromlen = sizeof(from);
+      int n = recvfrom(fd, buf, sizeof(buf), 0, (struct sockaddr *)&from,
+                       &fromlen);
+      if (n != 4 || memcmp(buf, "PING", 4) != 0 ||
+          sendto(fd, "PONG", 4, 0, (struct sockaddr *)&from, fromlen) != 4)
+        _exit(2);
+    }
+    close(fd);
+    _exit(0);
+  }
+
+  Util::USleep(100000);
+  ASSERT_TRUE(st_init_frame());
+  st_set_hook_flag();
+  struct sockaddr_in dst;
+  memset(&dst, 0, sizeof(dst));
+  dst.sin_family = AF_INET;
+  dst.sin_port = htons(port);
+  dst.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+  stlib::UtilPtrPool<StExecClientConnection> *pool =
+      stlib::Instance<stlib::UtilPtrPool<StExecClientConnection> >();
+  unsigned int initial = pool->Size();
+  for (int i = 0; i < 4; i++) {
+    char recvbuf[16];
+    int bufsize = sizeof(recvbuf);
+    int rc = udp_sendrecv(&dst, (void *)"PING", 4, recvbuf, bufsize, 500);
+    ASSERT_TRUE(rc == 0);
+    ASSERT_TRUE(bufsize == 4 && memcmp(recvbuf, "PONG", 4) == 0);
+    ASSERT_TRUE(pool->Size() <= initial + 1);
+  }
+  int st = 0;
+  waitpid(pid, &st, 0);
+  ASSERT_TRUE(WIFEXITED(st) && WEXITSTATUS(st) == 0);
 }
 
 int main(int argc, char *argv[]) {

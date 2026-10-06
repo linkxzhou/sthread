@@ -2,7 +2,7 @@
 
 面向 AI 助手与新贡献者的 sthread 仓库约定。**改代码前请先读完本文。**
 
-详细计划见 [`plan/`](plan/README.md)。对外说明见 [`README.md`](README.md)。
+详细计划见 [`plan/`](plan/README.md)。对外说明见 [`readme.md`](readme.md)。
 
 ---
 
@@ -14,7 +14,7 @@ sthread 是一个**基于协程的高性能网络库**，C++98，提供非阻塞
 
 ---
 
-## 仓库当前状态（plan/01～04 后）
+## 仓库当前状态（plan/01～09）
 
 | 范围 | 状态 |
 | --- | --- |
@@ -22,7 +22,7 @@ sthread 是一个**基于协程的高性能网络库**，C++98，提供非阻塞
 | `make lib` | 绿：产出 `libmthread.a` / `.so`，无第三方运行时依赖 |
 | `make apps` | 绿：dns / memcache / wrk / httpserver / **dnsserver** |
 | `make bench-http` / `make bench-dns` | 绿：脚本起停 server（PID），写 `reports/`；冻结基线见 `reports/baseline-*.md` |
-| `make -C tests` | 绿：核心 unittest 可编译；多数可跑 |
+| `make -C tests run` | macOS arm64 回归见 [`plan/09-main-bugfix-cleanup.md`](plan/09-main-bugfix-cleanup.md)；Linux 待验证 |
 | Apple Silicon arm64 | **真实 ucontext/asm**（`NEEDARM64CONTEXT`） |
 | keepalive（L4） | **已修**：`eTCP_KEEPLIVE_CONN=0x11`，`Keeplive()`=`IS_KEEPLIVE` |
 | 本仓库 `LICENSE` | **未发布**（仅有 vendored 的 [`COPYRIGHT`](COPYRIGHT)） |
@@ -156,7 +156,7 @@ make -C stlib/tests run    # stlib 单测
 | `app/st_c|st_sys` 未搬入 `src/` | 遗留目录语义（C4 已去掉 server→`st_c.h`） |
 | 根 `LICENSE` 未定 | 待维护者 |
 | 高并发 / wrk QPS | 冻结基线见 `reports/baseline-*.md`（plan/08，Linux smoke）；短连接、单 OS 线程；`-d` 为时长标签 |
-| 同进程连续 UDP | 一条协程多次 `udp_sendrecv` 目前只有第一次成功；DNS 压测用 `-n == -c` |
+| 同进程连续 UDP | macOS arm64 的 4 次 loopback 已通过；历史 Linux 故障仍待复现，DNS 压测继续用 `-n == -c` |
 | Linux `st_context_unittest` | 64 KiB `makecontext` 栈 SIGABRT（未改 `STACK`） |
 
 ### 推荐对外 include（libmthread 使用方）

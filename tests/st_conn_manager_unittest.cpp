@@ -44,6 +44,9 @@ TEST(StStatus, ClientCreateClose) {
   LOG_TRACE("Create fd=%d", fd);
   conn->Close();
   delete conn;
+  if (fd >= 0) {
+    ASSERT_TRUE(GlobalEventSchedule()->GetEventItem(fd) == NULL);
+  }
 }
 
 int main(int argc, char *argv[]) {

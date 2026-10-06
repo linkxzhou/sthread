@@ -122,7 +122,27 @@ class StClientConnection : public StConnection, public stlib::StTimer {
 public:
   StClientConnection() : StConnection() {}
 
+  virtual ~StClientConnection() { ReleaseItem(); }
+
+  virtual void Reset() {
+    ReleaseItem();
+    StConnection::Reset();
+  }
+
+  void ReleaseItem() {
+    if (m_item_ != NULL) {
+      StEventSchedule *schedule = GlobalEventSchedule();
+      if (schedule->GetEventItem(m_item_->GetOsfd()) == m_item_) {
+        schedule->ClearItem(m_item_);
+      }
+      stlib::UtilPtrPoolFree(m_item_);
+      m_item_ = NULL;
+    }
+  }
+
   virtual int32_t Create(const stlib::StNetAddr &addr) {
+    ReleaseItem();
+    Close();
     m_destaddr_ = addr;
 
     int protocol = SOCK_STREAM;
@@ -143,14 +163,18 @@ public:
     m_item_->SetOsfd(m_osfd_);
     m_item_->EnableOutput();
     m_item_->DisableInput();
-    GlobalEventSchedule()->Add(m_item_); // TODO:
+    if (!GlobalEventSchedule()->Add(m_item_)) {
+      LOG_ERROR("register socket event failed, fd: %d", m_osfd_);
+      ReleaseItem();
+      Close();
+      return -2;
+    }
 
     if (IS_TCP_CONN(m_type_)) {
       int32_t rc = Connect(addr);
       if (rc < 0) {
         LOG_ERROR("connect error, rc: %d", rc);
-        GlobalEventSchedule()->ClearItem(m_item_); // TODO:
-        stlib::UtilPtrPoolFree(m_item_);
+        ReleaseItem();
         Close();
         return -2;
       }

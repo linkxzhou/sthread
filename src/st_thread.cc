@@ -524,8 +524,12 @@ bool StEventSchedule::Schedule(StThreadItem *thread, StEventItemQueue *fdset,
     return false;
   }
 
+  StEventItem *first_added = NULL;
+  unsigned int added_count = 0;
   if (NULL != fdset) {
     LOG_TRACE("fdset: %p", fdset);
+    first_added = CPP_TAILQ_FIRST(fdset);
+    added_count = CPP_TAILQ_SIZE(fdset);
     thread->Add(fdset);
   }
 
@@ -537,13 +541,17 @@ bool StEventSchedule::Schedule(StThreadItem *thread, StEventItemQueue *fdset,
   thread->SetWakeupTime(wakeup_timeout);
   if (!Add(thread->GetFdSet())) {
     LOG_ERROR("add fdset, errno: %d", errno);
-    /* B18: Add 失败时回滚本次链入线程 fdset 的 item，避免池化复用脏链表 */
+    /* 将本次合并的事件项归还原队列，保留线程先前持有的事件项。 */
     if (NULL != item) {
       CPP_TAILQ_REMOVE_SELF(item, m_next_);
     }
-    /* 现网 Schedule 调用 fdset 恒为 NULL；若将来传入，CONCAT
-     * 后源已空，需另册回滚。 */
-    (void)fdset;
+    StEventItem *cursor = first_added;
+    for (unsigned int i = 0; i < added_count; i++) {
+      StEventItem *next = CPP_TAILQ_NEXT(cursor, m_next_);
+      CPP_TAILQ_REMOVE(&thread->GetFdSet(), cursor, m_next_);
+      CPP_TAILQ_INSERT_TAIL(fdset, cursor, m_next_);
+      cursor = next;
+    }
     return false;
   }
 

@@ -25,9 +25,7 @@ static StExecClientConnection *_get_conn(struct sockaddr_in *dst, int32_t &sock,
   LOG_TRACE("osfd: %d", osfd);
   if (osfd < 0) {
     LOG_ERROR("create socket failed, ret[%d]", osfd);
-    // Instance<
-    //     StConnectionManager<StExecClientConnection>
-    // >()->FreePtr(conn);
+    Instance<StConnectionManager<StExecClientConnection> >()->FreePtr(conn);
     return NULL;
   }
 
@@ -37,23 +35,9 @@ static StExecClientConnection *_get_conn(struct sockaddr_in *dst, int32_t &sock,
 }
 
 static void _release_conn(StExecClientConnection *conn, int32_t &sock) {
-  int fd = -1;
   if (conn != NULL) {
-    fd = conn->GetOsfd();
-  }
-  if (fd < 0) {
-    fd = sock;
-  }
-  if (fd >= 0 && GlobalEventSchedule() != NULL) {
-    StEventItem *item = GlobalEventSchedule()->GetEventItem(fd);
-    if (item != NULL) {
-      GlobalEventSchedule()->ClearItem(item);
-      item->Reset();
-    }
-  }
-  if (conn != NULL) {
-    conn->Close();
-  } else if (sock > 0) {
+    Instance<StConnectionManager<StExecClientConnection> >()->FreePtr(conn);
+  } else if (sock >= 0) {
     sys_close(sock);
   }
   sock = -1;
@@ -218,10 +202,8 @@ int32_t tcp_sendrecv(struct sockaddr_in *dst, void *pkg, int32_t len,
   }
 
 TCP_SENDRECV_EXIT_LABEL:
-  // 短连接归还（含 ClearItem，避免 fd 复用后 epoll 残留）
-  if (!keeplive) {
-    _release_conn((StExecClientConnection *)conn, sock);
-  }
+  // 请求结束后归还连接；keepalive 当前仅保留标记，不做真连接复用。
+  _release_conn((StExecClientConnection *)conn, sock);
 
   return ret;
 }

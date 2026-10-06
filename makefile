@@ -15,9 +15,8 @@ FORMAT_SRC = $(wildcard stlib/*.h stlib/*.cc src/*.h src/*.cc stlib/tests/*.cc)
 .PHONY: all help stlib lib apps tests stlib-tests test format format-check clean \
 	bench-http bench-dns bench
 
-# plan/01 的出口条件是「stlib 成为可编译、可运行、C++98 干净的绿色基线」，
-# 所以当前默认目标是 stlib。src/ 还编不过（旧名未定义、st_manager.h 缺失等，
-# lib / apps / tests 由 plan/01～04 打通。
+# 默认目标保持 stlib；lib / apps / tests 已由 plan/01～08 打通，
+# 框架回归与后续改进见 plan/09-main-bugfix-cleanup.md。
 all: stlib
 	@echo ""
 	@echo "已构建 stlib（stlib/libst.a、stlib/libst.so）。"

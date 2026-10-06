@@ -205,7 +205,12 @@ public:
       CPP_TAILQ_INIT(&m_fdset_);
     }
 
-    CPP_TAILQ_CONCAT(&m_fdset_, fdset, m_next_);
+    StEventItem *item = NULL;
+    while (!CPP_TAILQ_EMPTY(fdset)) {
+      item = CPP_TAILQ_FIRST(fdset);
+      CPP_TAILQ_REMOVE(fdset, item, m_next_);
+      CPP_TAILQ_INSERT_TAIL(&m_fdset_, item, m_next_);
+    }
   }
 
   inline StThreadItem *GetParent() { return m_parent_; }

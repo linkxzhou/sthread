@@ -33,12 +33,33 @@ TEST(StStatus, SleepAndCreateThread) {
   ASSERT_TRUE(t2 != NULL);
 }
 
+class ConnNullBufferProbe : public StClientConnection<StEventItem> {
+public:
+  int SendWithoutBuffer() {
+    stlib::StBuffer *saved = m_sendbuf_;
+    m_sendbuf_ = NULL;
+    int result = SendData();
+    m_sendbuf_ = saved;
+    return result;
+  }
+  int RecvWithoutBuffer() {
+    stlib::StBuffer *saved = m_recvbuf_;
+    m_recvbuf_ = NULL;
+    int result = RecvData();
+    m_recvbuf_ = saved;
+    return result;
+  }
+};
+
 TEST(StStatus, ConnNullBuffers) {
   ASSERT_TRUE(st_init_frame());
-  StClientConnection<StEventItem> conn;
-  conn.StConnection::Reset(); /* frees buffers -> NULL */
-  ASSERT_TRUE(conn.SendData() == -1);
-  ASSERT_TRUE(conn.RecvData() == -1);
+  ConnNullBufferProbe conn;
+  conn.StConnection::Reset();
+  ASSERT_TRUE(conn.GetSendBuffer() != NULL);
+  ASSERT_TRUE(conn.GetRecvBuffer() != NULL);
+  ASSERT_TRUE(conn.SendWithoutBuffer() == -1);
+  ASSERT_TRUE(conn.RecvWithoutBuffer() == -1);
+  ASSERT_TRUE(conn.RecvData() == -2);
 }
 
 TEST(StStatus, ThreadScheduleNullAndParent) {
@@ -113,6 +134,25 @@ TEST(StStatus, EventAddDeleteEdges) {
   close(fds[1]);
 }
 
+TEST(StStatus, ScheduleFdsetFailureRollback) {
+  ASSERT_TRUE(st_init_frame());
+  StThreadItem *thread = GlobalThreadSchedule()->AllocThread();
+  ASSERT_TRUE(thread != NULL);
+  StEventItemQueue fdset;
+  CPP_TAILQ_INIT(&fdset);
+  StEventItem invalid;
+  invalid.SetOsfd(-1);
+  invalid.EnableInput();
+  CPP_TAILQ_INSERT_TAIL(&fdset, &invalid, m_next_);
+  ASSERT_TRUE(!GlobalEventSchedule()->Schedule(
+      thread, &fdset, NULL, stlib::Util::TimeMs() + 10));
+  ASSERT_TRUE(CPP_TAILQ_SIZE(&fdset) == 1);
+  ASSERT_TRUE(CPP_TAILQ_FIRST(&fdset) == &invalid);
+  ASSERT_TRUE(CPP_TAILQ_EMPTY(&thread->GetFdSet()));
+  CPP_TAILQ_REMOVE(&fdset, &invalid, m_next_);
+  UtilPtrPoolFree((StThread *)thread);
+}
+
 TEST(StStatus, PollCallbacksAndThreadItemApis) {
   StEventItem item;
   item.SetOsfd(7);
@@ -129,7 +169,9 @@ TEST(StStatus, PollCallbacksAndThreadItemApis) {
   ASSERT_TRUE(t->GetPrivate() == priv);
   t->SetWakeupTime(123);
   ASSERT_TRUE(t->GetWakeupTime() == 123);
-  t->Reset(); /* frees priv via st_safe_free */
+  t->Reset();
+  ASSERT_TRUE(t->GetPrivate() == NULL);
+  free(priv);
   UtilPtrPoolFree(t);
 }
 
