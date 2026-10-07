@@ -10,10 +10,12 @@ CLANG_FORMAT ?= clang-format
 # 排除 stlib/ucontext/（Russ Cox libtask，见 COPYRIGHT）、stlib/tests/ucontext/、
 # app/st_wrk/http_parser.*（nodejs http-parser）等 vendor 代码，
 # 以及 app/、tests/ 下尚未整理的历史代码（属 plan/04、plan/05 范围）。
-FORMAT_SRC = $(wildcard stlib/*.h stlib/*.cc src/*.h src/*.cc stlib/tests/*.cc)
+FORMAT_SRC = $(wildcard stlib/*.h stlib/*.cc src/*.h src/*.cc stlib/tests/*.cc) \
+	app/st_httpclient/main.cpp app/st_httpclient/http_client.h \
+	app/st_httpclient/http_client.cc tests/st_http_client_unittest.cpp
 
 .PHONY: all help stlib lib apps tests stlib-tests test format format-check clean \
-	bench-http bench-dns bench
+	bench-http bench-dns bench smoke-httpclient
 
 # 默认目标保持 stlib；lib / apps / tests 已由 plan/01～08 打通，
 # 框架回归与后续改进见 plan/09-main-bugfix-cleanup.md。
@@ -29,11 +31,12 @@ help:
 	@echo "  make stlib-tests   构建 stlib/tests 的四个测试"
 	@echo "  make test          构建并运行 stlib/tests 的四个测试"
 	@echo "  make lib           构建 libmthread.a / libmthread.so（仓库根目录）"
-	@echo "  make apps          构建 app/st_dns、st_memcacheclient、st_wrk、st_httpserver、st_dnsserver"
+	@echo "  make apps          构建 app/st_dns、st_memcacheclient、st_wrk、st_httpserver、st_dnsserver、st_httpclient"
 	@echo "  make tests         构建 tests/ 下的 unittest"
 	@echo "  make bench-http    HTTP 压测闭环（默认 BENCH_PROFILE=smoke，TRACE=0）"
 	@echo "  make bench-dns     DNS 压测闭环（本地 st_dnsserver，默认 smoke，TRACE=0）"
 	@echo "  make bench         bench-http + bench-dns"
+	@echo "  make smoke-httpclient  起 st_httpserver，跑 st_httpclient 冒烟"
 	@echo "  make format        对本仓库自己的代码跑 clang-format -i"
 	@echo "  make format-check  只检查不改写（--dry-run --Werror）"
 	@echo "  make clean         清理所有构建产物"
@@ -62,6 +65,7 @@ apps: lib
 	@$(MAKE) -C app/st_wrk
 	@$(MAKE) -C app/st_httpserver
 	@$(MAKE) -C app/st_dnsserver
+	@$(MAKE) -C app/st_httpclient
 
 BENCH_PROFILE ?= smoke
 
@@ -77,6 +81,10 @@ bench-dns:
 	TRACE=0 BENCH_PROFILE=$(BENCH_PROFILE) ./scripts/bench_dns.sh
 
 bench: bench-http bench-dns
+
+smoke-httpclient:
+	@$(MAKE) apps TRACE=0
+	TRACE=0 ./scripts/smoke_httpclient.sh
 
 tests: lib
 	@$(MAKE) -C tests
@@ -103,6 +111,7 @@ clean:
 	@$(MAKE) -C app/st_wrk clean
 	@$(MAKE) -C app/st_httpserver clean
 	@$(MAKE) -C app/st_dnsserver clean
+	@$(MAKE) -C app/st_httpclient clean
 	@rm -f libmthread.a libmthread.so
 	@rm -f app/st_wrk/wrk
 	@rm -rf *.dSYM
