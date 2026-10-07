@@ -24,6 +24,7 @@ app/st_wrk/wrk
 *.log
 reports/http-*.md
 reports/dns-*.md
+reports/curve-*
 reports/*.log
 
 # 编辑器 / 系统垃圾
