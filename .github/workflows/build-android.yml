@@ -52,12 +52,16 @@ jobs:
             arch_re='x86-64'
           fi
           file libmthread.so app/st_httpclient/st_httpclient app/st_httpserver/main
-          file libmthread.so | grep -q "$arch_re"
-          file app/st_httpclient/st_httpclient | grep -q "$arch_re"
-          # ELF 符号，无 Mach-O 下划线前缀
-          "$nm" libmthread.a | grep -q ' setmcontext$'
-          "$nm" libmthread.a | grep -q ' getmcontext$'
-          if "$nm" libmthread.a | grep -q ' _setmcontext$'; then
+          # grep -q 会在第一次命中后关管道。llvm-nm 写失败退出 74，
+          # pipefail 会把整步打红。先落盘，再 grep 文件（读完再退出）。
+          file libmthread.so > /tmp/file-so.txt
+          file app/st_httpclient/st_httpclient > /tmp/file-http.txt
+          grep "$arch_re" /tmp/file-so.txt >/dev/null
+          grep "$arch_re" /tmp/file-http.txt >/dev/null
+          "$nm" libmthread.a > /tmp/libmthread.nm
+          grep ' setmcontext$' /tmp/libmthread.nm >/dev/null
+          grep ' getmcontext$' /tmp/libmthread.nm >/dev/null
+          if grep ' _setmcontext$' /tmp/libmthread.nm >/dev/null; then
             echo "unexpected Mach-O symbol _setmcontext"
             exit 1
           fi
@@ -81,9 +85,12 @@ jobs:
           check_needed app/st_httpserver/main
           check_needed app/st_dns/main
           for b in tests/*_unittest stlib/tests/*_test; do
-            if [ -f "$b" ] && file "$b" | grep -q ELF; then
-              file "$b" | grep -q "$arch_re"
-              check_needed "$b"
+            if [ -f "$b" ]; then
+              file "$b" > /tmp/file-bin.txt
+              if grep ELF /tmp/file-bin.txt >/dev/null; then
+                grep "$arch_re" /tmp/file-bin.txt >/dev/null
+                check_needed "$b"
+              fi
             fi
           done
 
