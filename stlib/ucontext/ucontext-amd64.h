@@ -5,10 +5,22 @@
 typedef struct mcontext mcontext_t;
 typedef struct ucontext ucontext_t;
 
+/* Avoid Apple libsystem makecontext/swapcontext (wrong layout).
+ * Types are already libthread_*; functions must be renamed the same way.
+ * getcontext/setcontext are macros -> getmcontext/setmcontext (our asm). */
+#define makecontext libthread_makecontext
+#define swapcontext libthread_swapcontext
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 extern int swapcontext(ucontext_t *, const ucontext_t *);
 extern void makecontext(ucontext_t *, void (*)(), int, ...);
 extern int getmcontext(mcontext_t *);
 extern void setmcontext(const mcontext_t *);
+#ifdef __cplusplus
+}
+#endif
 
 /*-
  * Copyright (c) 1999 Marcel Moolenaar

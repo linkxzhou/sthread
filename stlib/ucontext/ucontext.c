@@ -28,7 +28,7 @@ void makecontext(ucontext_t *ucp, void (*func)(void), int argc, ...) {
 
   sp = (int *)ucp->uc_stack.ss_sp + ucp->uc_stack.ss_size / 4;
   sp -= argc;
-  sp = (void *)((uintptr_t)sp - (uintptr_t)sp % 16); /* 16-align for OS X */
+  sp = (int *)((uintptr_t)sp - (uintptr_t)sp % 16); /* 16-align for OS X */
   memmove(sp, &argc + 1, argc * sizeof(int));
 
   *--sp = 0; /* return address */
@@ -50,7 +50,7 @@ void makecontext(ucontext_t *ucp, void (*func)(void), int argc, ...) {
   va_end(va);
   sp = (long *)ucp->uc_stack.ss_sp + ucp->uc_stack.ss_size / sizeof(long);
   sp -= argc;
-  sp = (void *)((uintptr_t)sp - (uintptr_t)sp % 16); /* 16-align for OS X */
+  sp = (long *)((uintptr_t)sp - (uintptr_t)sp % 16); /* 16-align for OS X */
   *--sp = 0;                                         /* return address */
   ucp->uc_mcontext.mc_rip = (long)func;
   ucp->uc_mcontext.mc_rsp = (long)sp;
