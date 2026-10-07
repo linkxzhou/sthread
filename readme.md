@@ -1,3 +1,5 @@
+**中文** | [English](readme_en.md)
+
 sthread
 ---
 
