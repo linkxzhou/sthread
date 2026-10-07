@@ -1,0 +1,66 @@
+name: _build
+
+# 共享构建逻辑：由各平台的 build-*.yml 调用（每个平台一个 workflow，
+# 这样 README 可以为每个平台单独挂徽章）。
+on:
+  workflow_call:
+    inputs:
+      os:
+        required: true
+        type: string
+      compilers:
+        description: JSON 数组，例如 '["g++","clang++"]'
+        required: false
+        type: string
+        default: '["clang++"]'
+
+jobs:
+  build:
+    name: ${{ inputs.os }} (${{ matrix.cxx }})
+    runs-on: ${{ inputs.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        cxx: ${{ fromJSON(inputs.compilers) }}
+    env:
+      TRACE: "0"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: toolchain
+        run: |
+          uname -a
+          ${{ matrix.cxx }} --version
+          make --version | head -1
+
+      - name: make stlib
+        run: make stlib CC=${{ matrix.cxx }}
+
+      - name: make lib
+        run: make lib CC=${{ matrix.cxx }}
+
+      - name: make apps
+        run: make apps CC=${{ matrix.cxx }}
+
+      - name: make tests (build only)
+        run: make tests CC=${{ matrix.cxx }}
+
+      - name: make stlib-tests (build only)
+        run: make stlib-tests CC=${{ matrix.cxx }}
+
+      - name: run stlib/tests
+        timeout-minutes: 5
+        run: make -C stlib/tests run CC=${{ matrix.cxx }}
+
+      - name: "[非阻塞] run tests/"
+        continue-on-error: true
+        timeout-minutes: 10
+        run: make -C tests run CC=${{ matrix.cxx }}
+
+      - name: clean tree
+        if: always()
+        run: |
+          make clean
+          git status --porcelain --ignored | tee /tmp/residue
+          test ! -s /tmp/residue || { echo "make clean 后仍有残留"; exit 1; }

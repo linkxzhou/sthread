@@ -1,7 +1,14 @@
 sthread
 ---
 
-[![CI](https://github.com/linkxzhou/sthread/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/linkxzhou/sthread/actions/workflows/ci.yml)
+[![build](https://github.com/linkxzhou/sthread/actions/workflows/build-ubuntu-22.04.yml/badge.svg?branch=master)](https://github.com/linkxzhou/sthread/actions/workflows/build-ubuntu-22.04.yml)
+[![build](https://github.com/linkxzhou/sthread/actions/workflows/build-ubuntu-24.04.yml/badge.svg?branch=master)](https://github.com/linkxzhou/sthread/actions/workflows/build-ubuntu-24.04.yml)
+[![build](https://github.com/linkxzhou/sthread/actions/workflows/build-ubuntu-24.04-arm.yml/badge.svg?branch=master)](https://github.com/linkxzhou/sthread/actions/workflows/build-ubuntu-24.04-arm.yml)
+[![build](https://github.com/linkxzhou/sthread/actions/workflows/build-macos-14.yml/badge.svg?branch=master)](https://github.com/linkxzhou/sthread/actions/workflows/build-macos-14.yml)
+[![build](https://github.com/linkxzhou/sthread/actions/workflows/build-macos-15.yml/badge.svg?branch=master)](https://github.com/linkxzhou/sthread/actions/workflows/build-macos-15.yml)
+[![build](https://github.com/linkxzhou/sthread/actions/workflows/build-macos-15-intel.yml/badge.svg?branch=master)](https://github.com/linkxzhou/sthread/actions/workflows/build-macos-15-intel.yml)
+[![build](https://github.com/linkxzhou/sthread/actions/workflows/build-macos-26.yml/badge.svg?branch=master)](https://github.com/linkxzhou/sthread/actions/workflows/build-macos-26.yml)
+[![format](https://github.com/linkxzhou/sthread/actions/workflows/format.yml/badge.svg?branch=master)](https://github.com/linkxzhou/sthread/actions/workflows/format.yml)
 
 # 简介
 
@@ -33,19 +40,17 @@ sthread
 
 # 编译状态
 
-每次 push / PR 由 [GitHub Actions](https://github.com/linkxzhou/sthread/actions/workflows/ci.yml)（`.github/workflows/ci.yml`）在下列平台上编译 stlib、libmthread、apps 与全部测试，并运行 `stlib/tests`；`tests/` 的 unittest 目前为非阻塞项。另有 clang-format-18 格式检查。
+每次 push / PR 由 [GitHub Actions](https://github.com/linkxzhou/sthread/actions) 在下列平台上编译 stlib、libmthread、apps 与全部测试，并运行 `stlib/tests`；`tests/` 的 unittest 目前为非阻塞项。每个平台一个 workflow（`.github/workflows/build-*.yml`，共享 `_build.yml`），另有 `format.yml` 做 clang-format-18 格式检查。
 
 | 平台 | 架构 | 编译器 | 状态 |
 | --- | --- | --- | --- |
-| Ubuntu 22.04 | x86_64 | g++ / clang++ | ✅ |
-| Ubuntu 24.04 | x86_64 | g++ / clang++ | ✅ |
-| Ubuntu 24.04 | arm64 (aarch64) | g++ / clang++ | ✅ |
-| macOS 14 | arm64 | Apple clang++ | ✅ |
-| macOS 15 | arm64 | Apple clang++ | ✅ |
-| macOS 15 | x86_64 (Intel) | Apple clang++ | ✅ |
-| macOS 26 | arm64 | Apple clang++ | ✅（实验项） |
-
-表中 ✅ 为 2026-10-07 [CI #33](https://github.com/linkxzhou/sthread/actions/runs/37561958258)（commit `2d69c14`）的结果；实时状态以页首 CI 徽章为准。
+| Ubuntu 22.04 | x86_64 | g++ / clang++ | [![build](https://github.com/linkxzhou/sthread/actions/workflows/build-ubuntu-22.04.yml/badge.svg?branch=master)](https://github.com/linkxzhou/sthread/actions/workflows/build-ubuntu-22.04.yml) |
+| Ubuntu 24.04 | x86_64 | g++ / clang++ | [![build](https://github.com/linkxzhou/sthread/actions/workflows/build-ubuntu-24.04.yml/badge.svg?branch=master)](https://github.com/linkxzhou/sthread/actions/workflows/build-ubuntu-24.04.yml) |
+| Ubuntu 24.04 | arm64 (aarch64) | g++ / clang++ | [![build](https://github.com/linkxzhou/sthread/actions/workflows/build-ubuntu-24.04-arm.yml/badge.svg?branch=master)](https://github.com/linkxzhou/sthread/actions/workflows/build-ubuntu-24.04-arm.yml) |
+| macOS 14 | arm64 | Apple clang++ | [![build](https://github.com/linkxzhou/sthread/actions/workflows/build-macos-14.yml/badge.svg?branch=master)](https://github.com/linkxzhou/sthread/actions/workflows/build-macos-14.yml) |
+| macOS 15 | arm64 | Apple clang++ | [![build](https://github.com/linkxzhou/sthread/actions/workflows/build-macos-15.yml/badge.svg?branch=master)](https://github.com/linkxzhou/sthread/actions/workflows/build-macos-15.yml) |
+| macOS 15 | x86_64 (Intel) | Apple clang++ | [![build](https://github.com/linkxzhou/sthread/actions/workflows/build-macos-15-intel.yml/badge.svg?branch=master)](https://github.com/linkxzhou/sthread/actions/workflows/build-macos-15-intel.yml) |
+| macOS 26 | arm64 | Apple clang++ | [![build](https://github.com/linkxzhou/sthread/actions/workflows/build-macos-26.yml/badge.svg?branch=master)](https://github.com/linkxzhou/sthread/actions/workflows/build-macos-26.yml) |
 
 ## Apple Silicon（arm64）
 

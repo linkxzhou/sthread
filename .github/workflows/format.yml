@@ -1,0 +1,23 @@
+name: format
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: format-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  format:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: install clang-format-18
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format-18
+      - name: make format-check
+        run: make format-check CLANG_FORMAT=clang-format-18
