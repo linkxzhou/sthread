@@ -1,6 +1,8 @@
 sthread
 ---
 
+[![CI](https://github.com/linkxzhou/sthread/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/linkxzhou/sthread/actions/workflows/ci.yml)
+
 # 简介
 
 [sthread](https://github.com/linkxzhou/sthread) 是一个基于协程的高性能网络库，用 **C++98** 写成，提供非阻塞的 TCP/UDP 客户端与服务端能力。
@@ -28,6 +30,22 @@ sthread
 | macOS | clang++；kqueue 后端；**Apple Silicon 已支持真实 ucontext** |
 | 运行时依赖 | 无（仅系统库：libc / libstdc++ 或 libc++ / libpthread / libdl） |
 | 可选开发期依赖 | gperftools（tcmalloc / profiler），默认关闭；见 [`thirdparty/readme.md`](thirdparty/readme.md) |
+
+# 编译状态
+
+每次 push / PR 由 [GitHub Actions](https://github.com/linkxzhou/sthread/actions/workflows/ci.yml)（`.github/workflows/ci.yml`）在下列平台上编译 stlib、libmthread、apps 与全部测试，并运行 `stlib/tests`；`tests/` 的 unittest 目前为非阻塞项。另有 clang-format-18 格式检查。
+
+| 平台 | 架构 | 编译器 | 状态 |
+| --- | --- | --- | --- |
+| Ubuntu 22.04 | x86_64 | g++ / clang++ | ✅ |
+| Ubuntu 24.04 | x86_64 | g++ / clang++ | ✅ |
+| Ubuntu 24.04 | arm64 (aarch64) | g++ / clang++ | ✅ |
+| macOS 14 | arm64 | Apple clang++ | ✅ |
+| macOS 15 | arm64 | Apple clang++ | ✅ |
+| macOS 15 | x86_64 (Intel) | Apple clang++ | ✅ |
+| macOS 26 | arm64 | Apple clang++ | ✅（实验项） |
+
+表中 ✅ 为 2026-10-07 [CI #33](https://github.com/linkxzhou/sthread/actions/runs/37561958258)（commit `2d69c14`）的结果；实时状态以页首 CI 徽章为准。
 
 ## Apple Silicon（arm64）
 
