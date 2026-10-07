@@ -104,9 +104,14 @@ def fmt_qps(v):
 
 
 def fmt_tick(v):
-    if abs(v) >= 1000 and abs(v / 1000.0 - round(v / 1000.0)) < 1e-6:
-        return "%dk" % int(round(v / 1000.0))
-    return fmt_num(v, 0 if abs(v) >= 10 or abs(v - round(v)) < 1e-9 else 1)
+    if abs(v) >= 1000:
+        k = v / 1000.0
+        if abs(k - round(k)) < 1e-6:
+            return "%dk" % int(round(k))
+        return "%.1fk" % k
+    if abs(v - round(v)) < 1e-6:
+        return str(int(round(v)))
+    return "%.1f" % v
 
 
 def esc(text):
@@ -208,7 +213,7 @@ def render_svg(path, title, subtitle, footer, xlabel, ylabel, series, log_x):
         'font-size="13" fill="#333333">%s</text>' % (ml, esc(subtitle))
     )
 
-    for tick in y_ticks(ymax, 4):
+    for tick in y_ticks(ymax, 5):
         y = map_y(tick)
         parts.append(
             '<line x1="%d" y1="%.1f" x2="%d" y2="%.1f" stroke="#e6e6e6" '
@@ -427,6 +432,7 @@ def write_report(path, meta, rows, embed_qps, embed_latency):
     chart_p50 = []
     chart_p99 = []
     unreliable = []
+    spread = []
     for conc in sorted(http):
         samples = http[conc]
         clean = [row for row in samples if is_clean(row)]
@@ -438,6 +444,8 @@ def write_report(path, meta, rows, embed_qps, embed_latency):
             else:
                 fails += int(fv)
         qps_vals = [num(row.get("qps")) for row in samples if num(row.get("qps")) is not None]
+        qmin = min(qps_vals) if qps_vals else None
+        qmax = max(qps_vals) if qps_vals else None
         reliable = len(clean) == len(samples) and len(samples) > 0
         n_show = samples[0].get("n", "")
         if reliable:
@@ -448,14 +456,14 @@ def write_report(path, meta, rows, embed_qps, embed_latency):
             chart_qps.append((conc, qps_m))
             chart_p50.append((conc, p50_m))
             chart_p99.append((conc, p99_m))
+            if qmin is not None and qmax is not None and qmin > 0 and (qmax / qmin) >= 1.25:
+                spread.append((conc, qps_m, qmin, qmax))
         else:
             qps_m = median_of(samples, "qps")
             p50_m = median_of(samples, "p50_ms")
             p99_m = median_of(samples, "p99_ms")
             el_m = median_of(samples, "elapsed_ms")
             unreliable.append(conc)
-        qmin = min(qps_vals) if qps_vals else None
-        qmax = max(qps_vals) if qps_vals else None
         lines.append(
             "| %s | %s | %d | %s | %s | %s | %s | %s | %s | %s | %s |"
             % (
@@ -473,6 +481,17 @@ def write_report(path, meta, rows, embed_qps, embed_latency):
             )
         )
     lines.append("")
+    if spread:
+        lines.append(
+            "Shared-VM spread (still reliable, chart uses the median): "
+            + "; ".join(
+                "c=%s median %s min %s max %s"
+                % (c, fmt_qps(med), fmt_qps(lo), fmt_qps(hi))
+                for c, med, lo, hi in spread
+            )
+            + "."
+        )
+        lines.append("")
     lines.append("### Every repeat")
     lines.append("")
     lines.append(
@@ -639,6 +658,7 @@ def main(argv):
     )
     sub = subtitle_of(meta)
     foot = footer_of(meta)
+    foot_latency = foot + " · 1 ms clock"
     if not qps:
         print("no reliable HTTP points; charts not written", file=sys.stderr)
         return 1
@@ -662,7 +682,7 @@ def main(argv):
         args.latency,
         "HTTP short-conn latency vs concurrency",
         sub,
-        foot,
+        foot_latency,
         "concurrency (log scale)",
         "latency (ms)",
         [

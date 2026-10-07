@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="860" height="520" viewBox="0 0 860 520" role="img">
+<title>HTTP short-conn throughput vs concurrency</title>
+<rect x="0" y="0" width="860" height="520" fill="#ffffff"/>
+<text x="84" y="28" font-family="Helvetica, Arial, sans-serif" font-size="18" font-weight="700" fill="#1a1a1a">HTTP short-conn throughput vs concurrency</text>
+<text x="84" y="50" font-family="Helvetica, Arial, sans-serif" font-size="13" fill="#333333">median of 3 · Linux x86_64 · nproc=4 · commit e62c158 · TRACE=0</text>
+<line x1="84" y1="442.0" x2="824" y2="442.0" stroke="#e6e6e6" stroke-width="1"/>
+<text x="76" y="446.0" text-anchor="end" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#333333">0</text>
+<line x1="84" y1="370.8" x2="824" y2="370.8" stroke="#e6e6e6" stroke-width="1"/>
+<text x="76" y="374.8" text-anchor="end" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#333333">10k</text>
+<line x1="84" y1="299.6" x2="824" y2="299.6" stroke="#e6e6e6" stroke-width="1"/>
+<text x="76" y="303.6" text-anchor="end" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#333333">20k</text>
+<line x1="84" y1="228.4" x2="824" y2="228.4" stroke="#e6e6e6" stroke-width="1"/>
+<text x="76" y="232.4" text-anchor="end" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#333333">30k</text>
+<line x1="84" y1="157.2" x2="824" y2="157.2" stroke="#e6e6e6" stroke-width="1"/>
+<text x="76" y="161.2" text-anchor="end" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#333333">40k</text>
+<line x1="84" y1="86.0" x2="824" y2="86.0" stroke="#e6e6e6" stroke-width="1"/>
+<text x="76" y="90.0" text-anchor="end" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#333333">50k</text>
+<rect x="84" y="86" width="740" height="356" fill="none" stroke="#222222" stroke-width="1.25"/>
+<line x1="84.0" y1="442" x2="84.0" y2="447" stroke="#222222" stroke-width="1"/>
+<text x="84.0" y="464" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#1a1a1a">1</text>
+<line x1="330.7" y1="442" x2="330.7" y2="447" stroke="#222222" stroke-width="1"/>
+<text x="330.7" y="464" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#1a1a1a">10</text>
+<line x1="503.1" y1="442" x2="503.1" y2="447" stroke="#222222" stroke-width="1"/>
+<text x="503.1" y="464" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#1a1a1a">50</text>
+<line x1="577.3" y1="442" x2="577.3" y2="447" stroke="#222222" stroke-width="1"/>
+<text x="577.3" y="464" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#1a1a1a">100</text>
+<line x1="651.6" y1="442" x2="651.6" y2="447" stroke="#222222" stroke-width="1"/>
+<text x="651.6" y="464" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#1a1a1a">200</text>
+<line x1="749.7" y1="442" x2="749.7" y2="447" stroke="#222222" stroke-width="1"/>
+<text x="749.7" y="464" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#1a1a1a">500</text>
+<line x1="824.0" y1="442" x2="824.0" y2="447" stroke="#222222" stroke-width="1"/>
+<text x="824.0" y="464" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#1a1a1a">1000</text>
+<text x="454" y="484" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="13" fill="#1a1a1a">concurrency (log scale)</text>
+<text x="22" y="264.0" text-anchor="middle" transform="rotate(-90 22 264.0)" font-family="Helvetica, Arial, sans-serif" font-size="13" fill="#1a1a1a">requests / s</text>
+<polyline fill="none" stroke="#0b5cab" stroke-width="2.25" stroke-linejoin="round" stroke-linecap="round" points="84.0,287.4 330.7,168.2 503.1,171.1 577.3,178.3 651.6,181.6 749.7,181.8 824.0,186.6"/>
+<circle cx="84.0" cy="287.4" r="4" fill="#ffffff" stroke="#0b5cab" stroke-width="2"/>
+<text x="92.0" y="275.4" text-anchor="start" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#0b5cab">21711</text>
+<circle cx="330.7" cy="168.2" r="4" fill="#ffffff" stroke="#0b5cab" stroke-width="2"/>
+<text x="330.7" y="156.2" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#0b5cab">38462</text>
+<circle cx="503.1" cy="171.1" r="4" fill="#ffffff" stroke="#0b5cab" stroke-width="2"/>
+<text x="503.1" y="159.1" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#0b5cab">38052</text>
+<circle cx="577.3" cy="178.3" r="4" fill="#ffffff" stroke="#0b5cab" stroke-width="2"/>
+<text x="577.3" y="166.3" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#0b5cab">37037</text>
+<circle cx="651.6" cy="181.6" r="4" fill="#ffffff" stroke="#0b5cab" stroke-width="2"/>
+<text x="651.6" y="169.6" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#0b5cab">36576</text>
+<circle cx="749.7" cy="181.8" r="4" fill="#ffffff" stroke="#0b5cab" stroke-width="2"/>
+<text x="749.7" y="169.8" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#0b5cab">36550</text>
+<circle cx="824.0" cy="186.6" r="4" fill="#ffffff" stroke="#0b5cab" stroke-width="2"/>
+<text x="816.0" y="174.6" text-anchor="end" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#0b5cab">35868</text>
+<text x="84" y="506" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#333333">loopback · 1 server thread · Connection: close · Intel(R) Xeon(R) Processor</text>
+</svg>
