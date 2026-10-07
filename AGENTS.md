@@ -130,7 +130,7 @@ C++：`StClientConnection`、`StServer`。示例兼容层：`app/st_action.h`、
 | `stlib/ucontext/ucontext.o` + `asm.o` （含 arm64） | ucontext |
 | `app/st_c.o` `st_sys.o` `st_action.o` | app 下的库文件 |
 
-系统库：`-lpthread -ldl`。不得链第三方。
+系统库：Linux / macOS 为 `-lpthread -ldl`；Android 只有 `-ldl`（pthread 在 bionic libc）。不得链第三方。
 
 ---
 
