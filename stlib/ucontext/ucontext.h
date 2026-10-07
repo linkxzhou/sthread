@@ -29,6 +29,13 @@
 #endif
 #endif
 
+/* bionic 不提供 get/make/swapcontext。与 Apple 一样走 libtask 私有结构，
+ * 不包含系统 <ucontext.h>，避免和 bionic 的 ucontext_t 撞名。 */
+#if ST_OS_ANDROID
+#undef USE_UCONTEXT
+#define USE_UCONTEXT 0
+#endif
+
 #include <assert.h>
 #include <errno.h>
 #include <sched.h>
@@ -82,6 +89,21 @@ extern void makecontext(ucontext_t *, void (*)(), int, ...);
 #endif
 #endif
 
+/* Android 只接 arm64-v8a / x86_64。布局头与 Apple 共用，asm 符号是 ELF 名。 */
+#if ST_OS_ANDROID
+#define mcontext libthread_mcontext
+#define mcontext_t libthread_mcontext_t
+#define ucontext libthread_ucontext
+#define ucontext_t libthread_ucontext_t
+#if defined(__aarch64__)
+#include "ucontext-arm64.h"
+#elif defined(__x86_64__)
+#include "ucontext-amd64.h"
+#else
+#error "Android ABI not supported (only arm64-v8a and x86_64)"
+#endif
+#endif
+
 #if defined(__OpenBSD__)
 #define mcontext libthread_mcontext
 #define mcontext_t libthread_mcontext_t
@@ -124,6 +146,16 @@ void setmcontext(const mcontext_t *);
 #define NEEDSWAPCONTEXT
 #else
 #define NEEDPOWERMAKECONTEXT
+#define NEEDSWAPCONTEXT
+#endif
+#endif
+
+#if ST_OS_ANDROID
+#if defined(__aarch64__)
+#define NEEDARM64MAKECONTEXT
+#define NEEDSWAPCONTEXT
+#elif defined(__x86_64__)
+#define NEEDAMD64MAKECONTEXT
 #define NEEDSWAPCONTEXT
 #endif
 #endif

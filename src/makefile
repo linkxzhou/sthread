@@ -67,9 +67,16 @@ $(ST_ROOT)/libmthread.a: $(LIB_O)
 	@rm -f $@
 	@$(AR) crs $@ $^
 
+# Android 的 .so 自己带上 -ldl，否则 dlsym 悬空。Linux glibc 2.34+ 把
+# libdl 并进 libc，不改宿主机链接行。
+SO_LDLIBS =
+ifeq ($(ST_OS),android)
+SO_LDLIBS = $(ST_LDLIBS)
+endif
+
 $(ST_ROOT)/libmthread.so: $(LIB_O)
 	@echo "Linking $@ ..."
-	@$(CC) -o $@ $^ -shared $(C_ARGS) $(ST_LDFLAGS)
+	@$(CC) -o $@ $^ -shared $(C_ARGS) $(ST_LDFLAGS) $(SO_LDLIBS)
 
 clean:
 	@rm -f $(BINARY) $(LIB_O) *.o

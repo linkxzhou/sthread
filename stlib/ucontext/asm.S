@@ -32,6 +32,24 @@
 #endif
 #endif
 
+/* Android：bionic 没有 get/make/swapcontext。寄存器布局与上面 Apple 的
+ * amd64 / arm64 相同，符号改成 ELF 名（无下划线）。只支持 arm64-v8a 与
+ * x86_64。必须写在后面的 __linux__ && __arm__ 之前，否则 armeabi-v7a
+ * 会走进 glibc gregs 那条不兼容的分支。 */
+#if defined(__ANDROID__)
+#if defined(__aarch64__)
+#define NEEDARM64CONTEXT 1
+#define SET setmcontext
+#define GET getmcontext
+#elif defined(__x86_64__)
+#define NEEDAMD64CONTEXT 1
+#define SET setmcontext
+#define GET getmcontext
+#else
+#error "Android ABI not supported (only arm64-v8a and x86_64)"
+#endif
+#endif
+
 #if defined(__linux__) && defined(__arm__)
 #define NEEDARMCONTEXT 1
 #define SET setmcontext
@@ -144,7 +162,8 @@ GET:
 
 #ifdef NEEDARM64CONTEXT
 /*
- * Apple Silicon / aarch64 getmcontext / setmcontext.
+ * aarch64 getmcontext / setmcontext（Apple Silicon 与 Android arm64-v8a）。
+ * 两边寄存器布局相同；Mach-O 符号带下划线，ELF 不带。
  * x0 = mcontext_t*
  * Layout: see ucontext-arm64.h
  */
@@ -405,4 +424,10 @@ SET:
 
 	j	$8
 	nop
+#endif
+
+/* ELF（含 Linux 上今天为空的 asm.o、以及 Android）声明不可执行栈，
+ * 消掉 ld 的 GNU-stack 警告。Mach-O 不定义 __ELF__，Apple 不受影响。 */
+#if defined(__ELF__)
+.section .note.GNU-stack,"",%progbits
 #endif

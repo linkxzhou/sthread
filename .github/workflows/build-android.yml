@@ -1,0 +1,95 @@
+name: android
+
+# 交叉编译，不在宿主机上跑测试（二进制是 Android ELF）。
+# 不复用 _build.yml：那份 workflow 会执行 make -C stlib/tests run。
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: android (${{ matrix.abi }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        abi: [arm64-v8a, x86_64]
+    env:
+      TRACE: "0"
+      ABI: ${{ matrix.abi }}
+      API: "21"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: ndk
+        run: |
+          set -euo pipefail
+          echo "ANDROID_NDK_HOME=${ANDROID_NDK_HOME:-}"
+          test -n "${ANDROID_NDK_HOME:-}"
+          if [ -f "$ANDROID_NDK_HOME/source.properties" ]; then
+            cat "$ANDROID_NDK_HOME/source.properties"
+          fi
+
+      - name: make android
+        run: make android ABI="$ABI" API="$API"
+
+      - name: check binaries
+        run: |
+          set -euo pipefail
+          bin=$(echo "$ANDROID_NDK_HOME"/toolchains/llvm/prebuilt/*/bin)
+          readelf="$bin/llvm-readelf"
+          nm="$bin/llvm-nm"
+          if [ "$ABI" = arm64-v8a ]; then
+            arch_re='ARM aarch64'
+          else
+            arch_re='x86-64'
+          fi
+          file libmthread.so app/st_httpclient/st_httpclient app/st_httpserver/main
+          file libmthread.so | grep -q "$arch_re"
+          file app/st_httpclient/st_httpclient | grep -q "$arch_re"
+          # ELF 符号，无 Mach-O 下划线前缀
+          "$nm" libmthread.a | grep -q ' setmcontext$'
+          "$nm" libmthread.a | grep -q ' getmcontext$'
+          if "$nm" libmthread.a | grep -q ' _setmcontext$'; then
+            echo "unexpected Mach-O symbol _setmcontext"
+            exit 1
+          fi
+          check_needed() {
+            local path="$1"
+            echo "== NEEDED $path"
+            "$readelf" -d "$path" | awk '/NEEDED/ {print}'
+            local sos
+            sos=$("$readelf" -d "$path" | awk -F'[][]' '/NEEDED/ {print $2}')
+            local so
+            for so in $sos; do
+              case "$so" in
+                libc.so|libm.so|libdl.so|liblog.so) ;;
+                *) echo "unexpected NEEDED $so in $path"; exit 1 ;;
+              esac
+            done
+          }
+          check_needed libmthread.so
+          check_needed stlib/libst.so
+          check_needed app/st_httpclient/st_httpclient
+          check_needed app/st_httpserver/main
+          check_needed app/st_dns/main
+          for b in tests/*_unittest stlib/tests/*_test; do
+            if [ -f "$b" ] && file "$b" | grep -q ELF; then
+              file "$b" | grep -q "$arch_re"
+              check_needed "$b"
+            fi
+          done
+
+      - name: clean tree
+        if: always()
+        run: |
+          make clean
+          git status --porcelain --ignored | tee /tmp/residue
+          test ! -s /tmp/residue || { echo "make clean 后仍有残留"; exit 1; }

@@ -22,7 +22,7 @@ extern void setmcontext(const mcontext_t *);
 #endif
 
 /*
- * Compact coroutine mcontext for Apple Silicon / aarch64.
+ * Compact coroutine mcontext for aarch64 (Apple Silicon and Android arm64).
  * Layout must match getmcontext/setmcontext in asm.S (NEEDARM64CONTEXT).
  *
  * Offsets (bytes):
