@@ -28,8 +28,6 @@ endif
 
 SRC_O = st_connection.o st_sys.o st_thread.o
 
-# On Apple Silicon, asm.S is PowerPC-only; use stub instead.
-UNAME_M := $(shell uname -m)
 UCONTEXT_ASM_O = $(ST_ROOT)/stlib/ucontext/asm.o
 
 STLIB_O = $(ST_ROOT)/stlib/st_log.o \
@@ -67,7 +65,7 @@ endif
 $(ST_ROOT)/libmthread.a: $(LIB_O)
 	@echo "Linking $@ ..."
 	@rm -f $@
-	@ar crs $@ $^
+	@$(AR) crs $@ $^
 
 $(ST_ROOT)/libmthread.so: $(LIB_O)
 	@echo "Linking $@ ..."

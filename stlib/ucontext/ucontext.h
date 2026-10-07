@@ -12,14 +12,16 @@
 #endif
 #endif
 
+#include "stlib/st_platform.h"
+
 #define USE_UCONTEXT 1
 
-#if defined(__OpenBSD__) || defined(__mips__)
+#if ST_OS_OPENBSD || defined(__mips__)
 #undef USE_UCONTEXT
 #define USE_UCONTEXT 0
 #endif
 
-#if defined(__APPLE__)
+#if ST_OS_DARWIN
 #include <AvailabilityMacros.h>
 #if defined(MAC_OS_X_VERSION_10_5)
 #undef USE_UCONTEXT
@@ -64,7 +66,7 @@ extern int swapcontext(ucontext_t *, const ucontext_t *);
 extern void makecontext(ucontext_t *, void (*)(), int, ...);
 #endif
 
-#if defined(__APPLE__)
+#if ST_OS_DARWIN
 #define mcontext libthread_mcontext
 #define mcontext_t libthread_mcontext_t
 #define ucontext libthread_ucontext
@@ -110,7 +112,7 @@ void setmcontext(const mcontext_t *);
 #define getcontext(u) getmcontext(&(u)->uc_mcontext)
 #endif
 
-#if defined(__APPLE__)
+#if ST_OS_DARWIN
 #if defined(__i386__)
 #define NEEDX86MAKECONTEXT
 #define NEEDSWAPCONTEXT

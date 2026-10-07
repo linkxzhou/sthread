@@ -14,6 +14,8 @@
 #   PROFILER=0|1   默认 0。链接 -lprofiler，需自行安装 gperftools。
 #   COVERAGE=0|1   默认 0。LLVM -fprofile-instr-generate/-fcoverage-mapping。
 #   ARCH=32|64     默认 64。
+#   ST_OS / ST_ARCH  默认由 `$(CC) -dumpmachine` 推导，可命令行覆盖。
+#   AR             默认 ar。Android NDK 传 llvm-ar。
 #
 # 硬约束：C++98。libmthread 不得链接任何第三方库，因此 TCMALLOC / PROFILER
 # 只能作为开发期可选开关存在。
@@ -43,15 +45,50 @@ ST_CXXFLAGS = -std=c++98 -fPIC \
 ST_LDFLAGS =
 ST_LDLIBS  = -lpthread -ldl
 
-ST_UNAME_M := $(shell uname -m)
+# 归档工具。GNU make 把 AR 预置为 ar；命令行 `make AR=llvm-ar` 可以覆盖。
+AR ?= ar
 
-# -m32 / -m64 只对 x86 有意义。arm64（Apple Silicon、aarch64）上 clang 会直接
-# 报 "unsupported option '-m64'"，所以那里不加。历史上各 makefile 无条件写
-# -m64，在 x86 上行为不变。
-ifeq ($(ARCH),32)
-ST_CXXFLAGS += -march=pentium4 -m32
+# 目标三元组。交叉编译时 uname 是宿主机，不能用来决定 -m64 / 系统库。
+# 例：x86_64-linux-gnu、x86_64-pc-linux-gnu、aarch64-linux-android21、
+#     arm64-apple-darwin24。
+ST_TARGET := $(shell $(CC) -dumpmachine 2>/dev/null)
+ifeq ($(strip $(ST_TARGET)),)
+ST_TARGET := $(shell uname -m)-unknown
+$(warning $(CC) -dumpmachine failed; falling back to uname -m for ST_ARCH)
+endif
+
+ifndef ST_OS
+ifneq ($(findstring android,$(ST_TARGET)),)
+ST_OS := android
+else ifneq ($(findstring linux,$(ST_TARGET)),)
+ST_OS := linux
+else ifneq ($(findstring darwin,$(ST_TARGET)),)
+ST_OS := darwin
 else
-ifneq ($(filter x86_64 amd64 i386 i686,$(ST_UNAME_M)),)
+ST_OS := unknown
+endif
+endif
+
+ifndef ST_ARCH
+ST_ARCH := $(firstword $(subst -, ,$(ST_TARGET)))
+endif
+
+# Android：pthread 在 bionic libc 里，不要 -lpthread。
+# -static-libstdc++ 在 NDK clang 上静态链接 libc++（plan/10 D6）。
+ifeq ($(ST_OS),android)
+ST_LDLIBS := -ldl
+ST_LDFLAGS += -static-libstdc++
+endif
+
+# -m32 / -m64 只对 x86 有意义，并且看目标架构而不是宿主机 uname。
+# arm64（Apple Silicon、aarch64、Android arm64）上 clang 会直接
+# 报 "unsupported option '-m64'"。
+ifeq ($(ARCH),32)
+ifneq ($(filter x86_64 amd64 i386 i686,$(ST_ARCH)),)
+ST_CXXFLAGS += -march=pentium4 -m32
+endif
+else
+ifneq ($(filter x86_64 amd64 i386 i686,$(ST_ARCH)),)
 ST_CXXFLAGS += -m64
 endif
 endif

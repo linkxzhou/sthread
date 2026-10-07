@@ -6,6 +6,8 @@
 #include "app/st_sys.h"
 #include "src/st_connection.h"
 #include "src/st_manager.h"
+#include <errno.h>
+#include <string.h>
 
 using namespace stlib;
 
@@ -64,7 +66,8 @@ static int32_t _tcp_check_recv(int32_t sock, char *recvbuf, int32_t &len,
                          (timeout - cost_time));
     LOG_TRACE("sock: %d, rc: %d, recvlen: %d", sock, rc, recvlen);
     if (rc < 0) {
-      LOG_ERROR("tcp socket[%d] recv failed ret[%d][%m]", sock, rc);
+      LOG_ERROR("tcp socket[%d] recv failed ret[%d][%s]", sock, rc,
+                strerror(errno));
       return -4;
     } else if (rc == 0) {
       LOG_ERROR("tcp socket[%d] remote close", sock);

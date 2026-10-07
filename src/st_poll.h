@@ -7,13 +7,16 @@
 
 #include "src/st_public.h"
 #include "stlib/st_context.h"
+#include "stlib/st_platform.h"
 #include "stlib/st_util.h"
 #include "stlib/ucontext/ucontext.h"
 
-#if defined(__APPLE__) || defined(__OpenBSD__)
+#if ST_POLL_KQUEUE
 #include "stlib/st_kqueue.h"
-#else
+#elif ST_POLL_EPOLL
 #include "stlib/st_epoll.h"
+#else
+#error "no poll backend (stlib/st_platform.h)"
 #endif
 
 #include "stlib/st_buffer.h"

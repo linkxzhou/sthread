@@ -45,6 +45,8 @@ help:
 	@echo "  TCMALLOC=0|1  [0] -ltcmalloc（需自行安装 gperftools）"
 	@echo "  PROFILER=0|1  [0] -lprofiler（需自行安装 gperftools）"
 	@echo "  ARCH=32|64    [64]"
+	@echo "  ST_OS=...     由 \$$(CC) -dumpmachine 推导（linux/darwin/android），可覆盖"
+	@echo "  AR=...        [ar] 归档工具，Android 用 llvm-ar"
 
 stlib:
 	@$(MAKE) -C stlib

@@ -8,16 +8,32 @@
 #ifndef _ST_APP_SYS_HOOK_H_
 #define _ST_APP_SYS_HOOK_H_
 
-#include "stlib/st_util.h"
 #include "src/st_public.h"
+#include "stlib/st_platform.h"
+#include "stlib/st_util.h"
+
+#if ST_HOOK
 #include <dlfcn.h>
+#endif
 
 #define RENAME_SYS_FUNC(name) name##_func
+
+#ifdef __cplusplus
+#define ST_DIRECT_SYSCALL(name) (::name)
+#else
+#define ST_DIRECT_SYSCALL(name) (name)
+#endif
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+/*
+ * D7（plan/10）：dlsym 两次都失败时改调 libc 本体，不再让 st_* 返回 ENOSYS。
+ * 动态链接下 dlsym 成功，行为与原来一致。静态链接 / bionic 上 dlsym 常为 NULL。
+ * ST_HOOK=0 时不查 dlsym（留给没有 dlfcn.h 的平台；本期默认仍是 1）。
+ */
+#if ST_HOOK
 #define HOOK_SYSCALL(name)                                                     \
   do {                                                                         \
     if (!g_syscall_tab.real_##name) {                                          \
@@ -25,8 +41,19 @@ extern "C" {
       if (!g_syscall_tab.real_##name) {                                        \
         g_syscall_tab.real_##name = (name##_func)dlsym(RTLD_DEFAULT, #name);   \
       }                                                                        \
+      if (!g_syscall_tab.real_##name) {                                        \
+        g_syscall_tab.real_##name = (name##_func)ST_DIRECT_SYSCALL(name);      \
+      }                                                                        \
     }                                                                          \
   } while (0)
+#else
+#define HOOK_SYSCALL(name)                                                     \
+  do {                                                                         \
+    if (!g_syscall_tab.real_##name) {                                          \
+      g_syscall_tab.real_##name = (name##_func)ST_DIRECT_SYSCALL(name);        \
+    }                                                                          \
+  } while (0)
+#endif
 
 #define REAL_FUNC(name) g_syscall_tab.real_##name
 
@@ -92,7 +119,7 @@ typedef struct {
 
 typedef struct {
   int sock_flag;
-  int read_timeout;  /* milliseconds; see sys_new_fd */
+  int read_timeout; /* milliseconds; see sys_new_fd */
   int write_timeout;
 } sys_fd;
 
