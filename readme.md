@@ -137,7 +137,7 @@ make bench-dns
 
 详见 [`app/st_dnsserver/README.md`](app/st_dnsserver/README.md)、[`app/st_dns/README.md`](app/st_dns/README.md)。
 
-## 最小使用轮廓
+## 最小使用样例
 
 ```cpp
 #include "app/st_c.h"
@@ -295,37 +295,6 @@ make -C tests server
 ```
 
 `src/st_sys.cc` 内 8 个 `st_*` 共用内部 `WaitFdReady`（plan/07 C1）。fd 事件表容量取 `min(rlim_cur, 65535)`（D4）。keepalive 连接 **当前不在 hash 中真复用**（D1，见 `FreePtr` 注释）。
-
-# API 参考（对外）
-
-| API | 位置 |
-| --- | --- |
-| `st_init_frame` / `st_set_hook_flag` / `st_set_private` / `st_get_private` | `app/st_c.h` |
-| `udp_sendrecv` / `tcp_sendrecv` | `app/st_c.h` |
-| `Frame::CreateThread` / `Frame::Loop` | `app/st_frame.h`（薄封装） |
-| `StSysSchedule::CreateThread` | `src/st_sys.h` |
-| `st_read` / `st_write` / `st_recv` / `st_send` / `st_accept` / … | `src/st_sys.h` |
-| `StClientConnection` / `StConnection` | `src/st_connection.h` |
-| `StServer` | `src/st_server.h` |
-| `IMessage` / `IMtAction` / `IMtActionClient` | `app/st_action.h`（示例兼容层） |
-| `Instance<T>()` | `stlib/st_singleton.h` |
-| `eConnType` / `IS_KEEPLIVE` / `IS_TCP_CONN` | `src/st_public.h` |
-
-## 旧名 → 新名（迁移）
-
-| 旧（readme / 历史） | 现在 |
-| --- | --- |
-| `mt_init_frame` | `st_init_frame`（仍提供宏别名） |
-| `mt_set_hook_flag` | `st_set_hook_flag`（仍提供宏别名） |
-| `mt_set_timeout` | 无直接等价物；超时在连接 / `tcp_sendrecv` 参数里 |
-| `Util::system_ms` | `Util::TimeMs` |
-| `safe_delete` / `safe_free` | `st_safe_delete` / `st_safe_free`（`st_action.h` 仍有兼容宏） |
-| `eTCP_SHORT_CONN` | `eTCP_CONN`（`st_action.h` 有兼容宏） |
-| `IMtActionServer` | `StServer<ConnectionT, ServerT>` |
-| `HandleEncode` / `HandleInput` / …（连接层） | `DoOutput` / `DoInput` / `DoProcess` / `DoError` |
-| `Manager` | `StSysSchedule` |
-| `StEventSuper` | `StEventItem` |
-| `Thread` / `ThreadScheduler` | `StThread` / `StThreadSchedule` |
 
 # 性能
 
