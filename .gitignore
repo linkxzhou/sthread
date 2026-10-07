@@ -17,6 +17,7 @@ app/st_dns/main
 app/st_memcacheclient/main
 app/st_httpserver/main
 app/st_dnsserver/main
+app/st_httpclient/st_httpclient
 app/st_wrk/wrk
 
 # 运行期日志与一次性压测报告（冻结 baseline-*.md 要提交）

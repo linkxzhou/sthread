@@ -14,13 +14,14 @@ sthread 是一个**基于协程的高性能网络库**，C++98，提供非阻塞
 
 ---
 
-## 仓库当前状态（plan/01～09）
+## 仓库当前状态（plan/01～10）
 
 | 范围 | 状态 |
 | --- | --- |
 | `stlib/` | 绿：`-std=c++98`，`make test`（stlib/tests）可跑 |
 | `make lib` | 绿：产出 `libmthread.a` / `.so`，无第三方运行时依赖 |
-| `make apps` | 绿：dns / memcache / wrk / httpserver / **dnsserver** |
+| `make apps` | 绿：dns / memcache / wrk / httpserver / **dnsserver** / **httpclient** |
+| Android | NDK 交叉编译 arm64-v8a / x86_64（API 21，`make android`，只编译）。无 armv7 / x86，不跑模拟器 |
 | `make bench-http` / `make bench-dns` | 绿：脚本起停 server（PID），写 `reports/`；冻结基线见 `reports/baseline-*.md` |
 | `make -C tests run` | macOS arm64 回归见 [`plan/09-main-bugfix-cleanup.md`](plan/09-main-bugfix-cleanup.md)；Linux 待验证 |
 | Apple Silicon arm64 | **真实 ucontext/asm**（`NEEDARM64CONTEXT`） |
@@ -43,11 +44,22 @@ gperftools / ASan 仅为可选开发期开关，默认关（`make.inc`）。测�
 
 ucontext + `stlib/ucontext/asm.S`（386 / amd64 / mips / power；**含 arm64**）。来源 Russ Cox libtask，见 [`COPYRIGHT`](COPYRIGHT)。
 
+平台选择在 `stlib/st_platform.h`（编译期宏，无虚接口）。后端：
+
+| 平台 | 上下文 | 事件 |
+| --- | --- | --- |
+| Linux | glibc `get/make/swapcontext`（不改走 asm） | epoll |
+| macOS | vendored libtask asm（Mach-O `_` 符号） | kqueue |
+| Android arm64-v8a / x86_64 | 同一套 libtask asm，ELF 符号名，无系统 ucontext | epoll |
+| OpenBSD | libtask（既有分支） | kqueue |
+
+新平台接入：在 `st_platform.h` 加 `ST_OS_*`；上下文走系统 ucontext 或 `stlib/ucontext/` 的 asm（不要引入 boost.context）；事件后端只在 `src/st_poll.h` 按 `ST_POLL_*` 选择；`make.inc` 用 `$(CC) -dumpmachine` 推导 `ST_OS` / `ST_ARCH`。Android 只支持 arm64-v8a 与 x86_64（`make android ABI= API=`）。
+
 勿擅动：`InitContext` 的 `ty`/`tx` 拆分、`ss_sp`/`ss_size` 余量、`STACK`（260096）、`MEM_PAGE_SIZE`（2048）。
 
 ### 3. epoll + kqueue
 
-`src/st_poll.h` 编译期二选一。`StIOState` 两边公开接口必须完全一致。平台分支勿渗入业务层。
+`src/st_poll.h` 按 `ST_POLL_KQUEUE` / `ST_POLL_EPOLL` 编译期二选一（Apple / OpenBSD 为 kqueue，其余含 Android 为 epoll）。`StIOState` 两边公开接口必须完全一致。平台分支勿渗入业务层。
 
 ### 4. 同步 API，内部异步
 
@@ -118,14 +130,14 @@ C++：`StClientConnection`、`StServer`。示例兼容层：`app/st_action.h`、
 | `stlib/ucontext/ucontext.o` + `asm.o` （含 arm64） | ucontext |
 | `app/st_c.o` `st_sys.o` `st_action.o` | app 下的库文件 |
 
-系统库：`-lpthread -ldl`。不得链第三方。
+系统库：Linux / macOS 为 `-lpthread -ldl`；Android 只有 `-ldl`（pthread 在 bionic libc）。不得链第三方。
 
 ---
 
 ## 构建
 
 ```bash
-make lib / apps / tests / clean / format / format-check / help
+make lib / apps / tests / android / clean / format / format-check / help
 make bench-http / bench-dns / bench    # 默认 BENCH_PROFILE=smoke
 make -C tests run
 make -C stlib/tests run    # stlib 单测
@@ -158,6 +170,7 @@ make -C stlib/tests run    # stlib 单测
 | 高并发 / wrk QPS | 冻结基线见 `reports/baseline-*.md`（plan/08，Linux smoke）；短连接、单 OS 线程；`-d` 为时长标签 |
 | 同进程连续 UDP | macOS arm64 的 4 次 loopback 已通过；历史 Linux 故障仍待复现，DNS 压测继续用 `-n == -c` |
 | Linux `st_context_unittest` | 64 KiB `makecontext` 栈 SIGABRT（未改 `STACK`） |
+| Android | **已交叉编译** arm64-v8a / x86_64（NDK，API 21，`build-android.yml` 只编译）。无 armeabi-v7a / x86，不跑模拟器 |
 
 ### 推荐对外 include（libmthread 使用方）
 

@@ -182,9 +182,10 @@ protected:
 };
 
 /* 用途：可切换的协程实现（栈 + ucontext + Run）。
- * 线程模型：仅在所属 OS 线程的调度器内切换；InitContext 将 Stack* 拆成 ty/tx
- * 再拼回（makecontext 限制）。 所有权：栈由 malloc；FreeStack 释放；对象本身由
- * UtilPtrPool<StThread> / 调度器管理。 */
+ * 线程模型：仅在所属 OS 线程的调度器内切换。context_make 将 Stack* 拆成 ty/tx
+ * 再由 ActiveThreadStartUp 拼回（makecontext 限制）。所有权：栈由 context_make
+ * 分配；FreeStack → context_free 释放；对象本身由 UtilPtrPool<StThread> /
+ * 调度器管理。 */
 class StThread : public StThreadItem {
 public:
   StThread() : StThreadItem() {
@@ -214,23 +215,19 @@ protected:
       LOG_TRACE("m_stack_ = %p", m_stack_);
       return true;
     }
-    m_stack_ = (Stack *)calloc(1, sizeof(Stack));
-    if (NULL == m_stack_) {
+    int memsize =
+        MEM_PAGE_SIZE * 2 + (m_stack_size_ / MEM_PAGE_SIZE + 1) * MEM_PAGE_SIZE;
+    int rc = context_make(&m_stack_, (void (*)())ActiveThreadStartUp,
+                          m_stack_size_, (unsigned int)memsize);
+    if (rc == -1 || NULL == m_stack_) {
       LOG_ERROR("calloc stack failed, size : %ld", sizeof(Stack));
       return false;
     }
-    int memsize =
-        MEM_PAGE_SIZE * 2 + (m_stack_size_ / MEM_PAGE_SIZE + 1) * MEM_PAGE_SIZE;
-    void *vaddr = malloc(memsize * sizeof(uchar));
-    m_stack_->m_vaddr_ = (uchar *)vaddr;
-    m_stack_->m_vaddr_size_ = memsize;
-    m_stack_->m_stk_size_ = m_stack_size_;
     m_stack_->m_id_ = Util::GetUniqid(); // 生成唯一id
     snprintf(m_name_, sizeof(m_name_) - 1, "T%u", m_stack_->m_id_);
-    sigset_t zero;
-    memset(&m_stack_->m_context_.uc, 0, sizeof(m_stack_->m_context_.uc));
-    sigemptyset(&zero);
-    sigprocmask(SIG_BLOCK, &zero, &m_stack_->m_context_.uc.uc_sigmask);
+    if (rc == -2) {
+      LOG_ERROR("getcontext error");
+    }
     return true;
   }
 
@@ -239,29 +236,18 @@ protected:
       LOG_WARN("m_stack_ == NULL");
       return;
     }
-    /* B1: Stack 结构体与 m_vaddr_ 分别 malloc，须先释栈再释结构体。 */
-    st_safe_free(m_stack_->m_vaddr_);
-    st_safe_free(m_stack_);
+    /* B1: Stack 结构体与 m_vaddr_ 分别 malloc，context_free 先释栈再释结构体。
+     */
+    context_free(m_stack_);
+    m_stack_ = NULL;
   }
 
   void InitContext() {
-    uint32_t tx, ty;
-    uint64_t tz = (uint64_t)m_stack_;
-    ty = tz;
-    tz >>= 16;
-    tx = tz >> 16;
-    m_stack_->m_private_ = this; // 保存私有数据
-    if (getcontext(&m_stack_->m_context_.uc) < 0) {
-      LOG_ERROR("getcontext error");
+    if (NULL == m_stack_) {
       return;
     }
-
-    /* Guard + 16-byte SP base (arm64 Darwin). */
-    m_stack_->m_context_.uc.uc_stack.ss_sp = m_stack_->m_vaddr_ + 16;
-    m_stack_->m_context_.uc.uc_stack.ss_size = m_stack_->m_vaddr_size_ - 64;
-
-    makecontext(&m_stack_->m_context_.uc, (void (*)())ActiveThreadStartUp, 2,
-                ty, tx);
+    /* 协程尚未切换，此处写入与 makecontext 之前写入等价。 */
+    m_stack_->m_private_ = this;
   }
 
   void RestoreContext(StThreadItem *thread) {

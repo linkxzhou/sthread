@@ -46,6 +46,9 @@ jobs:
       - name: make tests (build only)
         run: make tests CC=${{ matrix.cxx }}
 
+      - name: smoke httpclient
+        run: make smoke-httpclient CC=${{ matrix.cxx }}
+
       - name: make stlib-tests (build only)
         run: make stlib-tests CC=${{ matrix.cxx }}
 

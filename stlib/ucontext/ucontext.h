@@ -12,19 +12,28 @@
 #endif
 #endif
 
+#include "stlib/st_platform.h"
+
 #define USE_UCONTEXT 1
 
-#if defined(__OpenBSD__) || defined(__mips__)
+#if ST_OS_OPENBSD || defined(__mips__)
 #undef USE_UCONTEXT
 #define USE_UCONTEXT 0
 #endif
 
-#if defined(__APPLE__)
+#if ST_OS_DARWIN
 #include <AvailabilityMacros.h>
 #if defined(MAC_OS_X_VERSION_10_5)
 #undef USE_UCONTEXT
 #define USE_UCONTEXT 0
 #endif
+#endif
+
+/* bionic 不提供 get/make/swapcontext。与 Apple 一样走 libtask 私有结构，
+ * 不包含系统 <ucontext.h>，避免和 bionic 的 ucontext_t 撞名。 */
+#if ST_OS_ANDROID
+#undef USE_UCONTEXT
+#define USE_UCONTEXT 0
 #endif
 
 #include <assert.h>
@@ -64,7 +73,7 @@ extern int swapcontext(ucontext_t *, const ucontext_t *);
 extern void makecontext(ucontext_t *, void (*)(), int, ...);
 #endif
 
-#if defined(__APPLE__)
+#if ST_OS_DARWIN
 #define mcontext libthread_mcontext
 #define mcontext_t libthread_mcontext_t
 #define ucontext libthread_ucontext
@@ -77,6 +86,21 @@ extern void makecontext(ucontext_t *, void (*)(), int, ...);
 #include "ucontext-arm64.h"
 #else
 #include "ucontext-power.h"
+#endif
+#endif
+
+/* Android 只接 arm64-v8a / x86_64。布局头与 Apple 共用，asm 符号是 ELF 名。 */
+#if ST_OS_ANDROID
+#define mcontext libthread_mcontext
+#define mcontext_t libthread_mcontext_t
+#define ucontext libthread_ucontext
+#define ucontext_t libthread_ucontext_t
+#if defined(__aarch64__)
+#include "ucontext-arm64.h"
+#elif defined(__x86_64__)
+#include "ucontext-amd64.h"
+#else
+#error "Android ABI not supported (only arm64-v8a and x86_64)"
 #endif
 #endif
 
@@ -110,7 +134,7 @@ void setmcontext(const mcontext_t *);
 #define getcontext(u) getmcontext(&(u)->uc_mcontext)
 #endif
 
-#if defined(__APPLE__)
+#if ST_OS_DARWIN
 #if defined(__i386__)
 #define NEEDX86MAKECONTEXT
 #define NEEDSWAPCONTEXT
@@ -122,6 +146,16 @@ void setmcontext(const mcontext_t *);
 #define NEEDSWAPCONTEXT
 #else
 #define NEEDPOWERMAKECONTEXT
+#define NEEDSWAPCONTEXT
+#endif
+#endif
+
+#if ST_OS_ANDROID
+#if defined(__aarch64__)
+#define NEEDARM64MAKECONTEXT
+#define NEEDSWAPCONTEXT
+#elif defined(__x86_64__)
+#define NEEDAMD64MAKECONTEXT
 #define NEEDSWAPCONTEXT
 #endif
 #endif

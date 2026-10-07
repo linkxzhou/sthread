@@ -10,6 +10,7 @@ sthread
 [![build](https://github.com/linkxzhou/sthread/actions/workflows/build-macos-15.yml/badge.svg?branch=master)](https://github.com/linkxzhou/sthread/actions/workflows/build-macos-15.yml)
 [![build](https://github.com/linkxzhou/sthread/actions/workflows/build-macos-15-intel.yml/badge.svg?branch=master)](https://github.com/linkxzhou/sthread/actions/workflows/build-macos-15-intel.yml)
 [![build](https://github.com/linkxzhou/sthread/actions/workflows/build-macos-26.yml/badge.svg?branch=master)](https://github.com/linkxzhou/sthread/actions/workflows/build-macos-26.yml)
+[![build](https://github.com/linkxzhou/sthread/actions/workflows/build-android.yml/badge.svg?branch=master)](https://github.com/linkxzhou/sthread/actions/workflows/build-android.yml)
 [![format](https://github.com/linkxzhou/sthread/actions/workflows/format.yml/badge.svg?branch=master)](https://github.com/linkxzhou/sthread/actions/workflows/format.yml)
 
 # Introduction
@@ -21,28 +22,29 @@ The final deliverable is a library: `libmthread.a` / `libmthread.so`. Consumers 
 # Features
 
 1. No dependency on any third-party runtime library
-2. Multi-platform coroutine scheduling (ucontext + `asm.S`: 386 / amd64 / mips / power / **arm64**)
-3. Supports epoll (Linux) and kqueue (macOS / OpenBSD)
+2. Multi-platform coroutine scheduling (ucontext + `asm.S`: 386 / amd64 / mips / power / **arm64**). Android (arm64-v8a and x86_64) uses the vendored libtask asm (ELF symbols) plus epoll
+3. Supports epoll (Linux / Android) and kqueue (macOS / OpenBSD)
 4. No asynchronous scheduling code to write: business logic is written entirely in synchronous style, and the framework handles asynchrony internally
 5. Provides non-blocking TCP / UDP clients (short-lived connections and TCP keepalive reuse)
 6. Cross-platform; with enough memory and file handles, a large number of coroutines can be created (see "Performance" below)
 7. Easy to use: just link a single `libmthread.a` or `libmthread.so`
 
-Example applications: `app/st_dns`, `app/st_memcacheclient`, `app/st_wrk`, `app/st_httpserver`, `app/st_dnsserver`.
+Example applications: `app/st_dns`, `app/st_memcacheclient`, `app/st_wrk`, `app/st_httpserver`, `app/st_dnsserver`, `app/st_httpclient`.
 
 # Requirements
 
 | Item | Details |
 | --- | --- |
 | Language standard | C++98 (`-std=c++98`) |
-| Linux | g++; epoll backend |
+| Linux | g++; epoll backend; glibc `get/make/swapcontext` |
 | macOS | clang++; kqueue backend; **real ucontext supported on Apple Silicon** |
+| Android | NDK clang; API 21; **arm64-v8a and x86_64**; epoll plus vendored libtask asm. Cross-compile only; tests are not run on an emulator. armeabi-v7a / x86 are not supported |
 | Runtime dependencies | None (system libraries only: libc / libstdc++ or libc++ / libpthread / libdl) |
 | Optional development-time dependencies | gperftools (tcmalloc / profiler), off by default; see [`thirdparty/readme.md`](thirdparty/readme.md) |
 
 # Build Status
 
-On every push / PR, [GitHub Actions](https://github.com/linkxzhou/sthread/actions) builds stlib, libmthread, the apps, and all tests on the platforms below, and runs `stlib/tests`; the unittests in `tests/` are currently non-blocking. Each platform has its own workflow (`.github/workflows/build-*.yml`, sharing `_build.yml`), plus `format.yml` for clang-format-18 format checking.
+On every push / PR, [GitHub Actions](https://github.com/linkxzhou/sthread/actions) builds stlib, libmthread, the apps, and all tests on the platforms below, and runs `stlib/tests`; the unittests in `tests/` are currently non-blocking. Each platform has its own workflow (`.github/workflows/build-*.yml`; POSIX platforms share `_build.yml`), plus `format.yml` for clang-format-18 format checking. Android uses a separate `build-android.yml` and is cross-compiled only.
 
 | Platform | Architecture | Compiler | Status |
 | --- | --- | --- | --- |
@@ -53,6 +55,7 @@ On every push / PR, [GitHub Actions](https://github.com/linkxzhou/sthread/action
 | macOS 15 | arm64 | Apple clang++ | [![build](https://github.com/linkxzhou/sthread/actions/workflows/build-macos-15.yml/badge.svg?branch=master)](https://github.com/linkxzhou/sthread/actions/workflows/build-macos-15.yml) |
 | macOS 15 | x86_64 (Intel) | Apple clang++ | [![build](https://github.com/linkxzhou/sthread/actions/workflows/build-macos-15-intel.yml/badge.svg?branch=master)](https://github.com/linkxzhou/sthread/actions/workflows/build-macos-15-intel.yml) |
 | macOS 26 | arm64 | Apple clang++ | [![build](https://github.com/linkxzhou/sthread/actions/workflows/build-macos-26.yml/badge.svg?branch=master)](https://github.com/linkxzhou/sthread/actions/workflows/build-macos-26.yml) |
+| Android | arm64-v8a, x86_64 (NDK, API 21, build only) | NDK clang++ | [![build](https://github.com/linkxzhou/sthread/actions/workflows/build-android.yml/badge.svg?branch=master)](https://github.com/linkxzhou/sthread/actions/workflows/build-android.yml) |
 
 ## Apple Silicon (arm64)
 
@@ -66,7 +69,7 @@ On every push / PR, [GitHub Actions](https://github.com/linkxzhou/sthread/action
 | Item | Status |
 | --- | --- |
 | `make lib` / `make -C tests run` / `make -C stlib/tests run` | Three-part gate |
-| `make apps` | dns / memcache / wrk / httpserver / **dnsserver** |
+| `make apps` | dns / memcache / wrk / httpserver / **dnsserver** / **httpclient** |
 | `make bench-http` | Starts `st_httpserver`, runs an `st_wrk` matrix, writes reports to `reports/http-*.md` |
 | `make bench-dns` | Starts `st_dnsserver` on `:5353`, runs an `st_dns` coroutine load test, then **exits** |
 | Frozen baselines | [`reports/baseline-http.md`](reports/baseline-http.md) / [`reports/baseline-dns.md`](reports/baseline-dns.md) (tagged with OS/arch/commit) |
@@ -131,6 +134,30 @@ make bench-http
 ```
 
 See [`app/st_httpserver/README.md`](app/st_httpserver/README.md) for details.
+
+## HTTP client example
+
+```bash
+make apps
+./app/st_httpserver/main 18765 &
+./app/st_httpclient/st_httpclient http://127.0.0.1:18765/
+# Or a one-shot smoke test (starts and stops the server, checks exit codes and the body)
+make smoke-httpclient
+```
+
+See [`app/st_httpclient/README.md`](app/st_httpclient/README.md) for details.
+
+## Android cross-compile
+
+Requires the NDK (CI uses the NDK preinstalled on ubuntu-24.04, via `ANDROID_NDK_HOME`). Build only; the binaries are not run on the host:
+
+```bash
+export ANDROID_NDK_HOME=/path/to/ndk   # or ANDROID_NDK
+make android ABI=arm64-v8a API=21
+make android ABI=x86_64 API=21
+```
+
+Outputs are Android ELF: `libmthread.a` / `libmthread.so`, `app/*/main` (`st_httpclient` for the HTTP client), and the test binaries under `tests/` and `stlib/tests/`. `NEEDED` on `libmthread.so` is only `libc.so`, `libm.so`, and `libdl.so` (the C++ runtime is linked statically; there is no `libc++_shared.so`).
 
 ## DNS server / client example
 

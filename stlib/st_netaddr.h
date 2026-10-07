@@ -56,13 +56,13 @@ public:
                       bool is_ipv6 = false) {
     if (is_ipv6) {
       m_isipv6_ = true;
-      bzero(&m_addr6_, sizeof(m_addr6_));
+      memset(&m_addr6_, 0, sizeof(m_addr6_));
       m_addr6_.sin6_family = AF_INET6;
       in6_addr ip = loopback_only ? in6addr_loopback : in6addr_any;
       m_addr6_.sin6_addr = ip;
       m_addr6_.sin6_port = htons(port);
     } else {
-      bzero(&m_addr_, sizeof(m_addr_));
+      memset(&m_addr_, 0, sizeof(m_addr_));
       m_addr_.sin_family = AF_INET;
       in_addr_t ip = loopback_only ? INADDR_LOOPBACK : INADDR_ANY;
       m_addr_.sin_addr.s_addr = htonl(ip);
@@ -73,14 +73,14 @@ public:
   inline void SetAddr(const char *ip, uint16_t port, bool is_ipv6 = false) {
     if (is_ipv6) {
       m_isipv6_ = true;
-      bzero(&m_addr6_, sizeof(m_addr6_));
+      memset(&m_addr6_, 0, sizeof(m_addr6_));
       m_addr6_.sin6_family = AF_INET6;
       m_addr6_.sin6_port = htons(port);
       if (::inet_pton(AF_INET6, ip, &m_addr6_.sin6_addr) <= 0) {
         m_errno_ = -1;
       }
     } else {
-      bzero(&m_addr_, sizeof(m_addr_));
+      memset(&m_addr_, 0, sizeof(m_addr_));
       m_addr_.sin_family = AF_INET;
       m_addr_.sin_port = htons(port);
       if (::inet_pton(AF_INET, ip, &m_addr_.sin_addr) <= 0) {

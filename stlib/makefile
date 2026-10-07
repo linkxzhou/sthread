@@ -14,7 +14,6 @@ C_ARGS = $(ST_CXXFLAGS)
 #   ucontext/asm.S       上述函数的汇编实现（同上）
 # 其余 stlib/*.h 都是模板或 inline，不产出目标文件。
 # 测试框架：st_test.cc — 见 stlib/tests/makefile 与 tests/makefile。
-UNAME_M := $(shell uname -m)
 # arm64 uses asm.S NEEDARM64CONTEXT (same as other arches).
 UCONTEXT_ASM_O = ucontext/asm.o
 LIBO = st_log.o st_context.o ucontext/ucontext.o $(UCONTEXT_ASM_O)
@@ -39,7 +38,7 @@ all: $(BINARY)
 libst.a: $(LIBO)
 	@echo "Linking $@ ..."
 	@rm -f $@
-	@ar crs $@ $^
+	@$(AR) crs $@ $^
 
 libst.so: $(LIBO)
 	@echo "Linking $@ ..."
