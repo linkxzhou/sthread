@@ -10,6 +10,7 @@ sthread
 [![build](https://github.com/linkxzhou/sthread/actions/workflows/build-macos-15.yml/badge.svg?branch=master)](https://github.com/linkxzhou/sthread/actions/workflows/build-macos-15.yml)
 [![build](https://github.com/linkxzhou/sthread/actions/workflows/build-macos-15-intel.yml/badge.svg?branch=master)](https://github.com/linkxzhou/sthread/actions/workflows/build-macos-15-intel.yml)
 [![build](https://github.com/linkxzhou/sthread/actions/workflows/build-macos-26.yml/badge.svg?branch=master)](https://github.com/linkxzhou/sthread/actions/workflows/build-macos-26.yml)
+[![build](https://github.com/linkxzhou/sthread/actions/workflows/build-android.yml/badge.svg?branch=master)](https://github.com/linkxzhou/sthread/actions/workflows/build-android.yml)
 [![format](https://github.com/linkxzhou/sthread/actions/workflows/format.yml/badge.svg?branch=master)](https://github.com/linkxzhou/sthread/actions/workflows/format.yml)
 
 # 简介
@@ -21,28 +22,29 @@ sthread
 # 特性
 
 1. 不用依赖任何第三方运行时库
-2. 多平台协程调度（ucontext + `asm.S`：386 / amd64 / mips / power / **arm64**）
-3. 支持 epoll（Linux）与 kqueue（macOS / OpenBSD）
+2. 多平台协程调度（ucontext + `asm.S`：386 / amd64 / mips / power / **arm64**）。Android（arm64-v8a、x86_64）使用 vendored libtask asm（ELF 符号）+ epoll
+3. 支持 epoll（Linux / Android）与 kqueue（macOS / OpenBSD）
 4. 不用写异步调度代码：业务全部同步写法，框架内部异步处理
 5. 提供非阻塞 TCP / UDP 客户端（短连接与 TCP keepalive 复用）
 6. 跨平台；在内存与句柄足够时可以创建大量协程（见下方「性能」）
 7. 使用简单，只需链接一个 `libmthread.a` 或 `libmthread.so`
 
-示例应用：`app/st_dns`、`app/st_memcacheclient`、`app/st_wrk`、`app/st_httpserver`、`app/st_dnsserver`。
+示例应用：`app/st_dns`、`app/st_memcacheclient`、`app/st_wrk`、`app/st_httpserver`、`app/st_dnsserver`、`app/st_httpclient`。
 
 # 环境要求
 
 | 项 | 内容 |
 | --- | --- |
 | 语言标准 | C++98（`-std=c++98`） |
-| Linux | g++；epoll 后端 |
+| Linux | g++；epoll 后端；glibc `get/make/swapcontext` |
 | macOS | clang++；kqueue 后端；**Apple Silicon 已支持真实 ucontext** |
+| Android | NDK clang；API 21；**arm64-v8a 与 x86_64**；epoll + vendored libtask asm。只交叉编译，不在模拟器上跑测试。armeabi-v7a / x86 未支持 |
 | 运行时依赖 | 无（仅系统库：libc / libstdc++ 或 libc++ / libpthread / libdl） |
 | 可选开发期依赖 | gperftools（tcmalloc / profiler），默认关闭；见 [`thirdparty/readme.md`](thirdparty/readme.md) |
 
 # 编译状态
 
-每次 push / PR 由 [GitHub Actions](https://github.com/linkxzhou/sthread/actions) 在下列平台上编译 stlib、libmthread、apps 与全部测试，并运行 `stlib/tests`；`tests/` 的 unittest 目前为非阻塞项。每个平台一个 workflow（`.github/workflows/build-*.yml`，共享 `_build.yml`），另有 `format.yml` 做 clang-format-18 格式检查。
+每次 push / PR 由 [GitHub Actions](https://github.com/linkxzhou/sthread/actions) 在下列平台上编译 stlib、libmthread、apps 与全部测试，并运行 `stlib/tests`；`tests/` 的 unittest 目前为非阻塞项。每个平台一个 workflow（`.github/workflows/build-*.yml`，POSIX 平台共享 `_build.yml`），另有 `format.yml` 做 clang-format-18 格式检查。Android 用单独的 `build-android.yml`，只交叉编译。
 
 | 平台 | 架构 | 编译器 | 状态 |
 | --- | --- | --- | --- |
@@ -53,6 +55,7 @@ sthread
 | macOS 15 | arm64 | Apple clang++ | [![build](https://github.com/linkxzhou/sthread/actions/workflows/build-macos-15.yml/badge.svg?branch=master)](https://github.com/linkxzhou/sthread/actions/workflows/build-macos-15.yml) |
 | macOS 15 | x86_64 (Intel) | Apple clang++ | [![build](https://github.com/linkxzhou/sthread/actions/workflows/build-macos-15-intel.yml/badge.svg?branch=master)](https://github.com/linkxzhou/sthread/actions/workflows/build-macos-15-intel.yml) |
 | macOS 26 | arm64 | Apple clang++ | [![build](https://github.com/linkxzhou/sthread/actions/workflows/build-macos-26.yml/badge.svg?branch=master)](https://github.com/linkxzhou/sthread/actions/workflows/build-macos-26.yml) |
+| Android | arm64-v8a、x86_64（NDK，API 21，只编译） | NDK clang++ | [![build](https://github.com/linkxzhou/sthread/actions/workflows/build-android.yml/badge.svg?branch=master)](https://github.com/linkxzhou/sthread/actions/workflows/build-android.yml) |
 
 ## Apple Silicon（arm64）
 
@@ -66,7 +69,7 @@ sthread
 | 项 | 状态 |
 | --- | --- |
 | `make lib` / `make -C tests run` / `make -C stlib/tests run` | 三件套门禁 |
-| `make apps` | dns / memcache / wrk / httpserver / **dnsserver** |
+| `make apps` | dns / memcache / wrk / httpserver / **dnsserver** / **httpclient** |
 | `make bench-http` | 起 `st_httpserver`，`st_wrk` 矩阵，报告 `reports/http-*.md` |
 | `make bench-dns` | 起 `st_dnsserver` `:5353`，`st_dns` 协程压测后**退出** |
 | 冻结基线 | [`reports/baseline-http.md`](reports/baseline-http.md) / [`reports/baseline-dns.md`](reports/baseline-dns.md)（标 OS/arch/commit） |
@@ -131,6 +134,30 @@ make bench-http
 ```
 
 详见 [`app/st_httpserver/README.md`](app/st_httpserver/README.md)。
+
+## HTTP client 样例
+
+```bash
+make apps
+./app/st_httpserver/main 18765 &
+./app/st_httpclient/st_httpclient http://127.0.0.1:18765/
+# 或一键冒烟（起停 server，检查退出码与响应体）
+make smoke-httpclient
+```
+
+详见 [`app/st_httpclient/README.md`](app/st_httpclient/README.md)。
+
+## Android 交叉编译
+
+需要 NDK（CI 使用 ubuntu-24.04 预装的 NDK，`ANDROID_NDK_HOME`）。只编译，不运行：
+
+```bash
+export ANDROID_NDK_HOME=/path/to/ndk   # 或 ANDROID_NDK
+make android ABI=arm64-v8a API=21
+make android ABI=x86_64 API=21
+```
+
+产物是 Android ELF：`libmthread.a` / `libmthread.so`、`app/*/main`（httpclient 为 `st_httpclient`）、`tests/` 与 `stlib/tests/` 的测试二进制。`libmthread.so` 的 `NEEDED` 只有 `libc.so`、`libm.so`、`libdl.so`（C++ 运行时静态链入，不带 `libc++_shared.so`）。
 
 ## DNS server / client 样例
 

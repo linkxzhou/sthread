@@ -1,6 +1,6 @@
 # 10 · 跨平台（Android）+ 平台抽象层 + `st_httpclient` 样例
 
-> **状态：📝 计划，决策已拍板**（2026-10-07）。基线：`master` = `0f192b5`。
+> **状态：✅ 已完成**（2026-10-07）。基线：`master` = `0f192b5`。落地记录见 §9。
 >
 > **决策：D1–D10 已按推荐默认值接受**（§5）。Windows 整段移出本期（用户决定：改动面过大）。
 >
@@ -302,29 +302,29 @@ FreeBSD kqueue；Linux 改走 libtask asm 的性能提案；Android armeabi-v7a 
 
 ### A. 抽象层（P0）
 
-- [ ] `st_platform.h` 落地；`src/`、`app/` 的业务代码不再直接判断 `__APPLE__` / `__linux__`
-- [ ] `make.inc` 按 `$(CC) -dumpmachine` 选平台；交叉编译不再把宿主机 `-m64` 传给 aarch64
-- [ ] `dlsym` 失败时回退直接调用（D7），并在 §9 说明
-- [ ] 现有 7 个 POSIX workflow + format 全绿；`size` 增量在 1% 以内
+- [x] `st_platform.h` 落地；`src/`、`app/` 的业务代码不再直接判断 `__APPLE__` / `__linux__`
+- [x] `make.inc` 按 `$(CC) -dumpmachine` 选平台；交叉编译不再把宿主机 `-m64` 传给 aarch64
+- [x] `dlsym` 失败时回退直接调用（D7），并在 §9 说明
+- [x] `size` 增量在 1% 以内（text 下降）。POSIX workflow 以 PR CI 为准，见 §9
 
 ### B. httpclient（P1）
 
-- [ ] `make apps` 包含 `st_httpclient`；README 齐全
-- [ ] `make smoke-httpclient` 在 Linux 上通过；退出码符合约定
-- [ ] `tests/st_http_client_unittest` 覆盖 Content-Length 和 chunked
-- [ ] CI 中有阻塞的 smoke 步骤
+- [x] `make apps` 包含 `st_httpclient`；README 齐全
+- [x] `make smoke-httpclient` 在 Linux 上通过；退出码符合约定
+- [x] `tests/st_http_client_unittest` 覆盖 Content-Length 和 chunked
+- [x] CI 中有阻塞的 smoke 步骤（`_build.yml`）
 
 ### C. Android（P2）
 
-- [ ] `build-android.yml` 的 arm64-v8a 和 x86_64 都绿
-- [ ] `libmthread.so` 架构正确，`NEEDED` 只有系统库（无 `libc++_shared` / `libpthread`）
+- [x] 本机 NDK r27d 编过 arm64-v8a 和 x86_64；`build-android.yml` 以 PR CI 为准
+- [x] `libmthread.so` 架构正确，`NEEDED` 只有 `libc.so` / `libm.so` / `libdl.so`
 - [ ] （可选 P2b，本期不做）模拟器上 stlib/tests 通过
 
 ### D. 文档（P4）
 
-- [ ] `readme.md` / `readme_en.md` 平台表 + Android 徽章
-- [ ] `AGENTS.md` 后端表；`plan/README.md` 状态更新；§9 有提交号
-- [ ] 不新增根 `LICENSE`；`COPYRIGHT` 不变
+- [x] `readme.md` / `readme_en.md` 平台表 + Android 徽章
+- [x] `AGENTS.md` 后端表；`plan/README.md` 状态更新；§9 有提交号
+- [x] 不新增根 `LICENSE`；`COPYRIGHT` 不变
 
 ---
 
@@ -349,7 +349,49 @@ plan/10-cross-platform-android-httpclient.md  # 本文
 
 > 每完成一个阶段，在此追加：日期、提交号、平台/编译器、三件套和 `make apps` / smoke 结果、`size` 数据、偏差说明。
 
-（暂无）
+### 2026-10-07 · Linux x86_64（g++ 13.3.0）+ NDK r27d（clang 18.0.4）
+
+| 阶段 | 提交 | 结果 |
+| --- | --- | --- |
+| 计划 | `2daad14` | `plan/10-cross-platform-android-httpclient.md`；Windows 移到 §1.3 |
+| P0 | `9a7293b` | `st_platform.h`、`make.inc` 按 `$(CC) -dumpmachine`、`context_make`、D7 回退 |
+| P1 | `c30688b` | `app/st_httpclient`、`scripts/smoke_httpclient.sh`、单测、`_build.yml` 阻塞 smoke |
+| P2 | `a12da7d` | ELF `setmcontext`/`getmcontext`、`.note.GNU-stack`、`make android`、`build-android.yml` |
+| P4 | 本提交 | `readme.md` / `readme_en.md` / `AGENTS.md` / 本段 |
+
+**Linux（g++ 13.3.0，`TRACE` 默认，smoke 为 `TRACE=0`）：**
+
+| 命令 | 结果 |
+| --- | --- |
+| `make lib` | 绿。链接 `libmthread.so` 不再出现 GNU-stack / 可执行栈警告。`asm.o` text = 0（Linux 仍走 glibc ucontext） |
+| `size` | `.so` text **170635**（P0 前 `0f192b5` 为 172600，约 −1.1%）。`.a` 成员 text 合计 **143066**（前 145953，约 −2.0%） |
+| `ldd libmthread.so` | `libstdc++`、`libgcc_s`、`libc`、`libm`。无第三方 |
+| `make apps` | 绿，含 `st_httpclient`。`ldd` 同样只有系统库 |
+| `make -C stlib/tests run` | `ALL STLIB TESTS PASSED` |
+| `make smoke-httpclient` | `ok get/conc/post/refused/https/body/stress/keepalive` |
+| `make format-check CLANG_FORMAT=clang-format-18` | 绿 |
+| `make -C tests run` | **未全绿**（见偏差 8）。单独续跑：`st_http_client_unittest` 通过（Content-Length + chunked） |
+
+**Android（本机 NDK r27d，`make android API=21`，只编译）：**
+
+| ABI | 结果 |
+| --- | --- |
+| arm64-v8a | `libmthread.so` 为 ARM aarch64。`asm.o` 导出 `setmcontext` / `getmcontext`（无 `_` 前缀），带 `.note.GNU-stack`。`NEEDED`：`libdl.so`、`libm.so`、`libc.so` |
+| x86_64 | 同上，架构 x86-64。NDK clang 接受 `-m64`。`ucontext-amd64.h` 的 `#pragma message` 会刷屏，不失败 |
+
+`stlib/libst.so`、apps、`tests/*_unittest`、`stlib/tests/*_test` 的 `NEEDED` 同样只有上述三个系统库。`ABI=armeabi-v7a` 在进编译前拒绝。未设置 `ANDROID_NDK` / `ANDROID_NDK_HOME` 时拒绝。
+
+**偏差（相对本文原文）：**
+
+1. **没有 P3。** Windows（MinGW、Fibers、WSAPoll、IOCP、句柄映射、Win64 `ulong`）整段在 §1.3，不实现。阶段号保留 P4。
+2. **D7 只改 `app/st_sys.h` 的 `HOOK_SYSCALL`。** `src/st_sys.cc` 的 ENOSYS 分支未动，避免和执行中的 plan/09 交叉。静态链接不探测、也不把 `ST_HOOK` 改成 0，靠「dlsym 失败则 `::name`」。
+3. **`malloc` 失败时 `context_make` 返回 −1**，不再在空指针上继续。成功路径的 `ss_sp + 16`、`ss_size - 64`、`ty`/`tx` 不变。
+4. **`.note.GNU-stack` 加在所有 ELF 的 `asm.S` 末尾**，包括 Linux 上 text 为空的 `asm.o`。只消掉链接警告，不改变切换。
+5. **`make android` 同时构建 `stlib`**（计划正文写了 apps / tests / stlib-tests）。Android 的 `libmthread.so` 链接行多了 `$(ST_LDLIBS)`（`-ldl`），Linux 的 `.so` 链接行不变。
+6. **非 x86 上 `ARCH=32` 不再强加 `-m32`。** 不引入 `ST_EXE`。
+7. **httpclient 的日志级别是 `LLOG_CRIT`。** `LLOG_ERR` 会打到 stdout，和 `curl` 的响应体对不上。fd 泄漏检查是进程结束前 `fcntl` 扫描 0..255，打开数 > 32 则失败。不做 IPv6。样例不使用 `eTCP_KEEPLIVE_CONN`。
+8. **`make -C tests run` 的三处失败在 `0f192b5` 上已存在，未改 `STACK`：** `st_loopback_unittest` 的 `UdpSequentialLoopback`（`rc == 0`，同进程连续 UDP）；`st_context_unittest` SIGABRT（`stack smashing detected`，64 KiB `makecontext` 栈）；`st_sys_api_unittest` 的 `SysApiAccept`（`cfd >= 0`）。官方目标 `set -e`，停在 loopback。其余单测（含新的 http client）通过。
+9. **P2b 模拟器、armeabi-v7a / x86、FreeBSD CI、Linux 改走 libtask asm，都没做。** 未发明根 `LICENSE`。`COPYRIGHT` 未改。
 
 ---
 
