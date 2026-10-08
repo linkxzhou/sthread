@@ -1,6 +1,7 @@
 #include "memcache.h"
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -239,8 +240,9 @@ static void *thread_func(void *) {
   ret = memcache_exchange(&msg2, &servaddr, 1000);
   LOG_TRACE("ret : %d", ret);
 
-  LOG_TRACE("thread id : %d, frame id : %p", (int)pthread_self(),
-            Instance<Frame>());
+  /* macOS 的 pthread_t 是指针，截成 int 会丢宽度。经 uintptr_t 再按指针打印。 */
+  LOG_TRACE("thread id : %p, frame id : %p",
+            (void *)(uintptr_t)pthread_self(), Instance<Frame>());
   return NULL;
 }
 

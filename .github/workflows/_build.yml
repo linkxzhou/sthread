@@ -60,6 +60,15 @@ jobs:
         timeout-minutes: 10
         run: make -C tests run CC=${{ matrix.cxx }}
 
+      # 开发者默认 TRACE=1（make.inc）。LOG_TRACE 的实参只在 -DTRACE 时参与
+      # 编译；上面的 TRACE=0 会把指针截断这类错误藏掉。这里按默认开关只编译。
+      - name: make TRACE=1 (build only)
+        env:
+          TRACE: "1"
+        run: |
+          make clean
+          make stlib apps tests stlib-tests CC=${{ matrix.cxx }}
+
       - name: clean tree
         if: always()
         run: |

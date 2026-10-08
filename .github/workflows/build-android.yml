@@ -22,7 +22,8 @@ jobs:
       matrix:
         abi: [arm64-v8a, x86_64]
     env:
-      TRACE: "0"
+      # 只交叉编译、不跑测试。用默认 TRACE=1，让 LOG_TRACE 实参进入类型检查。
+      TRACE: "1"
       ABI: ${{ matrix.abi }}
       API: "21"
     steps:
