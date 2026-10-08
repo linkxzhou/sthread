@@ -7,7 +7,6 @@
 #include "app/st_sys.h"
 #include "src/st_sys.h"
 #include "tests/st_test_compat.h"
-#include <dlfcn.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <netinet/in.h>
@@ -158,12 +157,17 @@ TEST(StStatus, HookConnectAcceptAndTimeoutOpts) {
   ::close(lfd);
 }
 
+#if defined(__APPLE__)
+extern int st_dlsym_null_hits __attribute__((weak_import));
+#else
+extern int st_dlsym_null_hits __attribute__((weak));
+#endif
+
 TEST(StStatus, HookDlsymFallbackCounter) {
-  int *hits;
-  /* 没预加载时符号不存在，跳过计数断言。预加载时每次失败的 dlsym 都加一。 */
-  hits = (int *)dlsym(RTLD_DEFAULT, "st_dlsym_null_hits");
-  if (hits != NULL) {
-    ASSERT_TRUE(*hits > 0);
+  /* 没预加载时弱符号地址是空。预加载时每次被拦下的 dlsym 都加一。
+   * 不用 dlsym 取这个符号：macOS 的 interpose 会把查找指回自己并栈溢出。 */
+  if (&st_dlsym_null_hits != 0) {
+    ASSERT_TRUE(st_dlsym_null_hits > 0);
   }
 }
 

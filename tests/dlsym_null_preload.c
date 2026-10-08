@@ -1,7 +1,7 @@
 /*
  * 让 HOOK_SYSCALL 里的 dlsym 对一组 syscall 返回 NULL，
- * 从而走到 ST_DIRECT_SYSCALL 回退。测试进程用
- * dlsym(RTLD_DEFAULT, "st_dlsym_null_hits") 确认命中次数。
+ * 从而走到 ST_DIRECT_SYSCALL 回退。命中次数在 st_dlsym_null_hits，
+ * 测试用弱符号读取，不再对这个名字调用 dlsym。
  * Android 不编这个库（见 tests/Makefile）。
  */
 #if defined(__APPLE__)
@@ -49,20 +49,31 @@ typedef void *(*dlsym_fn)(void *, const char *);
 
 static void *hook_dlsym(void *handle, const char *symbol) {
   static dlsym_fn fn = 0;
-  static int resolving = 0;
+  static int depth = 0;
+  void *found;
   if (is_hooked(symbol)) {
     st_dlsym_null_hits++;
     return 0;
   }
-  if (fn == 0 && !resolving) {
-    resolving = 1;
+  /* RTLD_NEXT 经常把 dlsym 指回本函数，再调用就会栈溢出。 */
+  if (depth > 0) {
+    return 0;
+  }
+  if (fn == 0) {
+    depth++;
     fn = (dlsym_fn)dlsym(RTLD_NEXT, "dlsym");
-    resolving = 0;
+    depth--;
+    if (fn == (dlsym_fn)hook_dlsym) {
+      fn = 0;
+    }
   }
   if (fn == 0) {
     return 0;
   }
-  return fn(handle, symbol);
+  depth++;
+  found = fn(handle, symbol);
+  depth--;
+  return found;
 }
 
 DYLD_INTERPOSE(hook_dlsym, dlsym);
