@@ -2,9 +2,9 @@
 
 > **状态：📋 计划（未开工）** · 2026-10-08。基线：`master` = `486611f`（PR #15，`st_*` 超时统一为 `-1` 且 `errno == ETIME`）。
 >
-> **决策：D1–D14 未拍板**（§5）。推荐默认值写在表里；实现前按推荐值开工，有异议再改计划。
+> **决策：D1–D14 已决定**（§6）。用户拍板 5 项（readme 保留 DNS、必须先修 hook、聊天室改用库内通知原语、反代池只放样例、六个冒烟不进 CI）；其余按原推荐定稿。
 >
-> 本文档**只描述计划，不包含任何功能代码变更**。和 [`08`](08-apps-bench-dnsserver.md) / [`10`](10-cross-platform-android-httpclient.md) 的关系：08 已经有 HTTP/DNS 压测闭环和 `st_dnsserver`；10 已经有 `st_httpclient`（`st_http_exchange`）和 Android 只编译。本篇只加 `app/` 样例，以及两处不补就写不出样例的库缺口（hook 的 `ST_FD_FLG_UNBLOCK`、`st_connect` / `Create` 的 errno）。调度模型、栈大小、枚举值不动。
+> 本文档**只描述计划，不包含任何功能代码变更**。和 [`08`](08-apps-bench-dnsserver.md) / [`10`](10-cross-platform-android-httpclient.md) 的关系：08 已经有 HTTP/DNS 压测闭环和 `st_dnsserver`；10 已经有 `st_httpclient`（`st_http_exchange`）和 Android 只编译。本篇加六个样例，以及两个库前置：hook 的 `ST_FD_FLG_UNBLOCK`（Phase 1，然后才是 hookdemo），协程通知 `st_notify` / `st_wait`（Phase 2，然后才是聊天室）。另有 `Create` 失败路径保存 errno。调度模型、栈大小、已有枚举数值不动。
 >
 > 硬约束沿用总索引：C++98；`.clang-format`（LLVM 基线 + `m_x_` 命名）+ CI 的 clang-format-18；**只用 makefile**；零第三方运行时依赖；新源文件头 `Copyright (C) zhoulv2000@163.com`；vendored 代码保留 [`COPYRIGHT`](../COPYRIGHT)；**不发明根 `LICENSE`**；注释用中文。Windows 不支持。三件套闸门：`make lib`、`make -C tests run`、`make -C stlib/tests run`，另加 `make apps`。`make clean` 之后 `git status --porcelain --ignored` 必须为空。
 
@@ -22,7 +22,7 @@
 | 3 | `app/st_portscan` | 大量并发 `st_connect`；超时（`-1` / `ETIME`）和拒绝（`ECONNREFUSED`）分开计 |
 | 5 | `app/st_httpproxy` | `StServer` 接 `st_http_exchange`；应用层后端槽位、超时、简单探活 |
 | 7 | `app/st_redisclient` | 自己实现的 RESP；形态对齐 `st_memcacheclient`，另加 redis-benchmark 式压测模式 |
-| 9 | `app/st_chat` | 一行消息从一条连接广播到其他连接；协程之间用邮箱叫醒，不碰对方的 socket 事件项 |
+| 9 | `app/st_chat` | 一行消息广播到其他连接；用库里的 `st_notify` / `st_wait` 叫醒，不占 fd，不写对方的 socket |
 | 11 | `app/st_hookdemo` | 一份只调用 POSIX `socket` / `connect` / `read` / `write` 的客户端，原样放进协程跑 |
 
 ### 1.2 非目标（明确不做）
@@ -34,7 +34,7 @@
 | N3 | 不引入 hiredis、libevent、CMake、gtest | makefile + 自带 `stlib/st_test.h`；RESP 自己解析 |
 | N4 | 不把 `read` / `write` / `connect` 导出成 `libmthread.so` 的全局符号，也不把 LD_PRELOAD / `DYLD_INSERT_LIBRARIES` 当作默认跑法 | 会劫持进程里所有读，包括 hook 自己的 `dlsym` 回退。macOS 两级命名空间和 Android 只编译都接不住 |
 | N5 | 不改 `sys_accept` | 它今天调用的是真实 `accept`（见 `app/st_sys.cc`），会堵住整个 OS 线程。六个样例里的服务端走 `st_accept` |
-| N6 | 聊天室不加库级 channel / `st_notify`，不改 `StEventSchedule::Schedule` 的「没有 IO 事件就 `errno=ETIME`」 | `Pend` / `Unpend` 今天只为父子协程汇合服务。广播用应用层 pipe |
+| N6 | 不把 `stlib/tests/ucontext/channel.c` 抄进 `src/`，通知原语不占用 fd | 用本篇的 `st_notify` / `st_wait`（§3.2）。`Pend` / `Unpend` 仍只给父子协程。通知位未置时，`Schedule` 没有 IO 事件仍报 `ETIME` |
 | N7 | 反代不做 TLS、HTTP/2、请求体流式转发、改 `ST_SEND_BUFFSIZE`（8192） | 与 `st_httpclient` 一样，只是样例 |
 | N8 | Redis 压测不把 `redis-server` 装进 CI | 和 memcache 一样：本机有就用来压；冒烟用仓库里的 Python stub |
 | N9 | 不发明根 `LICENSE`；不提交 `.session_tmps/`、样例二进制、一次性 `reports/echo-*.md` | 与 01/08 相同 |
@@ -97,6 +97,8 @@
 
 一个 fd 只能有一个 `StEventItem`。聊天室不能从 A 的协程里对 B 的 socket 调用 `st_send`。
 
+这个缺口由 §3.2 的 `st_notify` / `st_wait` 补上，并且排在聊天室样例之前。`Pend` / `Unpend` 继续只服务父子协程，不拿来做广播。
+
 **G5 · hook 表里没有的调用会堵住整个进程。**
 
 已包装：`socket` `close` `connect` `read` `write` `send` `recv` `sendto` `recvfrom` `setsockopt` `fcntl` `ioctl` `accept`。`sleep` 只在 `SyscallCallbackTab` 里有函数指针，**没有** `sys_sleep`。`getaddrinfo`、`poll`、`select`、`readv` / `writev` 都没有。`sys_new_fd` 把读写超时默认设成 **512 ms**。
@@ -126,13 +128,159 @@
 
 默认端口避开已经占用的：httpserver `8765`，httpclient 冒烟 `18765`，dnsserver `5353`。
 
+**CI 边界（D12，已决定）。** 六个样例的 `scripts/smoke_*.sh` 和根 makefile 的 `make smoke-*` 只给本地手动跑，不写进 `_build.yml`。CI 继续用已有的 `make apps`、`make android`（只编译）和 `make -C tests run`。hook 修复、`st_notify` / `st_wait`、`Create` 的 errno 这些库层单测放在 `tests/`，因此会进 CI。样例冒烟不进。
+
 ---
 
-## 3. 六个样例
+## 3. 库前置
+
+样例动手之前先落地下面两段。Phase 1 修完 hook，Phase 4 的 hookdemo 才有意义。Phase 2 的通知原语落地后，Phase 8 的聊天室才开始写。两段都带 `tests/` 单测，跟着现有的 `make -C tests run` 进 CI。不依赖 echo 二进制。
+
+### 3.1 Hook 修复（Phase 1，hookdemo 的前置）
+
+**要修的行为。** G1：`sys_socket` 经 `sys_fcntl(F_SETFL, O_NONBLOCK)` 置了 `ST_FD_FLG_UNBLOCK`，`sys_read` / `sys_write` / `sys_recv` / `sys_send` 就走真实 syscall，协程不 Yield。同时 `sys_socket` 不登记 `StEventItem`，`st_connect` / `st_read` 会得到 `-2` / `EINVAL`。
+
+**改动（只动 hook 层）。**
+
+1. `app/st_sys.cc` 的 `sys_socket`：内核 `O_NONBLOCK` 用 `::fcntl` 或 `REAL_FUNC(fcntl)` 设置，不走会打上 `ST_FD_FLG_UNBLOCK` 的 `sys_fcntl`。
+2. 用户自己 `fcntl(F_SETFL, O_NONBLOCK)` 或 `ioctl(FIONBIO)` 仍然置 `ST_FD_FLG_UNBLOCK`。这条保持：用户要非阻塞时，hook 让开。
+3. `sys_connect` / `sys_read` / `sys_write` / `sys_recv` / `sys_send`：fd 已在 `sys_fd` 表中、hook 已打开、没有 `ST_FD_FLG_UNBLOCK`、且 `GetEventItem(fd)==NULL` 时，hook 层 `AllocPtr<StEventItem>`、`SetOsfd`、`Add`，指针记在 `sys_fd` 的新字段里，表示「这项是 hook 自己登记的」。
+4. `sys_close`：仅当该项是 hook 登记的，才 `ClearItem` + `UtilPtrPoolFree`，然后 `sys_free_fd`。`StClientConnection::Create` 自己 `Add` 的项不由 `sys_close` 释放，`ReleaseItem` 仍归连接对象，避免双重释放。
+5. `Create` 的顺序仍是 `sys_socket` 然后自己 `Add`。`sys_socket` 不在这里登记事件项，所以不会和 `Create` 抢同一项。现有样例走 `st_recv` / `st_send`，不走 `sys_read`。
+6. `sys_accept` 不改（N5）。不在 `libmthread.so` 里定义 `read`（N4）。
+
+**验收。**
+
+- `sys_socket` 返回后，`sys_find_fd(fd)->sock_flag` 不含 `ST_FD_FLG_UNBLOCK`，内核标志仍是 `O_NONBLOCK`。
+- hook 打开、对端不写数据：`sys_read` 挂起协程，超时返回 `-1` 且 `errno==ETIME`，不是立刻 `EAGAIN`。
+- 用户再 `sys_fcntl(F_SETFL, O_NONBLOCK)` 之后，同一次 `sys_read` 立刻 `EAGAIN`，不挂起。
+- 未登记事件项的 fd，第一次 `sys_read` / `sys_connect` 会自己 `Add`；`sys_close` 之后 `GetEventItem(fd)==NULL`，再关一次不双重释放。
+- 现有 `StClientConnection::Create` / `StServer::CreateSocket` 路径的单测仍然通过，日志里不出现 `item replace`。
+- `make -C tests run` 含下面的用例；`_build.yml` 不用加新步骤。
+
+**单测。** 改 `tests/st_hook_unittest.cpp`（已在 `FORMAT_SRC` 和 `tests/Makefile` 里），不新建文件：
+
+| 用例 | 断言 |
+| --- | --- |
+| `sys_socket` + hook + 对端暂不写 | `sys_read` 超时，`errno==ETIME` |
+| 同上，但调用方又 `fcntl` 了 `O_NONBLOCK` | `sys_read` 立刻失败，`errno==EAGAIN` |
+| `sys_socket` + `sys_connect` 到 loopback 上正在 listen 的端口 | 返回 0；期间发生过 Yield（另一个协程的计数增加） |
+| `sys_close` 两次 | 第二次是 `EBADF` 一类，进程不崩 |
+| 现有 `sys_new_fd` 绕开 `sys_socket` 的用例 | 保留，两条路径都在 |
+
+### 3.2 通知原语 `st_notify` / `st_wait`（Phase 2，聊天室的前置）
+
+**要补的能力。** 同一 OS 线程上，协程 A 可以在超时之内等「有人叫我」或「fd 可读/可写」，协程 B 叫它时不占用 fd、不加 pipe。实现落在已有的睡眠堆和可运行队列上：`RemoveSleep` / `RemoveIOWait` / `InsertRunable`（`src/st_thread.cc`）。不新开一种队列，不改 `eThreadFlag` / `eThreadState` 已有数值。
+
+**状态。** `StThreadItem`（`src/st_poll.h`）加一个 `int m_notified_`，0 或 1。`Reset()` 清零，避免对象池把粘滞通知带给下一个协程。这不是队列成员标志，所以不进 `eThreadFlag`。
+
+**放哪。**
+
+| 内容 | 文件 |
+| --- | --- |
+| 声明、`ST_WAIT_FD` / `ST_WAIT_NOTIFY`、返回值注释 | `src/st_sys.h`（和 `st_sleep` 同一头；使用方已经为带超时 IO include 它） |
+| `st_notify_wait` / `st_notify` / `st_wait` 的定义 | `src/st_sys.cc` |
+| 把目标从睡眠堆或 IO 队列移到可运行队列 | `StThreadSchedule::Notify`，声明 `src/st_thread.h`，定义 `src/st_thread.cc` |
+
+三个函数是 C++ 函数，**不**放进 `extern "C"`：参数里有 `StThread*`。声明在全局作用域，调用写法和 `st_sleep` 一样，不用加命名空间。`src/st_sys.h` 已经 include `st_thread.h`。
+
+**API 草案（C++98）。**
+
+```cpp
+#define ST_WAIT_FD     0x1
+#define ST_WAIT_NOTIFY 0x2
+
+/* 当前协程等到通知，或超时。
+ *  0  被 st_notify 叫醒，含调用前已经记下的粘滞通知
+ * -1  超时，errno=ETIME；当前没有协程，errno=EINVAL
+ * timeout_ms < 0：一直等（内部收成 0x7fffffff，与 NormalizeTimeoutMs 相同）
+ * timeout_ms == 0：不挂起；有粘滞则 0，否则 -1 且 errno=ETIME
+ */
+int st_notify_wait(int timeout_ms);
+
+/* 给 target 记一次通知。只限当前 OS 线程的 StThreadSchedule。
+ *  0  已记下。target 正在 st_notify_wait 或 st_wait 中，则离开睡眠堆
+ *     或 IO 队列，进入可运行队列。没在等则只留粘滞位，下次 wait 立即成功。
+ *     多次 notify 合并成一次。
+ * -1  target==NULL，或 target 不属于当前调度器，errno=EINVAL
+ * 不调用 Unpend，不跨 OS 线程。
+ */
+int st_notify(sthread::StThread *target);
+
+/* 当前协程同时等 fd 和通知。
+ * want_read 非 0 等可读，0 等可写。
+ * fd 必须已经在事件表里，否则 -2 且 errno=EINVAL（与 st_read 的 -2 相同）。
+ *  >0  位掩码：ST_WAIT_FD 与 ST_WAIT_NOTIFY 可以同时置位
+ *  -1  超时，errno=ETIME；没有协程，errno=EINVAL
+ *  -2  没有事件项，errno=EINVAL
+ *  -3  Schedule / Add 失败
+ * 返回值含 ST_WAIT_FD 时，用一次非阻塞 recv/send 把字节取走。
+ * 不要接着再调 st_recv / st_send：那会再进一次 Schedule。
+ */
+int st_wait(int fd, int want_read, int timeout_ms);
+```
+
+**和睡眠堆的配合。**
+
+`st_notify_wait`：粘滞位已置则清掉并返回 0。否则 `StThread::Sleep(timeout_ms)` 写好 `m_wakeup_time_`，再走现有的 `StThreadSchedule::Sleep`（入睡眠堆并 Yield）。醒来后若 `m_notified_` 为 1，清掉并返回 0；否则 `-1` 且 `errno=ETIME`。
+
+`st_notify`：先把 `m_notified_` 置 1。然后只做下面一件，并且先看标志再摘队列（`RemoveIOWait` / `RemoveSleep` 对不在队列上的线程不能调）：
+
+- `HasFlag(eIO_LIST)`：`RemoveIOWait`（它内部会 `RemoveSleep`）然后 `InsertRunable`。
+- 否则 `HasFlag(eSLEEP_LIST)`：`RemoveSleep` 然后 `InsertRunable`。
+- 已经在跑、在可运行队列、或在 pend 队列：只留粘滞位。pend 队列是父子协程的，这里不 `Unpend`。
+- `target` 就是当前协程：只留粘滞位，不把自己 `InsertRunable`。
+
+直接移到可运行队列，而不是只把 `m_wakeup_time_` 改成 now。只改时间不 `HeapDelete` 会破坏堆序；改完再等 daemon 的 `epoll` 返回，通知会被埋到下一次超时。通知方下次 Yield 时，运行队列里已经有等待方。
+
+**和 `Schedule` / fd 事件同时等。**
+
+`st_wait` 自己调用 `StEventSchedule::Schedule`（单 item，和 `WaitFdReady` 相同）。`Schedule` 在 `recv_num==0` 时仍然 `errno=ETIME` 并返回 false。这条不改：`st_read` / `st_recv` / `st_accept` 不置通知位，超时语义保持。
+
+`st_wait` 在 `Schedule` 返回之后看 `m_notified_`：
+
+| `Schedule` | 通知位 | `st_wait` 返回 |
+| --- | --- | --- |
+| true（fd 有事件） | 0 | `ST_WAIT_FD` |
+| true | 1（清掉） | `ST_WAIT_FD \| ST_WAIT_NOTIFY` |
+| false，`errno==ETIME` | 1（清掉） | `ST_WAIT_NOTIFY`（不要把这次 `ETIME` 交给调用方） |
+| false，`errno==ETIME` | 0 | `-1`，`errno=ETIME` |
+| false，其他 errno | — | `-3`（Add/Schedule 失败）或 `-2`（没有事件项，在进 `Schedule` 之前就返回） |
+
+进入 `st_wait` 时若粘滞位已经是 1：先清掉并记住，然后用超时 0 再 `Schedule` 一次。fd 上已经有事件就或上 `ST_WAIT_FD`，没有也不再睡。这样「先 notify、缓冲里又有字节」不会把字节丢到下一次循环。
+
+协作式调度，没有第二个 OS 线程同时改队列。典型顺序：等待方在 `Schedule` 里 Yield 给 daemon；daemon `epoll` 之后才跑到通知方。fd 先就绪时，`Dispatch` 已经 `IOWaitToRunable` 并写好 `revents`，通知方只看到「不在 IO 队列」并置位，`st_wait` 两个位都返回。通知先到时，`RemoveIOWait` 把等待方放进运行队列，`revents` 仍是 0，`st_wait` 只返回 `ST_WAIT_NOTIFY`；socket 缓冲里随后到达的字节留到下一次 `st_wait`。
+
+**单测。** 新文件 `tests/st_notify_unittest.cpp`，用 `stlib/st_test.h`，挂上 `tests/Makefile` 的 `all` 和 `run`，并写进根 `FORMAT_SRC`。两个协程用 `Frame::CreateThread` 或 `StSysSchedule::CreateThread`，主协程 `st_sleep` 让他们跑起来。
+
+| 用例 | 断言 |
+| --- | --- |
+| A `st_notify_wait(500)`，B `st_notify(A)` | A 返回 0，耗时明显小于 500 ms |
+| 没人通知，`st_notify_wait(50)` | `-1`，`errno==ETIME` |
+| 先 `st_notify` 再 `st_notify_wait(1000)` | 立刻返回 0 |
+| 连续两次 `st_notify`，然后两次 `st_notify_wait` | 第一次 0；第二次超时（粘滞只消费一次） |
+| socketpair 已 `Add`，对端不写，只 `st_notify` | `st_wait` 返回 `ST_WAIT_NOTIFY`，不含 `ST_WAIT_FD` |
+| 对端写入 1 字节并且 `st_notify` | 返回值两个位都在；非阻塞 `recv` 读到那一字节 |
+| 只写入、不 `st_notify` | 返回 `ST_WAIT_FD`，不含 `ST_WAIT_NOTIFY` |
+| `st_wait` 的 fd 没有 `Add` | `-2`，`errno==EINVAL` |
+| `st_notify(NULL)` | `-1`，`errno==EINVAL` |
+| 不涉及通知的 `st_read` 超时 | 仍是 `-1` / `ETIME`（回归） |
+
+**文档（和原语一起改，不拖到聊天室）。**
+
+- `src/st_sys.h` 上表就是注释。
+- `readme.md` / `readme_en.md` 在「`st_*` 返回值」后加一小节「协程通知」：三个函数、同一 OS 线程、不占 fd、超时是 `-1` 且 `errno==ETIME`。
+- `AGENTS.md` 推荐头文件表加一行：协程之间 wait/notify → `src/st_sys.h` 的 `st_notify` / `st_wait`。
+
+**验收。** 上表单测在 `make -C tests run` 里通过；`st_read` 超时单测不回归；不新增 fd；`Pend` 的现有单测（`tests/st_scheduler_unittest.cpp`）仍然通过。
+
+---
+
+## 4. 六个样例
 
 共同约定：源文件头 `Copyright (C) zhoulv2000@163.com`；注释中文；C++98（可以用 `__thread`、`__builtin_expect`、`__sync_fetch_and_add`，和 `st_dns` 一样）；`LOG_LEVEL(LLOG_CRIT)`，避免 `LOG_ERROR` 把 SUMMARY 打花；`signal(SIGPIPE, SIG_IGN)`；单协程走 primordial，多协程 `Frame::CreateThread`，主协程 `st_sleep(10)` 等到计数归零或截止时间。二进制用 `st_*` 这种显式名字，不再用 `main`。每个目录一份 `makefile`（照 `app/st_httpserver/makefile`：`include make.inc`，只链 `libmthread.a` 和 `$(ST_LDLIBS)`）和 `README.md`。
 
-### 3.1 TCP echo（#1）
+### 4.1 TCP echo（#1）
 
 **目标。** 一条连接、一次「发出一行、收回同一行」。readme 的入口示例用它，而不是再讲一遍 DNS。同时给一个比 HTTP 更短的吞吐基线：没有解析，只有 `tcp_sendrecv`。
 
@@ -174,7 +322,7 @@ st_echoclient [-c CONC] [-n TOTAL] [-t MS] [-s PAYLOAD] host port
 
 **库缺口。** 不改 `src/`。G3 的三点（keepalive 循环、空 `DoOutput`、`SetHaveSendLen(0)`、整段清缓冲）在样例里消化，并写进 README 的「限制」。
 
-**冒烟 / 测试。**
+**冒烟 / 测试。** 脚本只供本地手动跑，不写进 `_build.yml`。CI 用 `make apps` / `make android` 编译这个目标。
 
 - `scripts/smoke_echo.sh`，根目标 `make smoke-echo`（强制 `TRACE=0`，PID / trap 照 `smoke_httpclient.sh`）。端口默认 `17707`。
 - 一次 `-c 1 -n 1`，stdout 的回显与 payload 一致，退出码 0。
@@ -187,7 +335,7 @@ st_echoclient [-c CONC] [-n TOTAL] [-t MS] [-s PAYLOAD] host port
 
 **改动面与风险。** 只动 `app/st_echo`、根 makefile、`.gitignore`、脚本、readme。风险是 `eTCP_KEEPLIVE_CONN` 被读成「已经有连接池」——README 写清楚 `FreePtr` 仍关闭 fd。另一风险是粘包被 `ST_CONN_RESET_RECVBUF` 丢掉，冒烟每次只发一行。
 
-### 3.2 端口扫描（#3）
+### 4.2 端口扫描（#3）
 
 **目标。** 几十到几千个协程同时 `st_connect`，把结果分成 open / refused / timeout / other。演示超时是 `-1` 且 `errno==ETIME`，拒绝不是超时。
 
@@ -217,7 +365,7 @@ st_portscan [-c CONC] [-t MS] [-p SPEC] host
 
 不在失败路径上再 `connect` 一次。分类以 `st_connect` 的 errno 为准，不以 `Create` 的 `-1`/`-2` 为准（`-2` 把超时以外的失败叠在一起）。
 
-工人数就是在飞连接数，不是「每个端口一个协程」。`-c 2000` 对 1–65535 就是两千个并发 `st_connect`，栈大约 500MB，还要 `ulimit -n` 大于 `-c`。README 写上这句。CI 只用 `-c 32`。
+工人数就是在飞连接数，不是「每个端口一个协程」。`-c 2000` 对 1–65535 就是两千个并发 `st_connect`，栈大约 500MB，还要 `ulimit -n` 大于 `-c`。README 写上这句。本地冒烟用 `-c 32`。
 
 **数据结构。** 端口数组（启动时把 `-p` 展开到 `int *`，上限 65535 项，超出直接退出码 2）。四个 `volatile` 计数。没有共享连接。
 
@@ -228,18 +376,18 @@ st_portscan [-c CONC] [-t MS] [-p SPEC] host
 
 不新增扫描专用 API。
 
-**冒烟 / 测试。**
+**冒烟 / 测试。** 冒烟脚本本地手动跑，不进 CI。errno 单测进 `make -C tests run`。
 
-- `scripts/smoke_portscan.sh`，`make smoke-portscan`。先起 `st_echoserver`（或一个只 `accept` 的桩；用 echo 即可），再扫「这个端口 + 一个确定没人听的端口」。断言 open 里有 echo 的端口，refused ≥ 1，timeout 为 0，退出码 0。
-- **CI 不断言 `ETIME`。** loopback 上没人听是 `ECONNREFUSED`，不是超时。打到 `192.0.2.1`（TEST-NET-1）在 GitHub runner 上经常是 `ENETUNREACH`，几毫秒就返回。样例把这类计进 other。真正的黑洞超时留给手工：README 写一条「对一个丢弃 SYN 的地址加 `-t 200`，应看到 timeout」。
-- 单测 `tests/st_connect_errno_unittest.cpp`：loopback open 与 refused，锁住 G2 的修复。挂进 `tests/Makefile`。
+- `scripts/smoke_portscan.sh`，`make smoke-portscan`。先起 `st_echoserver`（或一个只 `accept` 的桩；用 echo 即可），再扫「这个端口 + 一个确定没人听的端口」。断言 open 里有 echo 的端口，refused ≥ 1，timeout 为 0，退出码 0。并发用 `-c 32`。
+- loopback 上没人听是 `ECONNREFUSED`，不是超时。打到 `192.0.2.1`（TEST-NET-1）经常是 `ENETUNREACH`。样例把这类计进 other。黑洞超时写在 README：对一个丢弃 SYN 的地址加 `-t 200`，应看到 timeout。这条不进 CI。
+- 单测 `tests/st_connect_errno_unittest.cpp`：loopback open 与 refused，锁住 G2 的修复。挂进 `tests/Makefile`，随现有 CI 跑。
 - Android 只编译。
 
 **文档。** `app/st_portscan/README.md` 说明四类计数、栈大小、`NOFILE`、为什么 CI 不测 `ETIME`。根 readme 样例清单加一行，并指回 `st_*` 返回值表（超时是 `-1`/`ETIME`）。
 
-**改动面与风险。** `app/st_portscan` + `StClientConnection::Create` 的 errno 保存（几行）+ 可能的 `st_connect` SO_ERROR。风险：SO_ERROR 改动碰到「已经成功的连接被误判失败」。缓解：只在 Phase 0 复现了误判时才改；单测覆盖 open 和 refused；不动超时数值和 `st_*` 的返回码约定。几千协程在 CI 里 OOM 或耗尽 fd：冒烟固定 `-c 32`。
+**改动面与风险。** `app/st_portscan` + `StClientConnection::Create` 的 errno 保存（几行）+ 可能的 `st_connect` SO_ERROR。风险：SO_ERROR 改动碰到「已经成功的连接被误判失败」。缓解：只在 Phase 0 复现了误判时才改；单测覆盖 open 和 refused；不动超时数值和 `st_*` 的返回码约定。本地冒烟固定 `-c 32`，避免栈和 `NOFILE`。
 
-### 3.3 HTTP 反代 / 简单负载均衡（#5）
+### 4.3 HTTP 反代 / 简单负载均衡（#5）
 
 **目标。** 一个进程里前面是 `StServer`，后面用已经落地的 `st_http_exchange` 转发。演示应用层连接槽位、上游超时、以及一个会把死后端摘掉的探活协程。
 
@@ -292,19 +440,19 @@ ProxyConn
 
 固定数组，不用 `std::vector` 的扩容来表达上限。全局 `Backend backends_[8]`、`int nbackend_`、`int next_`。
 
-**库缺口。** 连接池仍然不在库里（G6）。本样例不改 `FreePtr`，不使用 `eTCP_KEEPLIVE_CONN` 当作池。槽位满时没有 notify，只有 `st_sleep`。响应体上限是 `ST_SEND_BUFFSIZE`，因为 `CallBack` 只会 `SendData` 一次，不能从 `DoProcess` 里再对客户端 fd `st_send`（和监听协程共用一个 `StEventItem`，见 §2.1）。
+**库缺口。** 连接池仍然不在库里（G6，D8 已定）。本样例不改 `FreePtr`，不使用 `eTCP_KEEPLIVE_CONN` 当作池。槽位满时用 `st_sleep(1)` 轮询，不用 §3.2 的 `st_notify`（样例故意保持这么简单）。响应体上限是 `ST_SEND_BUFFSIZE`，因为 `CallBack` 只会 `SendData` 一次，不能从 `DoProcess` 里再对客户端 fd `st_send`（和监听协程共用一个 `StEventItem`，见 §2.1）。
 
-**冒烟 / 测试。**
+**冒烟 / 测试。** 本地手动，不进 CI。CI 只编译。
 
 - `scripts/smoke_httpproxy.sh`，`make smoke-proxy`。起两个 `st_httpserver`（不同端口），反代 `-b` 两个都配上。`curl` 经反代拿到 `hello from sthread`。杀掉其中一个 httpserver，等一个探活间隔，再 `curl`，仍是 200。两个都杀掉，再请求，状态是 502。
-- 不把反代放进 `make bench`。可选的手工对比写在 README，不进 CI。
+- 不把反代放进 `make bench`。可选的手工对比写在 README。
 - Android 只编译（会一起编 `http_client.cc` / `http_parser.c`）。
 
 **文档。** 根 readme 加一节：反代是样例，槽位不是 `StConnectionManager` 的真复用，限制写明 8192 和 IPv4。`app/st_httpproxy/README.md` 写编译依赖的那两个已有文件。
 
 **改动面与风险。** 只在 `app/st_httpproxy` 和脚本。风险：`st_http_exchange` 的签名或 `StHttpConn` 以后若改了，反代要跟着改——它是编译期复用，不是把 HTTP 客户端链进库。探活和请求抢同一个后端时，靠「探活用自己的短连接」避开槽位。`DoInput` 只看头，不读 body；冒烟用 GET。带 body 的 POST 若超过第一次 `RecvData`，会 400，README 写明。
 
-### 3.4 Redis 客户端（RESP）（#7）
+### 4.4 Redis 客户端（RESP）（#7）
 
 **目标。** 和 `st_memcacheclient` 同一类：协议在样例里，传输用 `StExecClientConnection` + `st_send` / `st_recv`。加上一个 redis-benchmark 式的模式（并发、总请求、SUMMARY、分位）。不链接 hiredis。本机 `redis-server` 只用于可选压测。
 
@@ -351,11 +499,11 @@ st_redisclient [-h HOST] [-p PORT] [-c CONC] [-n TOTAL] [-t MS] [-q] command [ar
 
 **库缺口。** 没有。协议和压测都在 `app/`。不要把 RESP 放进 `libmthread`。
 
-**冒烟 / 测试。**
+**冒烟 / 测试。** 端到端脚本本地手动跑，不进 CI，也不在 CI 里安装 redis。不联网的 RESP 单测挂在 `tests/`，会跟着现有 `make -C tests run` 跑。
 
-- `tests/st_redis_resp_unittest.cpp`：对固定字节串做 encode/decode（`PING` 的请求、`+PONG\r\n`、`$3\r\nbar\r\n`、`$-1\r\n`、`:1\r\n`、`-ERR x\r\n`）。不需要网络。挂进 `tests/Makefile`，CI 的 `make -C tests run` 会跑到。
+- `tests/st_redis_resp_unittest.cpp`：对固定字节串做 encode/decode（`PING` 的请求、`+PONG\r\n`、`$3\r\nbar\r\n`、`$-1\r\n`、`:1\r\n`、`-ERR x\r\n`）。拆包边界喂两次 `resp_parse`。挂进 `tests/Makefile`。
 - `scripts/smoke_redis.sh`，`make smoke-redis`。优先如果 `redis-server` 在 `PATH` 里，就用 `--save "" --appendonly no --bind 127.0.0.1 --port $PORT --protected-mode no` 起一个，trap 杀掉。否则用 `python3 scripts/redis_stub.py`（只实现 PING/SET/GET/INCR，内存 dict）。然后 `st_redisclient ping`、`set k v`、`get k`、`incr n`，以及 `-c 4 -n 20 ping` 的 SUMMARY `ok=20`。
-- CI **不** `apt-get install redis`。stub 是脚本，不是运行时依赖。
+- stub 是脚本，不是运行时依赖。
 - 可选压测：本机已有 redis 时，`st_redisclient -c 50 -n 5000 ping`。不新增 `make bench-redis`，避免 `make bench` 变长。README 给出命令即可。
 - Android 只编译客户端，不跑 stub。
 
@@ -363,7 +511,7 @@ st_redisclient [-h HOST] [-p PORT] [-c CONC] [-n TOTAL] [-t MS] [-q] command [ar
 
 **改动面与风险。** `app/st_redisclient` + 一个 Python stub + 一个不联网的单测。风险是 RESP 解析在拆包边界上错（`$` 的长度和一个字节一个字节的 `st_recv`）。单测喂切片式的 `resp_parse` 两次调用，锁住「第一次只拿到类型字节」。stub 和真实 redis 的空白差异：冒烟只断言我们发出的那四条命令。
 
-### 3.5 聊天室 / 广播（#9）
+### 4.5 聊天室 / 广播（#9）
 
 **目标。** 一条连接上的一行字，出现在其他已连接的客户端上。演示协程之间怎么交接数据，以及为什么不能直接写对方的 socket。
 
@@ -395,21 +543,21 @@ st_chatclient [-t MS] [-n NICK] host port message...
 - 之后每行变成 `<nick>: <text>\n` 发给其他人，不回显给发送者。
 - 行 `quit` 或对端关闭：向其他人发 `* <nick> left\n`，然后关掉。
 
-单房间。多频道不做（N，见 D11 的范围）。
+单房间，最多 64 人。多频道不做。
 
-**核心流程。** **不用 `StServer::Loop`。** `CallBack` 只会 `RecvData`，空闲连接收不到别人的消息（G3、G4）。监听段仍然用库里的同一套：`StServer` 的 `CreateSocket` + `Listen`（监听 fd 已经登记了事件项），然后自己的循环调用 `st_accept`。每个 connfd：`sys_new_fd` 或不经过 hook、直接 `::fcntl(O_NONBLOCK)`，分配自己的 `StEventItem` 并 `Add`，再 `CreateThread`。
+**核心流程。** 依赖 §3.2，不自己做 pipe。**不用 `StServer::Loop`。** `CallBack` 只会 `RecvData`，空闲连接收不到别人的消息。监听段用 `StServer` 的 `CreateSocket` + `Listen`（监听 fd 已经登记了事件项），然后自己的循环调用 `st_accept`。每个 connfd 分配自己的 `StEventItem` 并 `Add`，再 `CreateThread`。该协程记下 `StThread *self` 供别人 `st_notify`。`GetActiveThread()` 的静态类型是 `StThreadItem*`；`CreateThread` 放进去的是 `StThread`，记下时转成 `StThread*`。
 
-每个连接协程独占自己的 socket。旁边有一根非阻塞 pipe（`pipe` + `O_NONBLOCK`）：
+连接协程独占自己的 socket，循环：
 
-- socket 和 pipe 的读端各一个 `StEventItem`（两个 fd，不违反「一 fd 一项」）。
-- 协程调用 `StEventSchedule::Schedule`，fdset 里放这两项，超时用 `Util::TimeMs() + idle`。`Schedule` 返回后看哪一项 `GetRecvEvents() != 0`。
-- pipe 可读：读掉字节（合并多次唤醒），把邮箱里的行 `st_send` 到**自己的** socket。
-- socket 可读：`st_recv` 已经不适合再套一层（会再 `Schedule` 一次）。这里直接 `::recv`，因为 `Schedule` 刚确认可读；读到的字节拼进行缓冲，满一行就广播。
-- `recv_num==0`：这是 `Schedule` 的超时（`ETIME`）。空闲超时只继续循环，不断开（聊天室要一直等）。截止时间由样例自己算，不靠把 `ETIME` 当成「有人广播」。
+1. 把邮箱里已经有的行 `st_send` 到**自己的** fd。此时自己不在 `st_wait` 里，事件项归自己。
+2. `rc = st_wait(fd, 1, idle_ms)`。
+3. `rc == -1` 且 `errno==ETIME`：空闲超时，回到 1，不断开。
+4. `rc & ST_WAIT_NOTIFY`：回到 1，把新到的邮箱行发出去。
+5. `rc & ST_WAIT_FD`：fd 已经可读，用一次非阻塞 `recv` 把字节拼进行缓冲。凑满一行就广播。不要再套 `st_recv`。
 
-广播方**只**做两件事：把一行拷进对方的邮箱，若对方 pipe 的「已投递」标志为 0，就写 1 字节并置标志。不调用对方 socket 上的 `st_send` / `WaitFdReady`。对方协程醒来后清标志。pipe 写满时（标志已经是 1）不再写。
+广播只做两件事，并且在 Yield 之前做完：把一行拷进对方邮箱，然后 `st_notify(peer->self)`。不调用对方 socket 上的 `st_send`。对方若正停在 `st_wait`，会带着 `ST_WAIT_NOTIFY` 醒来；若正停在自己的 `st_send` 里，粘滞位让它下一次 `st_wait` 立刻返回。单 OS 线程，改邮箱和调用 `st_notify` 之间不 Yield，不用锁。
 
-临界区里不要 Yield：改邮箱、改标志、`write(pipe)` 都在让出之前做完。单 OS 线程、协作式调度，这里不用互斥锁。
+邮箱满时丢掉这一行，给发送者自己的 socket 回 `* dropped\n`。满员时 `st_accept` 出来的 fd 直接关掉，不建协程。
 
 **数据结构。**
 
@@ -417,32 +565,28 @@ st_chatclient [-t MS] [-n NICK] host port message...
 Session （固定数组，最多 64 个）
   int used
   int fd
-  int pipe_wr, pipe_rd
-  int poke          # pipe 里已经有字节则为 1
-  StThread *self
+  StThread *self     # st_notify 的目标
   char nick[32]
-  Mail mail         # 定长环：char text[8][512]，int head，int tail
+  Mail mail          # 定长环：char text[8][512]，int head，int tail
 ```
 
-满员时 `st_accept` 出来的 fd 直接 `sys_close`，不创建协程。邮箱满时丢掉这一行并给发送者回 `* dropped\n`（写自己的 socket，不写别人的）。
+没有 pipe，没有额外 fd。
 
-**库缺口。** 公开 API 里没有 channel。`Pend` / `Unpend` 不能在「正堵在 socket 上」的时候把协程叫醒（G4）。本篇**不**加 `st_notify`，**不**改 `Schedule` 的 `ETIME` 语义。pipe + 已有的 fdset `Schedule` 足够把样例跑通。`stlib/tests/ucontext/channel.c` 是 Russ Cox 的参考，不参与构建，也不要抄进 `src/`。
+**库缺口。** 由 Phase 2 补上。聊天室只调用 `st_notify` / `st_wait`，不改 `Schedule`。`stlib/tests/ucontext/channel.c` 仍不参与构建，也不抄进 `src/`。
 
-`Session.self` 只用于调试打印名字，不参与叫醒。
-
-**冒烟 / 测试。**
+**冒烟 / 测试。** 本地手动，不进 CI。叫醒行为的回归在 `tests/st_notify_unittest.cpp`。
 
 - `scripts/smoke_chat.sh`，`make smoke-chat`。端口 `17700`。
-- 起 server。起 client B：`-n bob`，消息省略，只等一行，超时 3s（后台）。等 server 打出 `listening`。起 client A：`-n ada hello`。
-- B 的 stdout 含 `ada: hello` 或 `* ada joined`（实现时选定一种作为断言，推荐断言 `ada: hello`，joined 可以在 A 连接后、发 hello 之前到达，B 要能读多行直到看到 hello 或超时）。
-- A 退出后 B 若还活着应能看到 `* ada left`；冒烟可以不断言 left，避免和进程退出赛跑。断言 hello 即可。
+- 起 server。起 client B：`-n bob`，只等一行，超时 3s（后台）。等 server 打出 `listening`。起 client A：`-n ada hello`。
+- B 的 stdout 含 `ada: hello`。`* ada joined` 可能更早到达，B 要能读多行直到看到 hello 或超时。
+- `* ada left` 不作为冒烟断言，避免和进程退出赛跑。
 - Android 只编译。
 
-**文档。** README 用一小段说明「为什么是 pipe」：一个 fd 一个事件项；`Pend` 等不到 socket；`Unpend` 不能用在 IO 队列上的线程。根 readme 只给命令和这句限制，不展开调度器。
+**文档。** 样例 README 写明用的是 `st_notify` / `st_wait`，广播不写别人的 socket。根 readme 只给命令；原语本身的说明在 Phase 2 已经写进 `st_*` 返回值后面那一节。
 
-**改动面与风险。** 只在 `app/st_chat`。风险集中在 `Schedule` 的 fdset 路径（生产代码里 `WaitFdReady` 只传单个 item，多 fd 路径单测少）。冒烟就是这条路径的回归。第二个风险是 pipe 标志和「字节还在 pipe 里」不一致，导致再也不写 pipe、广播丢了：标志只在读完 pipe 之后清，写之前用非阻塞写，写失败 `EAGAIN` 就保持 `poke=1`。
+**改动面与风险。** 样例只在 `app/st_chat`。风险在「`st_wait` 返回 `ST_WAIT_FD` 之后又调用了 `st_recv`」导致多等一轮，以及邮箱在 Yield 之后才写入、通知已经先被消费。约定：先入邮箱，再 `st_notify`；读侧先排空邮箱，再 `st_wait`。
 
-### 3.6 未改过的阻塞代码 + syscall hook（#11）
+### 4.6 未改过的阻塞代码 + syscall hook（#11）
 
 **目标。** 库最想给人看的一点：业务代码按阻塞 POSIX 来写，跑在协程里时一次慢 `read` 不会堵住其他协程。今天没有这个样例。`app/st_sys.cc` 提供的是 `sys_*`，不是 libc 的 `read`。
 
@@ -491,233 +635,251 @@ $(CC) -include st_posix_alias.h -c blocking_client.c
 
 `main.cpp`：`st_init_frame`、`st_set_hook_flag`、`Frame::CreateThread` 调 `blocking_exchange`。对端用 `st_echoserver`。`-c` 个协程同时读时，慢的那一个在 `sys_read` → `st_read` 里 Yield，其他协程继续。
 
-**库缺口（不修的话样例不成立，见 G1）。** 建议改动，限制在 hook 层：
+**库缺口。** 修法、验收和单测在 §3.1（Phase 1）。本样例只消费修好的 hook，不再改 `sys_socket`。`sys_accept` 不改（N5）。不在 `libmthread.so` 里定义 `read`（N4）。
 
-1. `sys_socket` 设置内核 `O_NONBLOCK` 时走 `::fcntl` / `REAL_FUNC(fcntl)`，**不要**走会打上 `ST_FD_FLG_UNBLOCK` 的 `sys_fcntl`。用户自己 `fcntl(F_SETFL, O_NONBLOCK)` 或 `ioctl(FIONBIO)` 仍然置 `ST_FD_FLG_UNBLOCK`，hook 让开，行为与现在的注释一致。
-2. `sys_connect` / `sys_read` / `sys_write` / `sys_recv` / `sys_send`：fd 已在 `sys_fd` 表、hook 开着、没有 `ST_FD_FLG_UNBLOCK`、且 `GetEventItem(fd)==NULL` 时，hook 层 `AllocPtr<StEventItem>`、`SetOsfd`、`Add`，把指针记在 `sys_fd` 里（新增一个字段，表示「这项是 hook 自己登记的」）。
-3. `sys_close`：如果这项是 hook 登记的，`ClearItem` + `UtilPtrPoolFree`，再 `sys_free_fd`。`StClientConnection::Create` 自己 `Add` 的项不是 hook 登记的，`ReleaseItem` 仍由连接对象释放，避免双重释放。
-4. `StClientConnection::Create` 的顺序是 `sys_socket` 然后自己 `Add`。只要 `sys_socket` 不登记事件项，现有客户端路径只是「内核非阻塞但不再误标 `UNBLOCK`」。现有样例走 `st_recv` / `st_send`，不走 `sys_read`，这条标志本来也不影响它们。
+**冒烟 / 测试。** 库行为由 §3.1 的 `tests/st_hook_unittest.cpp` 在 CI 里锁住。样例冒烟本地手动跑，不进 `_build.yml`。
 
-`sys_accept` 本期不改（N5）。hook 样例是客户端。
-
-不在 `libmthread.so` 里定义 `read` 符号（N4）。
-
-**冒烟 / 测试。**
-
-- 更新 `tests/st_hook_unittest.cpp`：补一条「`sys_socket` 出来的 fd，在 hook 打开且对端先不写数据时，`sys_read` 会挂起协程直到超时，errno 为 `ETIME`，而不是立刻 `EAGAIN`」。现有「用 `sys_new_fd` 绕开 `sys_socket`」的用例保留，避免把两条路径绑死。
-- `scripts/smoke_hook.sh`，`make smoke-hook`。起 `st_echoserver`。先跑不链接库的 `blocking_client`，确认回显。再跑 `st_hookdemo -c 4 -n 4`，`ok=4`。
+- `scripts/smoke_hook.sh`，`make smoke-hook`。起 `st_echoserver`（Phase 3）。先跑不链接库的 `blocking_client`，确认回显。再跑 `st_hookdemo -c 4 -n 4`，`ok=4`。
 - Android 只编译 `st_hookdemo`。对照用的纯 libc 二进制也编出来即可，不在设备上跑。
 
-**文档。** 根 readme 用单独一节讲 hook，因为这是和其他网络库不一样的地方。说明三件事：业务文件长什么样、`-include` 做了什么、为什么不覆盖全局 `read`。`AGENTS.md` 里 hook 那句（`sys_*` 是 libc 形状）可以加半句「样例见 `app/st_hookdemo`」，留到实现时再改。本计划现在只在样例清单那一行加索引（见文末对 `AGENTS.md` 的改动）。
+**文档。** 根 readme 用单独一节讲 hook，因为这是和其他网络库不一样的地方。说明三件事：业务文件长什么样、`-include` 做了什么、为什么不覆盖全局 `read`。实现时在 `AGENTS.md` 的 hook 那句加上「样例见 `app/st_hookdemo`」。通知原语的头文件说明在 Phase 2 写。
 
-**改动面与风险。** `app/st_sys.cc` / `app/st_sys.h` 的 `sys_socket`、`sys_close` 和「缺事件项时补登记」。这是本篇最大的行为改动。风险：
-
-- 误标去掉之后，旧测试若依赖「`sys_socket` + `sys_read` 立即 `EAGAIN`」，会失败。Phase 0 先 grep `sys_socket` 的调用点（目前主要是库内部 `Create` / `CreateSocket` 和 hook 单测），单测按新契约改。
-- hook 自己登记的 `StEventItem` 若和 `Create` 的项叠在同一 fd 上，会泄漏或双重释放。规则：只有 `GetEventItem==NULL` 时才登记，并打上所有权标志；`Add` 里「item replace」那条日志在冒烟里应当不出现。
-- 默认 512 ms 太短，业务文件必须 `setsockopt`。README 和样例都这么做。
+**改动面与风险。** 样例本身只在 `app/st_hookdemo`。hook 行为改动的风险见 §7 的 R1、R2，在 Phase 1 收掉。默认 512 ms 太短，业务文件必须 `setsockopt`。README 和样例都这么做。
 
 ---
 
-## 4. 分阶段执行
+## 5. 分阶段执行
 
-依赖关系：
+依赖：
 
 ```
 Phase 0 实测（无功能代码）
     │
-    ▼
-Phase 1 echo ──────────────┬──────────────► Phase 5 反代（还依赖已有的 httpserver / httpclient）
-    │                      │
-    ├─► Phase 2 端口扫描（可能改 Create / st_connect）
+    ├─► Phase 1 hook 修复（§3.1，tests/ 进 CI）
+    │         │
+    │         └─► Phase 4 hookdemo（还要等 Phase 3 的 echo 当对端）
     │
-    └─► Phase 3 hook（改 sys_socket；对端用 echo）
+    └─► Phase 2 通知原语 st_notify / st_wait（§3.2，tests/ 进 CI）
+              │
+              └─► Phase 8 聊天室
 
-Phase 4 Redis（与上面无关，RESP 单测可与 Phase 1 并行）
-
-Phase 6 聊天室（自己的 accept 循环；echo 只提供「服务端怎么 Listen」的参照）
+Phase 3 echo ──► Phase 5 端口扫描（errno 单测进 CI；本地冒烟用 echo）
+Phase 6 Redis（RESP 单测进 CI；与 1/2 无代码依赖）
+Phase 7 反代（池在样例里；依赖已有的 httpserver / httpclient）
 ```
 
-每个阶段的出口都包含：现有 POSIX workflow + `format.yml` 全绿；`make apps` 编过新目标；`make clean` 后 `git status --porcelain --ignored` 为空。Linux `st_context_unittest` 的 64 KiB `makecontext` SIGABRT 仍按 plan/09 如实记录，本篇不改 `STACK`。Android workflow 只要求新样例交叉编译通过。
+每个阶段的出口都包含：现有 POSIX workflow + `format.yml` 全绿；`make clean` 后 `git status --porcelain --ignored` 为空。库阶段还要求 `make -C tests run` 里的新单测通过。样例阶段要求 `make apps` 编过，Android 的 `make android` 只编译。Linux `st_context_unittest` 的 64 KiB `makecontext` SIGABRT 仍按 plan/09 如实记录，本篇不改 `STACK`。
+
+**六个 `make smoke-*` 都不写进 `_build.yml`。** 脚本留在仓库里，给人本地跑。CI 不新增冒烟步骤。
 
 ### Phase 0 · 实测锚点
 
-不提交功能代码。把结果写进 §9。
+不提交功能代码。把结果写进 §10。
 
 1. loopback：`st_connect` 对正在 `listen` 的端口、以及对没人听的端口，分别记录返回值和 errno（Linux 与 macOS 各一次；macOS 用 CI 即可）。
 2. `StClientConnection::Create` 失败返回之后，errno 还是不是 `ECONNREFUSED` / `ETIME`。
-3. `sys_socket` + hook + `sys_read`（对端不写）是立刻 `EAGAIN`，还是挂起。对照 `tests/st_hook_unittest.cpp` 的现有注释。
-4. 确认 `FORMAT_SRC`、`.gitignore`、根 `clean` 的改法，列进 Phase 1 的文件清单。
+3. 对照 `tests/st_hook_unittest.cpp`：`sys_socket` 今天会把 `ST_FD_FLG_UNBLOCK` 置上。Phase 1 按这个事实改，不再当成可选项。
+4. 确认 `FORMAT_SRC`、`.gitignore`、根 `clean` 要加的路径。
 
-**出口**：§9 有一张表。G1/G2 与源码不符时，先改本文再写代码。
+**出口**：§10 有一张表。G1/G2 与源码不符时，先改本文再写代码。
 
-### Phase 1 · echo
+### Phase 1 · 前置：hook 修复
 
-按 §3.1 实现。根 `makefile` 的 `apps` / `clean` / `help`，`FORMAT_SRC`，`.gitignore`，`scripts/smoke_echo.sh`，`_build.yml` 增加 `make smoke-echo`。readme 两份加上入口示例。
+按 §3.1。只动 `app/st_sys.h`、`app/st_sys.cc` 和 `tests/st_hook_unittest.cpp`。不写 hookdemo。
 
-**出口**：`make smoke-echo` 在 Linux 上 `ok` 全过；`st_echoclient` 对没人听的端口退出码 1。
+**出口**：§3.1 的验收表全部满足；`make -C tests run` 通过；现有连接/服务端单测不回归。这是 Phase 4 的前置。
 
-### Phase 2 · 端口扫描
+### Phase 2 · 前置：通知原语
 
-按 §3.2。先做 errno 保存（D3）。SO_ERROR（D4）仅当 Phase 0 证明有误判。`make smoke-portscan` 进 `_build.yml`。
+按 §3.2。`src/st_poll.h`、`src/st_thread.h`、`src/st_thread.cc`、`src/st_sys.h`、`src/st_sys.cc`、`tests/st_notify_unittest.cpp`，以及 readme / `AGENTS.md` 里那一小节。不写聊天室。
 
-**出口**：冒烟 open/refused 分类稳定；单测锁住 errno；CI 不要求出现 `ETIME`。
+**出口**：§3.2 的单测表通过；`st_read` 超时仍是 `ETIME`；`Pend` 单测仍过。这是 Phase 8 的前置。
 
-### Phase 3 · hook 样例
+### Phase 3 · echo
 
-按 §3.6，依赖 Phase 1 的 echo。先改 hook（D6、D7），再写样例。更新 hook 单测。`make smoke-hook` 进 `_build.yml`。
+按 §4.1。根 `makefile` 的 `apps` / `clean` / `help` / `smoke-echo`，`FORMAT_SRC`，`.gitignore`，`scripts/smoke_echo.sh`。readme 两份在「最小使用样例」后**新增** echo 一节，DNS 那节留着。
 
-**出口**：同一份 `blocking_client.c`，纯 libc 二进制和 `st_hookdemo -c 4` 都能对 echo 回显；`sys_read` 超时单测为 `ETIME`。
+**出口**：本地 `make smoke-echo` 的 `ok` 全过（不作为 CI 步骤）。CI 上 `make apps` 编过 `st_echoserver` / `st_echoclient`。
 
-### Phase 4 · Redis
+### Phase 4 · hookdemo
 
-按 §3.4。与 Phase 1–3 无代码依赖，可以紧跟 Phase 1。`make smoke-redis` 进 `_build.yml`（stub，不装 redis）。
+按 §4.6。依赖 Phase 1 的 hook 修复和 Phase 3 的 echo。不再改 `sys_socket`。
 
-**出口**：RESP 单测通过；冒烟四条命令加 `-c 4 -n 20 ping`。
+**出口**：本地 `make smoke-hook`：纯 libc 的 `blocking_client` 和 `st_hookdemo -c 4` 都能对 echo 回显。CI 只编译。`sys_read` 超时单测已在 Phase 1 进 CI。
 
-### Phase 5 · 反代
+### Phase 5 · 端口扫描
 
-按 §3.3。依赖已有的 `st_httpserver` 和 `st_http_exchange`，不依赖 Phase 1 的二进制（冒烟直接起 httpserver）。`make smoke-proxy` 进 `_build.yml`。
+按 §4.2。errno 保存在 `StClientConnection::Create`（D3）。`SO_ERROR`（D4）仅当 Phase 0 证明有误判。
 
-**出口**：双后端 200；停掉一个仍 200；两个都停则 502。
+**出口**：`tests/st_connect_errno_unittest.cpp` 在 CI 里锁住 open 与 refused。本地 `make smoke-portscan` 用 `-c 32`。CI 不跑这个脚本，也不要求出现 `ETIME`。
 
-### Phase 6 · 聊天室
+### Phase 6 · Redis
 
-按 §3.5。`make smoke-chat` 进 `_build.yml`。
+按 §4.4。与 Phase 1–5 无代码依赖，可以紧跟 Phase 3。
 
-**出口**：B 收到 A 的 `ada: hello`。`Schedule` 多 fd 没有「item replace」日志。
+**出口**：RESP 单测进 `make -C tests run`。本地 `make smoke-redis` 打四条命令。CI 不安装 redis，不跑 stub。
+
+### Phase 7 · 反代
+
+按 §4.3。槽位只在 `app/st_httpproxy`（D8）。依赖已有的 `st_httpserver` 和 `st_http_exchange`。
+
+**出口**：本地 `make smoke-proxy`：双后端 200，停一个仍 200，都停则 502。CI 只编译。
+
+### Phase 8 · 聊天室
+
+按 §4.5。依赖 Phase 2。样例只调用 `st_notify` / `st_wait`。
+
+**出口**：本地 `make smoke-chat` 里 B 收到 `ada: hello`。CI 不跑这个脚本；叫醒的回归已在 Phase 2 的单测里。
 
 ### 收尾
 
-`plan/README.md` 把 11 标成完成（实现 PR 里做，不是本计划 PR）。`AGENTS.md` 的 `make apps` 行补上六个名字。不把 echo/redis 塞进默认 `make bench`（那个目标今天是 `bench-http` + `bench-dns`）。
+`plan/README.md` 把 11 标成完成（实现 PR 里做，不是本计划 PR）。`AGENTS.md` 的 `make apps` 行补上六个名字。不把 echo/redis 塞进默认 `make bench`（那个目标今天是 `bench-http` + `bench-dns`）。不把 `smoke-*` 塞进 `_build.yml`。
 
 ---
 
-## 5. 决策点（实现前需拍板）
+## 6. 已决定
 
-未回复时按「建议」列实现。
+2026-10-08 定稿。标「用户」的是这次拍板；标「推荐」的是沿用原稿建议、一并定下来。
 
-| # | 问题 | 选项 | 建议 |
-| --- | --- | --- | --- |
-| D1 | readme 入口示例 | a) 加 echo 一节，保留 DNS；b) 用 echo 换掉 DNS 那节 | **a** |
-| D2 | echo 的连接模型 | a) 只做短连接，拆包算限制；b) 服务端 `eTCP_KEEPLIVE_CONN` 把一行收齐，客户端仍短连接 | **b**。`FreePtr` 仍关 fd，README 写明这不是连接池 |
-| D3 | `Create` 失败后是否保存 errno | a) 改 `StClientConnection::Create`，返回值不变；b) 扫描器自己 `socket` + `st_connect`，不改库 | **a**。调用方终于能区分 `ETIME` 和 `ECONNREFUSED` |
-| D4 | `st_connect` 是否查 `SO_ERROR` | a) Phase 0 已能区分就不改；b) 无论如何都查 | **a** |
-| D5 | 扫描并发 | a) 默认 `-c 64`，CI `-c 32`；b) CI 里起 2000 个协程 | **a**。栈大约 266KB，2000 个只写在 README 的手工命令里 |
-| D6 | 「不改业务源码」做到哪一步 | a) `.c` 里是 POSIX 名字，makefile `-include` 换成 `sys_*`，另编一份纯 libc 二进制；b) `LD_PRELOAD` 一份 so；c) 在 `libmthread.so` 里导出 `read` | **a** |
-| D7 | 是否修 G1（`UNBLOCK` + 缺事件项时由 hook 登记） | a) 修，否则样例不成立；b) 样例改成直接调用 `sys_*`，并在文档里承认它不是 POSIX 名字 | **a**。`sys_accept` 不动 |
-| D8 | 反代的池放哪 | a) 只在 `app/st_httpproxy` 的槽位里，池满 `st_sleep(1)`；b) 顺手做掉 07-D1 的 `FreePtr` 真复用 | **a** |
-| D9 | 反代响应体 | a) 超过 `ST_SEND_BUFFSIZE` 回 502，不改常量；b) 加大缓冲 | **a** |
-| D10 | Redis 冒烟 | a) Python stub，有 `redis-server` 就用它；b) CI 安装 redis；c) 只编译，像 memcache | **a** |
-| D11 | 聊天室叫醒 | a) 每连接一根 pipe，`Schedule` 的 fdset 同时等 socket 和 pipe；b) 新做 `st_notify` 并改 `ETIME` 语义 | **a**。单房间、最多 64 人 |
-| D12 | CI 跑哪些冒烟 | a) 六个 `smoke-*` 都进 `_build.yml`；b) 只跑 echo 和 hook | **a**。都是 loopback、数秒级。Android 仍只编译。不放进 `make bench` |
-| D13 | 二进制名字 | a) `st_echoserver` 这类显式名字，写入 `.gitignore` 和 `make clean`；b) 继续叫 `main` | **a** |
-| D14 | 新文件进不进 `format-check` | a) 把本篇新的 `.h/.cc/.cpp` 和单测写进 `FORMAT_SRC`；b) 维持「app 历史代码不格式化」 | **a**。旧的 `app/st_dns` 等仍然不在表里 |
+| # | 结论 | 谁定的 |
+| --- | --- | --- |
+| D1 | readme **新增** echo 一节，**保留** DNS 示例 | 用户（与推荐一致） |
+| D2 | echo 服务端用 `eTCP_KEEPLIVE_CONN` 把一行收齐；客户端 `tcp_sendrecv` 仍短连接。`FreePtr` 仍关 fd，README 写明这不是连接池 | 推荐 |
+| D3 | `StClientConnection::Create` 失败路径保存 errno，返回值仍是 `-2` | 推荐 |
+| D4 | `st_connect` 的 `SO_ERROR` 只在 Phase 0 证明「拒绝被当成成功」时才加 | 推荐 |
+| D5 | 扫描默认 `-c 64`。本地冒烟 `-c 32`。`-c 2000` 只写在 README，不进 CI | 推荐 |
+| D6 | 业务 `.c` 里是 POSIX 名字，makefile `-include` 换成 `sys_*`，另编一份纯 libc 二进制。不做 LD_PRELOAD，不在 `libmthread.so` 里导出 `read` | 推荐 |
+| D7 | **必须**修 G1：`sys_socket` 不再把库自己的非阻塞标成 `ST_FD_FLG_UNBLOCK`；缺事件项时 hook 自己登记，`sys_close` 释放自己的项。`sys_accept` 不动。单独立成 Phase 1，带 §3.1 的验收和单测 | 用户 |
+| D8 | 反代连接池只在 `app/st_httpproxy` 的槽位里，池满 `st_sleep(1)`。不改 `FreePtr` | 用户（与推荐一致） |
+| D9 | 反代响应体超过 `ST_SEND_BUFFSIZE` 回 502，不改 8192 | 推荐 |
+| D10 | Redis 本地冒烟：有 `redis-server` 就用它，否则 Python stub。CI 不安装 redis | 推荐 |
+| D11 | 聊天室不用 pipe。库里新增 `st_notify` / `st_notify_wait` / `st_wait`（§3.2），同一 OS 线程、带超时、不占 fd，走睡眠堆和可运行队列。`Schedule` 在通知位未置时仍把「没有 IO 事件」报成 `ETIME`。这是 Phase 2，聊天室（Phase 8）只调用它 | 用户（改掉了原稿的 pipe 建议） |
+| D12 | 六个样例冒烟**不进 CI**。保留 `scripts/smoke_*.sh` 和 `make smoke-*` 供本地跑。CI 只保证 `make apps`、Android 只编译，以及 `tests/` 里的库层单测（hook、通知原语、connect errno；RESP 单测同样挂在 `tests/`，不联网） | 用户（改掉了「六个冒烟都进 `_build.yml`」的建议） |
+| D13 | 二进制用 `st_echoserver` 这类显式名字，写入 `.gitignore` 和 `make clean` | 推荐 |
+| D14 | 本篇新的 `.h` / `.cc` / `.cpp` 和单测写进 `FORMAT_SRC`。旧的 `app/st_dns` 等仍然不在表里 | 推荐 |
 
 ---
 
-## 6. 风险
+## 7. 风险
 
 | # | 风险 | 影响 | 缓解 |
 | --- | --- | --- | --- |
-| R1 | G1 的修法让「`sys_socket` 后立刻 `sys_read`」从 `EAGAIN` 变成挂起 | 中 | Phase 0 列出调用点；hook 单测改成断言 `ETIME`；`Create` 不走 `sys_read` |
+| R1 | G1 的修法让「`sys_socket` 后立刻 `sys_read`」从 `EAGAIN` 变成挂起 | 中 | Phase 1 的单测改成断言 `ETIME`；用户自己 `fcntl(O_NONBLOCK)` 仍是 `EAGAIN`；`Create` 不走 `sys_read` |
 | R2 | hook 登记的 `StEventItem` 和 `Create` 的项双重释放或泄漏 | 高 | 只在 `GetEventItem==NULL` 时登记；所有权标志；`sys_close` 只释放自己的 |
 | R3 | D4 的 `SO_ERROR` 把成功连接判失败 | 高 | 默认不改；要改就必须先有失败复现和 open/refused 单测 |
 | R4 | `eTCP_KEEPLIVE_CONN` 被当成池已经做好 | 中 | 文案写明 `FreePtr` 仍 `HashRemove`；echo 客户端用 `keeplive=false` |
-| R5 | 聊天室 `Schedule` fdset 路径很少被现有单测走到 | 中 | `smoke-chat` 进 CI；不在这条路径上改 `Schedule` 本身 |
-| R6 | `-c` 很大时栈和 `NOFILE` 把 CI 打满 | 中 | 冒烟 ≤ 32；README 写 266KB 和 `ulimit` |
+| R5 | `st_notify` 在 IO 队列上 `RemoveIOWait` 时，对方已经被 `Dispatch` 移走，重复摘队列 | 高 | 先 `HasFlag(eIO_LIST)` / `HasFlag(eSLEEP_LIST)` 再摘；Phase 2 单测覆盖「fd 就绪和 notify 同一轮」 |
+| R6 | `-c` 很大时栈和 `NOFILE` 在本地冒烟里打满 | 中 | 本地冒烟 ≤ 32；README 写 266KB 和 `ulimit`。CI 不跑这些脚本 |
 | R7 | 反代和 `st_http_exchange` 编译期绑在一起 | 低 | makefile 显式列出 `http_client.cc`；不把 HTTP 客户端塞进库 |
-| R8 | Python stub 和真实 RESP 有差别 | 低 | 单测覆盖解码；冒烟只打四条命令；本机 redis 可选 |
-| R9 | 新二进制没进 `.gitignore` / `clean`，CI 最后一步失败 | 中 | D13；Phase 1 就把六条路径的位置写进清单，后续阶段只填文件 |
+| R8 | Python stub 和真实 RESP 有差别 | 低 | 单测覆盖解码；本地冒烟只打四条命令；本机 redis 可选 |
+| R9 | 新二进制没进 `.gitignore` / `clean`，CI 最后一步失败 | 中 | D13；Phase 3 起就把路径写进清单 |
 | R10 | `FORMAT_SRC` 漏了新文件，格式债留到以后 | 低 | D14 |
 | R11 | 粘包、POST body、512 ms 默认超时被当成库 bug | 低 | 每个 README 的「限制」写明；hook 样例一定 `setsockopt` |
+| R12 | `st_wait` 把 `Schedule` 的 `ETIME` 误判成通知，或反过来 | 高 | 只有 `m_notified_` 为 1 才返回 `ST_WAIT_NOTIFY`；不改 `Schedule` 本身的 `ETIME`；`st_read` 超时单测作回归 |
 
 ---
 
-## 7. 验收清单
+## 8. 验收清单
 
-### A. 六个样例
+### A. 库前置（进 CI）
+
+- [ ] Phase 1：`tests/st_hook_unittest.cpp` 覆盖 §3.1 的表（`ETIME` 挂起、用户 `O_NONBLOCK` 仍 `EAGAIN`、hook 自己登记的事件项在 `sys_close` 释放）
+- [ ] Phase 2：`tests/st_notify_unittest.cpp` 覆盖 §3.2 的表（纯通知、超时、粘滞只消费一次、fd 与通知的三种组合、未登记 fd 返回 `-2`）
+- [ ] `st_read` 超时仍是 `-1` / `ETIME`；`Pend` 单测仍过
+- [ ] `Create` 失败后 errno 仍是 `ECONNREFUSED` 或 `ETIME`（`tests/st_connect_errno_unittest.cpp`）
+- [ ] 上述单测在现有 `make -C tests run` 里，不给 `_build.yml` 加新 job
+
+### B. 六个样例（CI 只编译）
 
 - [ ] `make apps` 产出 `st_echoserver`、`st_echoclient`、`st_portscan`、`st_httpproxy`、`st_redisclient`、`st_chatserver`、`st_chatclient`、`st_hookdemo`、`blocking_client`
 - [ ] 每个目录有 README：编译、运行、限制
-- [ ] `make smoke-echo` `smoke-portscan` `smoke-hook` `smoke-redis` `smoke-proxy` `smoke-chat` 在 Linux 上退出码 0
-- [ ] 上述冒烟写进 `_build.yml`（Android workflow 不跑它们）
+- [ ] 根 makefile 有 `smoke-echo` / `smoke-portscan` / `smoke-hook` / `smoke-redis` / `smoke-proxy` / `smoke-chat`，对应脚本可在本地跑
+- [ ] 这些 `smoke-*` **没有**写进 `_build.yml`
 - [ ] `make android` 仍只编译，且新 makefile 能过 NDK（arm64-v8a 与 x86_64）
 
-### B. 契约
+### C. 契约
 
+- [ ] readme 有 echo 一节，DNS 示例还在
 - [ ] echo 客户端用 `tcp_sendrecv`，超时按 `app/st_c.h` 的 `-3` 解释
-- [ ] 端口扫描把 `ETIME` 和 `ECONNREFUSED` 分进不同计数；CI 断言 open 与 refused
+- [ ] 端口扫描把 `ETIME` 和 `ECONNREFUSED` 分进不同计数
 - [ ] hook 业务文件源码中不出现 `st_` / `St`；`-include` 只出现在 makefile
 - [ ] 反代不调用 `eTCP_KEEPLIVE_CONN` 来表示池；槽位在样例内
-- [ ] 聊天室广播不在别的协程的 socket 上调用 `st_send`
+- [ ] 聊天室用 `st_notify` / `st_wait`，广播不在别的协程的 socket 上调用 `st_send`，不建 pipe
 
-### C. 工程
+### D. 工程
 
 - [ ] C++98，无第三方运行时；`ldd` / `otool -L` 只有系统库和 `libmthread`
 - [ ] 新源文件在 `FORMAT_SRC` 里，`clang-format-18` 通过
 - [ ] `make clean` 后 `git status --porcelain --ignored` 为空
 - [ ] 未新增根 `LICENSE`；未提交 `.session_tmps/`
-- [ ] `STACK`、`MEM_PAGE_SIZE`、枚举值、`st_*` 签名未改
-- [ ] RESP 单测、connect errno 单测、hook 超时单测进 `make -C tests run`
+- [ ] `STACK`、`MEM_PAGE_SIZE`、已有枚举值、`st_*` 既有签名未改
+- [ ] `readme.md` / `readme_en.md` / `AGENTS.md` 写了 `st_notify` / `st_wait` 的入口（`src/st_sys.h`）
 
 ---
 
-## 8. 建议目录落点（实现时）
+## 9. 建议目录落点（实现时）
 
 ```
-app/st_echo/                 # st_echoserver, st_echoclient
-app/st_portscan/             # st_portscan
-app/st_httpproxy/            # st_httpproxy（编译期用 st_httpclient、http_parser.c）
-app/st_redisclient/          # st_redisclient + resp.*
-app/st_chat/                 # st_chatserver, st_chatclient
-app/st_hookdemo/             # blocking_client.c, st_posix_alias.h, st_hookdemo
-scripts/smoke_echo.sh
-scripts/smoke_portscan.sh
-scripts/smoke_httpproxy.sh
-scripts/smoke_redis.sh
+# Phase 1
+app/st_sys.h app/st_sys.cc       # UNBLOCK + hook 自己登记事件项
+tests/st_hook_unittest.cpp       # 增补，不新建
+
+# Phase 2
+src/st_poll.h                    # StThreadItem::m_notified_
+src/st_thread.h src/st_thread.cc # StThreadSchedule::Notify
+src/st_sys.h src/st_sys.cc       # st_notify_wait / st_notify / st_wait
+tests/st_notify_unittest.cpp
+readme.md readme_en.md           # 「协程通知」小节；echo 一节（Phase 3）保留 DNS
+AGENTS.md                        # 推荐头文件加 st_notify / st_wait
+
+# Phase 3–8 样例
+app/st_echo/                     # st_echoserver, st_echoclient
+app/st_portscan/                 # st_portscan
+app/st_httpproxy/                # 槽位在样例内
+app/st_redisclient/              # resp.*
+app/st_chat/                     # 调用 st_notify / st_wait
+app/st_hookdemo/                 # blocking_client.c, st_posix_alias.h
+scripts/smoke_*.sh               # 本地；不进 _build.yml
 scripts/redis_stub.py
-scripts/smoke_chat.sh
-scripts/smoke_hook.sh
 tests/st_redis_resp_unittest.cpp
 tests/st_connect_errno_unittest.cpp
-# tests/st_hook_unittest.cpp 增补，不新建
-# 可能改动的库文件：
-#   src/st_connection.h      Create 失败路径保存 errno（D3）
-#   src/st_sys.cc            仅当 D4 触发时，st_connect 查 SO_ERROR
-#   app/st_sys.h app/st_sys.cc   sys_socket / sys_close / 懒登记事件项（D7）
-makefile                     apps / clean / help / FORMAT_SRC / smoke-*
+# src/st_connection.h            Create 失败路径保存 errno（D3）
+# src/st_sys.cc                  仅当 D4 触发时，st_connect 查 SO_ERROR
+makefile                         apps / clean / help / FORMAT_SRC / smoke-*
 .gitignore
-.github/workflows/_build.yml
-readme.md readme_en.md
-AGENTS.md                    实现完成时补 make apps 列表
 ```
+
+`_build.yml` 不改冒烟步骤。它已经会 `make apps` 和 `make -C tests run`。
 
 ---
 
-## 9. 落地记录（实现时填写）
+## 10. 落地记录（实现时填写）
 
-> 本文件提交时还没有功能代码。Phase 0 的实测表、每个 Phase 的提交号和冒烟结果写在这里。
+> 本文件这次只改定稿，没有功能代码。Phase 0 的实测表、每个 Phase 的提交号写在这里。样例冒烟是本地结果，不作为 CI 绿灯。
 
 | Phase | 提交 | 结果 |
 | --- | --- | --- |
-| 0 |  |  |
-| 1 echo |  |  |
-| 2 portscan |  |  |
-| 3 hook |  |  |
-| 4 redis |  |  |
-| 5 proxy |  |  |
-| 6 chat |  |  |
+| 0 实测 |  |  |
+| 1 hook 修复 |  |  |
+| 2 通知原语 |  |  |
+| 3 echo |  |  |
+| 4 hookdemo |  |  |
+| 5 portscan |  |  |
+| 6 redis |  |  |
+| 7 proxy |  |  |
+| 8 chat |  |  |
 
 ---
 
-## 10. 与需求的对照
+## 11. 与需求的对照
 
 | 需求 | 落点 |
 | --- | --- |
-| 1. TCP echo，最小收发，readme 入口，最简单的 bench 基线 | §3.1，Phase 1。基线是样例自己的 SUMMARY，不并进 `make bench` |
-| 3. 端口扫描，并发 `st_connect`，超时 vs 拒绝 | §3.2，Phase 2。CI 断言 open/refused；`ETIME` 靠 errno 分类，不靠外网黑洞 |
-| 5. HTTP 反代，组合 httpserver 与 httpclient，池、超时、探活 | §3.3，Phase 5。池在样例槽位里 |
-| 7. Redis RESP + benchmark 模式 | §3.4，Phase 4。无 hiredis；redis-server 可选 |
-| 9. 聊天室广播，协程之间叫醒 | §3.5，Phase 6。pipe + `Schedule` fdset |
-| 11. 不改的阻塞代码经 hook 跑在协程里 | §3.6，Phase 3。`-include` 换名；要修 G1 |
-| 只写计划、不改功能代码 | 本文 + `plan/README.md` 索引 |
+| 1. TCP echo，readme 入口，最简单的 bench 基线 | §4.1，Phase 3。新增 echo 一节，保留 DNS。基线是样例自己的 SUMMARY，不并进 `make bench` |
+| 3. 端口扫描，并发 `st_connect`，超时 vs 拒绝 | §4.2，Phase 5。errno 单测进 CI；冒烟本地跑 |
+| 5. HTTP 反代，池、超时、探活 | §4.3，Phase 7。池只在样例槽位里 |
+| 7. Redis RESP + benchmark 模式 | §4.4，Phase 6。无 hiredis；redis-server 可选 |
+| 9. 聊天室广播，协程之间叫醒 | §4.5，Phase 8。前置是 Phase 2 的 `st_notify` / `st_wait` |
+| 11. 不改的阻塞代码经 hook 跑在协程里 | §4.6，Phase 4。前置是 Phase 1 的 hook 修复 |
+| 冒烟不进 CI | D12，§5、§6、§8 |
+| 只写计划、不改功能代码 | 本文 |
