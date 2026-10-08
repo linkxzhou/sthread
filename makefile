@@ -15,7 +15,7 @@ FORMAT_SRC = $(wildcard stlib/*.h stlib/*.cc src/*.h src/*.cc stlib/tests/*.cc) 
 	app/st_httpclient/http_client.cc tests/st_http_client_unittest.cpp
 
 .PHONY: all help stlib lib apps tests stlib-tests test format format-check clean \
-	bench-http bench-dns bench smoke-httpclient android
+	bench-http bench-dns bench bench-curve smoke-httpclient android
 
 # 默认目标保持 stlib；lib / apps / tests 已由 plan/01～08 打通，
 # 框架回归与后续改进见 plan/09-main-bugfix-cleanup.md。
@@ -36,6 +36,7 @@ help:
 	@echo "  make bench-http    HTTP 压测闭环（默认 BENCH_PROFILE=smoke，TRACE=0）"
 	@echo "  make bench-dns     DNS 压测闭环（本地 st_dnsserver，默认 smoke，TRACE=0）"
 	@echo "  make bench         bench-http + bench-dns"
+	@echo "  make bench-curve  并发曲线（TRACE=0，st_httpclient，重复取中位数）"
 	@echo "  make smoke-httpclient  起 st_httpserver，跑 st_httpclient 冒烟"
 	@echo "  make android      NDK 交叉编译 lib/apps/tests（ABI=arm64-v8a|x86_64，API=21，只编译）"
 	@echo "  make format        对本仓库自己的代码跑 clang-format -i"
@@ -84,6 +85,12 @@ bench-dns:
 	TRACE=0 BENCH_PROFILE=$(BENCH_PROFILE) ./scripts/bench_dns.sh
 
 bench: bench-http bench-dns
+
+# 并发曲线。时间戳结果在 reports/curve-*（gitignore）。冻结图见 docs/perf/ 与 reports/baseline-curve.md。
+bench-curve:
+	@$(MAKE) apps TRACE=0
+	@mkdir -p reports
+	TRACE=0 ./scripts/bench_curve.sh
 
 smoke-httpclient:
 	@$(MAKE) apps TRACE=0

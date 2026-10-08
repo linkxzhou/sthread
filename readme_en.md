@@ -346,7 +346,33 @@ Current constants: `STACK = 260096`, `MEM_PAGE_SIZE = 2048` → about **266240 b
 | Upper limit for high-concurrency creation | Limited by memory and `RLIMIT_NOFILE`; the event table capacity is `min(rlim_cur, 65535)`, and a `setrlimit` failure only logs a warning (plan/07 D4) |
 | arm64 coroutine switching | Working (`libthread_makecontext` + asm) |
 | arm64 app smoke test | wrk / memcache pass; for DNS, use the local `st_dnsserver` (see `make bench-dns`) |
-| HTTP / DNS QPS | Frozen baselines are in `reports/baseline-*.md` (tagged with platform and commit); short-connection HTTP results cannot be used as keepalive conclusions |
+| HTTP / DNS QPS | Short-connection curves are in "Performance curves" below and [`reports/baseline-curve.md`](reports/baseline-curve.md). Smoke points remain `reports/baseline-http.md` / `baseline-dns.md`. Short-connection results are not keepalive results |
+
+## Performance curves
+
+Short-connection loopback curve of `st_httpclient` against `st_httpserver` (the server sends `Connection: close`). Concurrency 1, 10, 50, 100, 200, 500, and 1000; 50000 requests per point; 3 repeats; the charts show the median. One OS thread runs the event loop. Environment: Linux x86_64, 4 vCPU, g++ 13.3.0, commit `e62c158`, `TRACE=0`. DNS still requires `-n == -c`, so each point is a one-shot burst of about 1–16 ms and is not on the chart.
+
+![HTTP throughput vs concurrency](docs/perf/http-qps-vs-concurrency.svg)
+
+![HTTP latency vs concurrency](docs/perf/http-latency-vs-concurrency.svg)
+
+| Concurrency | QPS (req/s) | p50 (ms) | p99 (ms) | Errors |
+| --- | ---: | ---: | ---: | ---: |
+| 1 | 21710.81 | 0 | 1 | 0 |
+| 10 | 38461.54 | 0 | 1 | 0 |
+| 50 | 38051.75 | 1 | 2 | 0 |
+| 100 | 37037.04 | 3 | 4 | 0 |
+| 200 | 36576.44 | 5 | 6 | 0 |
+| 500 | 36549.71 | 13 | 14 | 0 |
+| 1000 | 35868.01 | 25 | 30 | 0 |
+
+Each point is 50000 requests, median of 3 repeats. The client clock has 1 ms resolution, so a p50 of 0 means under 1 ms.
+
+The table, raw CSV, commands, and caveats (including one slower repeat at concurrency 500) are in [`reports/baseline-curve.md`](reports/baseline-curve.md). Regenerate (timestamped output under `reports/curve-*` is not committed):
+
+```bash
+make bench-curve
+```
 
 # Known Limitations
 
