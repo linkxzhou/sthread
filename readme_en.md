@@ -430,11 +430,13 @@ Current constants: `STACK = 131072` (128KB), `MEM_PAGE_SIZE = 2048` → about **
 | Upper limit for high-concurrency creation | Limited by memory and `RLIMIT_NOFILE`; the event table capacity is `min(rlim_cur, 65535)`, and a `setrlimit` failure only logs a warning (plan/07 D4) |
 | arm64 coroutine switching | Working (`libthread_makecontext` + asm) |
 | arm64 app smoke test | wrk / memcache pass; for DNS, use the local `st_dnsserver` (see `make bench-dns`) |
-| HTTP / DNS QPS | Short-connection curves are in "Performance curves" below and [`reports/baseline-curve.md`](reports/baseline-curve.md). Smoke points remain `reports/baseline-http.md` / `baseline-dns.md`. Short-connection results are not keepalive results |
+| HTTP / DNS QPS | Short-connection curves are in "Performance curves" below (this round, commit `a67127f`). [`reports/baseline-curve.md`](reports/baseline-curve.md) remains the frozen pre-change curve (`e62c158`). Smoke points remain `reports/baseline-http.md` / `baseline-dns.md`. Short-connection results are not keepalive results |
 
 ## Performance curves
 
-Short-connection loopback curve of `st_httpclient` against `st_httpserver` (the server sends `Connection: close`). Concurrency 1, 10, 50, 100, 200, 500, and 1000; 50000 requests per point; 3 repeats; the charts show the median. One OS thread runs the event loop. Environment: Linux x86_64, 4 vCPU, g++ 13.3.0, commit `e62c158`, `TRACE=0`. DNS still requires `-n == -c`, so each point is a one-shot burst of about 1–16 ms and is not on the chart.
+Short-connection loopback curve of `st_httpclient` against `st_httpserver` (the server sends `Connection: close`). Concurrency 1, 10, 50, 100, 200, 500, and 1000; 50000 requests per point; 3 repeats; the charts show the median. One OS thread runs the event loop. Environment: Linux 6.12.94+, x86_64, 4 vCPU KVM, g++ 13.3.0, commit `a67127f`, `TRACE=0`. On this machine QPS sits inside roughly ±15% noise (about −10% to +23% versus the previous run on the same host). DNS still requires `-n == -c`, so each point is a one-shot burst of about 1–16 ms and is not on the chart.
+
+Hard results from the same round: idle `st_dnsserver` CPU drops from about 100% to 0; after 50k short connections the server VmSize grows by about 5 MB (it was GB-scale before); the default coroutine stack is 128KB (`STACK = 131072`).
 
 ![HTTP throughput vs concurrency](docs/perf/http-qps-vs-concurrency.svg)
 
@@ -442,17 +444,17 @@ Short-connection loopback curve of `st_httpclient` against `st_httpserver` (the 
 
 | Concurrency | QPS (req/s) | p50 (ms) | p99 (ms) | Errors |
 | --- | ---: | ---: | ---: | ---: |
-| 1 | 21710.81 | 0 | 1 | 0 |
-| 10 | 38461.54 | 0 | 1 | 0 |
-| 50 | 38051.75 | 1 | 2 | 0 |
-| 100 | 37037.04 | 3 | 4 | 0 |
-| 200 | 36576.44 | 5 | 6 | 0 |
-| 500 | 36549.71 | 13 | 14 | 0 |
-| 1000 | 35868.01 | 25 | 30 | 0 |
+| 1 | 18463.81 | 0 | 1 | 0 |
+| 10 | 32051.28 | 0 | 1 | 0 |
+| 50 | 34364.26 | 1 | 2 | 0 |
+| 100 | 33875.34 | 3 | 4 | 0 |
+| 200 | 28835.06 | 6 | 9 | 0 |
+| 500 | 29274.00 | 13 | 20 | 0 |
+| 1000 | 27808.68 | 23 | 46 | 0 |
 
 Each point is 50000 requests, median of 3 repeats. The client clock has 1 ms resolution, so a p50 of 0 means under 1 ms.
 
-The table, raw CSV, commands, and caveats (including one slower repeat at concurrency 500) are in [`reports/baseline-curve.md`](reports/baseline-curve.md). Regenerate (timestamped output under `reports/curve-*` is not committed):
+Repeats and the before/after comparison are in [`reports/perf-p1-p3-20261008.md`](reports/perf-p1-p3-20261008.md). The table and CSV in [`reports/baseline-curve.md`](reports/baseline-curve.md) remain the frozen pre-change curve (commit `e62c158`); that file embeds the same `docs/perf/*.svg` files, so its pictures show this round's curve. Regenerate (timestamped output under `reports/curve-*` is not committed):
 
 ```bash
 make bench-curve

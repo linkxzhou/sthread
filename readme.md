@@ -430,11 +430,13 @@ MEM_PAGE_SIZE * 2 + (STACK / MEM_PAGE_SIZE + 1) * MEM_PAGE_SIZE
 | 高并发创建上限 | 受内存与 `RLIMIT_NOFILE` 限制；事件表容量为 `min(rlim_cur, 65535)`，`setrlimit` 失败仅告警（plan/07 D4） |
 | arm64 协程切换 | 已通（`libthread_makecontext` + asm） |
 | arm64 app 冒烟 | wrk / memcache 通过；DNS 请走本地 `st_dnsserver`，见 `make bench-dns` |
-| HTTP / DNS QPS | 短连接曲线见下方「性能曲线」与 [`reports/baseline-curve.md`](reports/baseline-curve.md)；冒烟点仍是 `reports/baseline-http.md` / `baseline-dns.md`。短连接不可当 keepalive 结论 |
+| HTTP / DNS QPS | 短连接曲线见下方「性能曲线」（本轮提交 `a67127f`）。[`reports/baseline-curve.md`](reports/baseline-curve.md) 仍是改前冻结曲线（`e62c158`）。冒烟点仍是 `reports/baseline-http.md` / `baseline-dns.md`。短连接不可当 keepalive 结论 |
 
 ## 性能曲线
 
-loopback 上 `st_httpclient` 对 `st_httpserver` 的**短连接**曲线（服务端 `Connection: close`）。并发 1、10、50、100、200、500、1000，每个点 50000 次请求、重复 3 次，图上是中位数。单 OS 线程事件循环。测量环境：Linux x86_64、4 vCPU、g++ 13.3.0、提交 `e62c158`、`TRACE=0`。DNS 仍须 `-n == -c`，墙钟大约 1–16 ms 的一次性突发，没有画进曲线。
+loopback 上 `st_httpclient` 对 `st_httpserver` 的**短连接**曲线（服务端 `Connection: close`）。并发 1、10、50、100、200、500、1000，每个点 50000 次请求、重复 3 次，图上是中位数。单 OS 线程事件循环。测量环境：Linux 6.12.94+、x86_64、4 vCPU KVM、g++ 13.3.0、提交 `a67127f`、`TRACE=0`。同一台机器上 QPS 大约在 ±15% 噪声内（相对改前同机中位数大约 −10% 到 +23%）。DNS 仍须 `-n == -c`，墙钟大约 1–16 ms 的一次性突发，没有画进曲线。
+
+同一轮的硬结果：空闲 `st_dnsserver` 的 CPU 从大约 100% 降到 0；5 万次短连接后服务端 VmSize 大约增加 5 MB（改前是 GB 量级）；默认协程栈是 128KB（`STACK = 131072`）。
 
 ![HTTP 吞吐与并发](docs/perf/http-qps-vs-concurrency.svg)
 
@@ -442,17 +444,17 @@ loopback 上 `st_httpclient` 对 `st_httpserver` 的**短连接**曲线（服务
 
 | 并发 | QPS（req/s） | p50（ms） | p99（ms） | 错误 |
 | --- | ---: | ---: | ---: | ---: |
-| 1 | 21710.81 | 0 | 1 | 0 |
-| 10 | 38461.54 | 0 | 1 | 0 |
-| 50 | 38051.75 | 1 | 2 | 0 |
-| 100 | 37037.04 | 3 | 4 | 0 |
-| 200 | 36576.44 | 5 | 6 | 0 |
-| 500 | 36549.71 | 13 | 14 | 0 |
-| 1000 | 35868.01 | 25 | 30 | 0 |
+| 1 | 18463.81 | 0 | 1 | 0 |
+| 10 | 32051.28 | 0 | 1 | 0 |
+| 50 | 34364.26 | 1 | 2 | 0 |
+| 100 | 33875.34 | 3 | 4 | 0 |
+| 200 | 28835.06 | 6 | 9 | 0 |
+| 500 | 29274.00 | 13 | 20 | 0 |
+| 1000 | 27808.68 | 23 | 46 | 0 |
 
 每个点 50000 次请求、3 次重复取中位数；客户端计时精度 1 ms，p50 为 0 表示低于 1 ms。
 
-表、原始 CSV、命令与限制（含 c=500 一次偏慢的重复）见 [`reports/baseline-curve.md`](reports/baseline-curve.md)。重新生成（时间戳结果在 `reports/curve-*`，不入库）：
+本轮三次重复与对照见 [`reports/perf-p1-p3-20261008.md`](reports/perf-p1-p3-20261008.md)。[`reports/baseline-curve.md`](reports/baseline-curve.md) 的表和 CSV 仍是改前冻结曲线（提交 `e62c158`）；它嵌入同一份 `docs/perf/*.svg`，图会显示本轮曲线。重新生成（时间戳结果在 `reports/curve-*`，不入库）：
 
 ```bash
 make bench-curve
