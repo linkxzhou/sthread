@@ -50,6 +50,7 @@ void sys_new_fd(int fd) {
   /* Default timeouts in milliseconds (not log2). */
   fd_info->read_timeout = 512;
   fd_info->write_timeout = 512;
+  fd_info->hook_item = NULL;
 }
 
 void sys_free_fd(int fd) {
@@ -60,6 +61,60 @@ void sys_free_fd(int fd) {
   fd_info->sock_flag = ST_FD_FLG_NOUSE;
   fd_info->read_timeout = 0;
   fd_info->write_timeout = 0;
+  fd_info->hook_item = NULL;
+}
+
+/* 内核非阻塞用 ::fcntl，不走 sys_fcntl，避免打上 ST_FD_FLG_UNBLOCK。
+ * 用户自己的 fcntl(O_NONBLOCK) / ioctl(FIONBIO) 仍会打上这个标志。 */
+static void kernel_nonblock(int fd) {
+  int flags = ::fcntl(fd, F_GETFL, 0);
+  if (flags < 0) {
+    flags = 0;
+  }
+  ::fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+}
+
+/* fd 已在表里、hook 已打开、用户没要求非阻塞、事件表还没有这项时，
+ * hook 自己登记。所有权记在 sys_fd.hook_item，sys_close 只释放这一项。 */
+static void hook_ensure_item(int fd) {
+  StEventSchedule *sched = GlobalEventSchedule();
+  sys_fd *info = sys_find_fd(fd);
+  StEventItem *item;
+  if (sched == NULL || info == NULL) {
+    return;
+  }
+  if (sched->GetEventItem(fd) != NULL) {
+    return;
+  }
+  item = stlib::Instance<stlib::UtilPtrPool<StEventItem> >()->AllocPtr();
+  if (item == NULL) {
+    return;
+  }
+  item->SetOsfd(fd);
+  /* 先只占事件表，不打开兴趣。否则 fd 上已有数据、又没有 owner 时，
+   * daemon 会在 epoll 上忙转。真正等待时由 st_read / st_connect 再打开。 */
+  item->DisableInput();
+  item->DisableOutput();
+  if (!sched->Add(item)) {
+    stlib::UtilPtrPoolFree(item);
+    return;
+  }
+  info->hook_item = item;
+}
+
+static void hook_release_item(int fd, sys_fd *info) {
+  StEventItem *item;
+  StEventSchedule *sched;
+  if (info == NULL || info->hook_item == NULL) {
+    return;
+  }
+  item = (StEventItem *)info->hook_item;
+  sched = GlobalEventSchedule();
+  if (sched != NULL && sched->GetEventItem(fd) == item) {
+    sched->ClearItem(item);
+  }
+  stlib::UtilPtrPoolFree(item);
+  info->hook_item = NULL;
 }
 
 int sys_socket(int domain, int type, int protocol) {
@@ -68,16 +123,17 @@ int sys_socket(int domain, int type, int protocol) {
     return fd;
   }
   sys_new_fd(fd); // 设置新的FD
-  int flags;      // 默认都设置为非阻塞
-  flags = sys_fcntl(fd, F_GETFL, 0);
-  flags |= O_NONBLOCK;
-  sys_fcntl(fd, F_SETFL, flags);
+  /* 库自己把内核 fd 设成非阻塞，不能当成用户要求的 O_NONBLOCK。
+   * 否则 sys_read 会直接走真实 read，协程不 Yield。 */
+  kernel_nonblock(fd);
   return fd;
 }
 
 int sys_close(int fd) {
   sys_fd *_fd = sys_find_fd(fd);
   if (_fd) {
+    /* 只释放 hook 自己登记的项。Create 登记的项仍由 ReleaseItem 归还。 */
+    hook_release_item(fd, _fd);
     sys_free_fd(fd);
   }
   /* close 会让内核摘掉 epoll/kqueue 登记，但 StIOState 的 per-fd mask
@@ -111,6 +167,9 @@ int sys_connect(int fd, const struct sockaddr *address, socklen_t address_len) {
     }
     return REAL_FUNC(connect)(fd, address, address_len);
   }
+  if (HOOK_ACTIVE() && !(_fd->sock_flag & ST_FD_FLG_UNBLOCK)) {
+    hook_ensure_item(fd);
+  }
   return (int)hook_like_libc(
       st_connect(fd, address, (int)address_len, _fd->write_timeout));
 }
@@ -129,9 +188,9 @@ ssize_t sys_read(int fd, void *buffer, size_t nbyte) {
 
   if (_fd->sock_flag & ST_FD_FLG_UNBLOCK) {
     return REAL_FUNC(read)(fd, buffer, nbyte);
-  } else {
-    return hook_like_libc(st_read(fd, buffer, nbyte, _fd->read_timeout));
   }
+  hook_ensure_item(fd);
+  return hook_like_libc(st_read(fd, buffer, nbyte, _fd->read_timeout));
 }
 
 ssize_t sys_write(int fd, const void *buffer, size_t nbyte) {
@@ -146,9 +205,9 @@ ssize_t sys_write(int fd, const void *buffer, size_t nbyte) {
   }
   if (_fd->sock_flag & ST_FD_FLG_UNBLOCK) {
     return REAL_FUNC(write)(fd, buffer, nbyte);
-  } else {
-    return hook_like_libc(st_write(fd, buffer, nbyte, _fd->write_timeout));
   }
+  hook_ensure_item(fd);
+  return hook_like_libc(st_write(fd, buffer, nbyte, _fd->write_timeout));
 }
 
 ssize_t sys_sendto(int fd, const void *buffer, size_t length, int flags,
@@ -201,10 +260,9 @@ ssize_t sys_recv(int fd, void *buffer, size_t length, int flags) {
   }
   if (_fd->sock_flag & ST_FD_FLG_UNBLOCK) {
     return REAL_FUNC(recv)(fd, buffer, length, flags);
-  } else {
-    return hook_like_libc(
-        st_recv(fd, buffer, length, flags, _fd->read_timeout));
   }
+  hook_ensure_item(fd);
+  return hook_like_libc(st_recv(fd, buffer, length, flags, _fd->read_timeout));
 }
 
 ssize_t sys_send(int fd, const void *buffer, size_t nbyte, int flags) {
@@ -219,10 +277,9 @@ ssize_t sys_send(int fd, const void *buffer, size_t nbyte, int flags) {
   }
   if (_fd->sock_flag & ST_FD_FLG_UNBLOCK) {
     return REAL_FUNC(send)(fd, buffer, nbyte, flags);
-  } else {
-    return hook_like_libc(
-        st_send(fd, buffer, nbyte, flags, _fd->write_timeout));
   }
+  hook_ensure_item(fd);
+  return hook_like_libc(st_send(fd, buffer, nbyte, flags, _fd->write_timeout));
 }
 
 int sys_setsockopt(int fd, int level, int option_name, const void *option_value,

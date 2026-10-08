@@ -121,6 +121,9 @@ typedef struct {
   int sock_flag;
   int read_timeout; /* milliseconds; see sys_new_fd */
   int write_timeout;
+  /* hook 自己 AllocPtr 的 StEventItem。NULL 表示事件项不归 hook
+   *（例如 StClientConnection::Create 自己 Add 的那一项）。 */
+  void *hook_item;
 } sys_fd;
 
 extern SyscallCallbackTab g_syscall_tab;
