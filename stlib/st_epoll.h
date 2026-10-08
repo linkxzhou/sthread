@@ -124,6 +124,15 @@ public:
     return ST_OK;
   }
 
+  /* close 之后内核会丢掉该 fd 的兴趣，用户态 mask 必须一起清零。
+   * 否则 fd 号复用时 AddEvent 会走 MOD，或因 mask 相同直接返回。 */
+  void ClearFd(int32_t fd) {
+    if (m_file_ == NULL || fd < 0 || fd >= m_size_) {
+      return;
+    }
+    m_file_[fd].mask = ST_NONE;
+  }
+
   int32_t Poll(struct timeval *tvp = NULL) {
     int32_t retval, numevents = 0;
 
