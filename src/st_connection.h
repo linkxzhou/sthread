@@ -173,9 +173,13 @@ public:
     if (IS_TCP_CONN(m_type_)) {
       int32_t rc = Connect(addr);
       if (rc < 0) {
+        /* ReleaseItem / Close 会把 ETIME、ECONNREFUSED 盖掉（Delete 失败时
+         * errno 变成 ENOENT）。返回值两种失败都是 -2，调用方靠 errno 分类。 */
+        int saved = errno;
         LOG_ERROR("connect error, rc: %d", rc);
         ReleaseItem();
         Close();
+        errno = saved;
         return -2;
       }
     }
