@@ -1,8 +1,8 @@
 # 12 · 性能优化（短连接曲线为什么在 c=10 就平了）
 
-> **状态：已拍板（2026-10-08）。** 基线提交 `849ebf1`。测量日 2026-10-08，原始表在 [`reports/perf-analysis-20261008.md`](../reports/perf-analysis-20261008.md)。
+> **状态：本轮三项已落地（2026-10-08）。** 基线提交 `849ebf1`。改前测量在 [`reports/perf-analysis-20261008.md`](../reports/perf-analysis-20261008.md)，落地数字在 [`reports/perf-p1-p3-20261008.md`](../reports/perf-p1-p3-20261008.md) 与 §12。
 >
-> **本轮只做三件事**：P1（O1 epoll 掩码替换 + O2 去掉多余 `EPOLL_CTL_DEL` / 两行 `LOG_ERROR`）、P3（O3 协程栈复用）、默认栈改为 **128KB**（`STACK = 131072`，取代 D6「保持 260096」）。**延期**：O7 / `-O2`、O5、O4 keepalive 曲线、O6、O9、O8、P8 多进程样例。拍板全文在 §11。库改动不在本 PR。
+> **本轮只做三件事**：P1（O1 epoll 掩码替换 + O2 去掉多余 `EPOLL_CTL_DEL` / 两行 `LOG_ERROR`）、P3（O3 协程栈复用）、默认栈改为 **128KB**（`STACK = 131072`，取代 D6「保持 260096」）。**延期**：O7 / `-O2`、O5、O4 keepalive 曲线、O6、O9、O8、P8 多进程样例。拍板全文在 §11。
 >
 > 硬约束沿用总索引：C++98；`.clang-format`（LLVM 基线 + `m_x_`）+ CI 的 clang-format-18；**只用 makefile**；零第三方运行时依赖；vendored 代码保留 [`COPYRIGHT`](../COPYRIGHT)；**不发明根 `LICENSE`**；注释用中文。Windows 不支持。平台：Linux x86_64/arm64、macOS、Android arm64-v8a / x86_64。三件套闸门仍是 `make lib`、`make -C tests run`、`make -C stlib/tests run`，外加 `make apps`。`make clean` 之后 `git status --porcelain --ignored` 必须为空。
 
@@ -362,3 +362,18 @@ D 项（做到哪一步算这一篇完成）不在本计划的落地范围内。
 | P8 `SO_REUSEPORT` 多进程样例 | **延期** |
 
 验收仍是：空闲 `st_dnsserver` CPU 从约 100% 降到接近 0；短连接 `make bench-curve` 的 QPS 同机前后对比（噪声约 ±15%，不进 CI）；5 万请求的 `VmSize` 增量 < 64MB。QPS 不作为 CI 门禁。
+
+## 12. 本轮落地（`a67127f` 一带）
+
+代码在实现 PR，不在只记录决策的那个 PR 里。数字见 [`reports/perf-p1-p3-20261008.md`](../reports/perf-p1-p3-20261008.md)。
+
+| 验收 | 结果 |
+| --- | --- |
+| 空闲 DNS CPU | 1 秒 0 tick（改前约 100%） |
+| 5 万请求 VmSize | `-c 32`：12732 → 17792 KB，**+5060 KB** |
+| `mmap` / 2000 请求 | 30（约等于并发；改前 2000） |
+| 失败的 `epoll_ctl` 和两行错误日志 | 0 |
+| 短连接 QPS | 落在改前同一条噪声带里，没有吃到计划里 +15%～+35% 的估计。客户端握手还在 |
+| `STACK=131072` | `make -C tests run`、`make -C stlib/tests run`、`make apps TRACE=1` 和一次 `curl` 都过，没有溢出 |
+
+冻结基线 `reports/baseline-curve.*` **不**用这次曲线覆盖（D7）。QPS 不进 CI。O4–O9 与 P8 仍延期。

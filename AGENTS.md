@@ -28,7 +28,7 @@ sthread 是一个**基于协程的高性能网络库**，C++98，提供非阻塞
 | keepalive（L4） | **已修**：`eTCP_KEEPLIVE_CONN=0x11`，`Keeplive()`=`IS_KEEPLIVE` |
 | 本仓库 `LICENSE` | **未发布**（仅有 vendored 的 [`COPYRIGHT`](COPYRIGHT)） |
 | 六个新样例（echo / 端口扫描 / 反代 / Redis / 聊天室 / hook） | **已落地**见 [`plan/11-apps-more-scenarios.md`](plan/11-apps-more-scenarios.md)。冒烟是 `make smoke-*`，只在本地跑，不进 CI |
-| 短连接性能（`make bench-curve`） | **已拍板**见 [`plan/12-performance-optimization.md`](plan/12-performance-optimization.md) §11。本轮：epoll 掩码、多余 DEL、栈复用、默认栈 128KB。其余延期。测量在 [`reports/perf-analysis-20261008.md`](reports/perf-analysis-20261008.md)。QPS 不进 CI |
+| 短连接性能（`make bench-curve`） | **本轮已落地**：epoll 掩码替换、去掉多余 DEL、协程栈复用、`STACK=131072`。QPS 仍在噪声里。其余延期。见 [`plan/12`](plan/12-performance-optimization.md) §12 与 [`reports/perf-p1-p3-20261008.md`](reports/perf-p1-p3-20261008.md)。QPS 不进 CI |
 
 回归记录：[`plan/04-regression-checklist.md`](plan/04-regression-checklist.md)。
 
