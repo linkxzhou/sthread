@@ -22,7 +22,8 @@ make -C stlib/tests run
 ```
 
 完整网络框架请链接仓库根目录的 `libmthread`（见根 [`README.md`](../README.md) /
-[`AGENTS.md`](../AGENTS.md)）。
+[`AGENTS.md`](../AGENTS.md)）。协程 I/O 的超时码不在 stlib：`st_*` 超时为 `-1`
+且 `errno == ETIME`，`-3` 只表示调度失败，约定在 `src/st_sys.h`。
 
 ---
 

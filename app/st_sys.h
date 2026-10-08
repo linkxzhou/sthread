@@ -133,6 +133,9 @@ void sys_free_fd(int fd);
 int sys_socket(int domain, int type, int protocol);
 int sys_close(int fd);
 int sys_shutdown(int fd);
+/* hook 后的 read/recv/send/write/connect 对调用方保持 libc 形状：
+ * 成功为字节数或 0，失败一律 -1 且 errno 已设置。超时是 errno=ETIME，
+ * 不会把 st_* 的 -2/-3 漏出去。 */
 int sys_connect(int fd, const struct sockaddr *address, socklen_t address_len);
 ssize_t sys_read(int fd, void *buf, size_t nbyte);
 ssize_t sys_write(int fd, const void *buf, size_t nbyte);

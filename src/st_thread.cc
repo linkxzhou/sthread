@@ -521,6 +521,7 @@ bool StEventSchedule::Schedule(StThreadItem *thread, StEventItemQueue *fdset,
                                StEventItem *item, uint64_t wakeup_timeout) {
   if (NULL == thread) {
     LOG_ERROR("active thread NULL, schedule failed");
+    errno = EINVAL;
     return false;
   }
 
@@ -540,7 +541,9 @@ bool StEventSchedule::Schedule(StThreadItem *thread, StEventItemQueue *fdset,
 
   thread->SetWakeupTime(wakeup_timeout);
   if (!Add(thread->GetFdSet())) {
-    LOG_ERROR("add fdset, errno: %d", errno);
+    /* Add 失败不是超时。回滚日志可能改 errno，先留下内核错误。 */
+    int saved = errno;
+    LOG_ERROR("add fdset, errno: %d", saved);
     /* 将本次合并的事件项归还原队列，保留线程先前持有的事件项。 */
     if (NULL != item) {
       CPP_TAILQ_REMOVE_SELF(item, m_next_);
@@ -551,6 +554,11 @@ bool StEventSchedule::Schedule(StThreadItem *thread, StEventItemQueue *fdset,
       CPP_TAILQ_REMOVE(&thread->GetFdSet(), cursor, m_next_);
       CPP_TAILQ_INSERT_TAIL(fdset, cursor, m_next_);
       cursor = next;
+    }
+    if (saved == 0 || saved == ETIME) {
+      errno = EIO;
+    } else {
+      errno = saved;
     }
     return false;
   }
@@ -581,10 +589,11 @@ bool StEventSchedule::Schedule(StThreadItem *thread, StEventItemQueue *fdset,
       CPP_TAILQ_REMOVE(&recv_fdset, _it, m_next_);
     }
   }
-  // 如果没有收到任何recv事件则表示超时或者异常
+  /* 没有 IO 事件：定时器唤醒，按超时报告。真正的 Schedule/Add 失败在上面返回。
+   */
   if (recv_num == 0) {
-    errno = ETIME;
     LOG_ERROR("recv_num: 0");
+    errno = ETIME;
     return false;
   }
   LOG_TRACE("recv_num: %d", recv_num);

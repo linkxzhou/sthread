@@ -293,7 +293,9 @@ int ensure_conn(const StHttpRequest *req, StHttpConn *io, uint64_t start) {
   io->conn->SetTimeout(left);
   fd = io->conn->Create(addr);
   if (fd < 0) {
+    int saved = errno;
     st_http_conn_close(io);
+    errno = saved;
     return -1;
   }
   io->fd = fd;
@@ -415,8 +417,10 @@ int st_http_exchange(const StHttpRequest *req, StHttpConn *io,
   resp->body_len = st.body_len;
   resp->body_bytes = st.body_len;
   if (!st.complete || st.error) {
+    int saved = errno;
     resp->transport_error = 1;
     st_http_conn_close(io);
+    errno = saved;
     return -1;
   }
   if (!req->keepalive || !st.keep_alive) {

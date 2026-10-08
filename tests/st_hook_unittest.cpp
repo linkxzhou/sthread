@@ -11,6 +11,7 @@
 #include <fcntl.h>
 #include <netinet/in.h>
 #include <signal.h>
+#include <stdlib.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -138,13 +139,15 @@ TEST(StStatus, HookConnectAcceptAndTimeoutOpts) {
   /* 已连接前 shutdown 可能 ENOTCONN；两种都说明调用进了内核。 */
   sys_close(raw);
 
-  /* 未注册事件的阻塞 UDP：sys_recvfrom 进 st_recvfrom，没有 item 时返回 -2。 */
+  /* 未注册事件的阻塞 UDP：st_recvfrom 得到 -2，hook 收成 libc 的 -1。 */
   ufd = ::socket(AF_INET, SOCK_DGRAM, 0);
   ASSERT_TRUE(ufd >= 0);
   sys_new_fd(ufd);
   fl = sizeof(from);
+  errno = 0;
   ASSERT_TRUE(sys_recvfrom(ufd, ubuf, sizeof(ubuf), 0, (struct sockaddr *)&from,
-                           &fl) == -2);
+                           &fl) == -1);
+  ASSERT_TRUE(errno == EINVAL);
   lfd = bind_loopback(SOCK_DGRAM, &port);
   ASSERT_TRUE(lfd >= 0);
   memset(&bound, 0, sizeof(bound));
@@ -171,6 +174,94 @@ TEST(StStatus, HookDlsymFallbackCounter) {
   if (&st_dlsym_null_hits != 0) {
     ASSERT_TRUE(st_dlsym_null_hits > 0);
   }
+}
+
+TEST(StStatus, HookReadRecvTimeout) {
+  int sv[2];
+  char buf[8];
+  ssize_t n;
+  int flags;
+  struct timeval tv;
+  StEventItem *item;
+  ASSERT_TRUE(::socketpair(AF_UNIX, SOCK_STREAM, 0, sv) == 0);
+  flags = ::fcntl(sv[0], F_GETFL, 0);
+  ASSERT_TRUE(::fcntl(sv[0], F_SETFL, flags | O_NONBLOCK) == 0);
+  /* 内核非阻塞，但 fd 表不标 UNBLOCK，这样才会进 st_*。 */
+  sys_new_fd(sv[0]);
+  ASSERT_TRUE(st_init_frame());
+  st_set_hook_flag();
+  tv.tv_sec = 0;
+  tv.tv_usec = 40000;
+  ASSERT_TRUE(sys_setsockopt(sv[0], SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) ==
+              0);
+  item = Instance<UtilPtrPool<StEventItem> >()->AllocPtr();
+  ASSERT_TRUE(item != NULL);
+  item->SetOsfd(sv[0]);
+  item->EnableInput();
+  item->DisableOutput();
+  ASSERT_TRUE(GlobalEventSchedule()->Add(item));
+  errno = 0;
+  n = sys_read(sv[0], buf, sizeof(buf));
+  ASSERT_TRUE(n == -1);
+  ASSERT_TRUE(errno == ETIME);
+  errno = 0;
+  n = sys_recv(sv[0], buf, sizeof(buf), 0);
+  ASSERT_TRUE(n == -1);
+  ASSERT_TRUE(errno == ETIME);
+  GlobalEventSchedule()->ClearItem(item);
+  UtilPtrPoolFree(item);
+  sys_close(sv[0]);
+  ::close(sv[1]);
+}
+
+TEST(StStatus, HookSendTimeout) {
+  int sv[2];
+  int sz = 1024;
+  char junk[4096];
+  char *big = NULL;
+  const int big_n = 256 * 1024;
+  int flags;
+  struct timeval tv;
+  StEventItem *item;
+  ssize_t n;
+  ASSERT_TRUE(::socketpair(AF_UNIX, SOCK_STREAM, 0, sv) == 0);
+  flags = ::fcntl(sv[0], F_GETFL, 0);
+  ASSERT_TRUE(::fcntl(sv[0], F_SETFL, flags | O_NONBLOCK) == 0);
+  ASSERT_TRUE(::fcntl(sv[1], F_SETFL, flags | O_NONBLOCK) == 0);
+  (void)::setsockopt(sv[0], SOL_SOCKET, SO_SNDBUF, &sz, sizeof(sz));
+  (void)::setsockopt(sv[1], SOL_SOCKET, SO_RCVBUF, &sz, sizeof(sz));
+  memset(junk, 'x', sizeof(junk));
+  for (;;) {
+    ssize_t w = ::send(sv[0], junk, sizeof(junk), MSG_DONTWAIT);
+    if (w < 0) {
+      break;
+    }
+  }
+  sys_new_fd(sv[0]);
+  ASSERT_TRUE(st_init_frame());
+  st_set_hook_flag();
+  tv.tv_sec = 0;
+  tv.tv_usec = 40000;
+  ASSERT_TRUE(sys_setsockopt(sv[0], SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv)) ==
+              0);
+  item = Instance<UtilPtrPool<StEventItem> >()->AllocPtr();
+  ASSERT_TRUE(item != NULL);
+  item->SetOsfd(sv[0]);
+  item->EnableOutput();
+  item->DisableInput();
+  ASSERT_TRUE(GlobalEventSchedule()->Add(item));
+  big = (char *)malloc((size_t)big_n);
+  ASSERT_TRUE(big != NULL);
+  memset(big, 'y', (size_t)big_n);
+  errno = 0;
+  n = sys_send(sv[0], big, (size_t)big_n, 0);
+  ASSERT_TRUE(n == -1);
+  ASSERT_TRUE(errno == ETIME);
+  free(big);
+  GlobalEventSchedule()->ClearItem(item);
+  UtilPtrPoolFree(item);
+  sys_close(sv[0]);
+  ::close(sv[1]);
 }
 
 int main(int argc, char *argv[]) {

@@ -330,6 +330,22 @@ make -C tests server
 
 In `src/st_sys.cc`, the 8 `st_*` functions share the internal `WaitFdReady` (plan/07 C1). The fd event table capacity is `min(rlim_cur, 65535)` (D4). Keepalive connections are **currently not truly reused from the hash** (D1; see the comment in `FreePtr`).
 
+## `st_*` return codes
+
+`st_read` / `st_write` / `st_recv` / `st_send` / `st_recvfrom` / `st_sendto` / `st_connect` / `st_accept` (`src/st_sys.h`):
+
+| Return | Meaning |
+| --- | --- |
+| `>0` | Byte count; `st_accept` returns the new connfd. `st_connect` success is usually `0` |
+| `0` | Peer closed, or the historical `n==0` case |
+| `-1` | Hard error, or timeout (`errno == ETIME`), including a wake-up with no IO event |
+| `-2` | No event item for that fd (`errno == EINVAL`) |
+| `-3` | `Schedule` / `Add` failed. **Not a timeout** |
+
+Hooked `sys_read` / `sys_recv` / `sys_send` / `sys_write` / `sys_connect` in `app/st_sys.cc` stay libc-shaped for callers: failure is always `-1` with `errno` set. A timeout is still `errno == ETIME`.
+
+`udp_sendrecv` / `tcp_sendrecv` use a separate status table (TCP receive timeout is `-3`). See `app/st_c.h`. That `-3` is not the `st_*` schedule-failure code.
+
 # Performance
 
 Per-coroutine stack allocation (implementation formula, `StThread::InitStack`):

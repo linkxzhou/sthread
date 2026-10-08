@@ -318,9 +318,10 @@ TEST(StStatus, RecvAndReadTimeout) {
   sys_close(fd);
   kill(pid, SIGTERM);
   waitpid(pid, NULL, 0);
-  ASSERT_TRUE(rc_recv < 0);
+  /* 等到唤醒但没有数据：-1 + ETIME，不是 Schedule 失败的 -3。 */
+  ASSERT_TRUE(rc_recv == -1);
   ASSERT_TRUE(err_recv == ETIME);
-  ASSERT_TRUE(rc_read < 0);
+  ASSERT_TRUE(rc_read == -1);
   ASSERT_TRUE(err_read == ETIME);
 }
 
@@ -396,9 +397,9 @@ TEST(StStatus, SendAndWriteTimeout) {
   free(big);
   ::close(sv[0]);
   ::close(sv[1]);
-  ASSERT_TRUE(ns < 0);
+  ASSERT_TRUE(ns == -1);
   ASSERT_TRUE(es == ETIME);
-  ASSERT_TRUE(nw < 0);
+  ASSERT_TRUE(nw == -1);
   ASSERT_TRUE(ew == ETIME);
 }
 
@@ -577,7 +578,10 @@ TEST(StStatus, TcpRecvTimeoutCode) {
                     false);
   kill(pid, SIGTERM);
   waitpid(pid, NULL, 0);
+  /* tcp_sendrecv 自己的接收超时码是 -3 + errno=ETIME（见 app/st_c.h）。
+   * 这不是 st_* 的 Schedule 失败。st_* 超时是 -1，见 RecvAndReadTimeout。 */
   ASSERT_TRUE(rc == -3);
+  ASSERT_TRUE(errno == ETIME);
 }
 
 TEST(StStatus, TcpKeepliveOnce) {
@@ -625,6 +629,162 @@ TEST(StStatus, TcpKeepliveOnce) {
   ASSERT_TRUE(rc == 0);
   ASSERT_TRUE(bufsize == 4);
   ASSERT_TRUE(memcmp(buf, "PONG", 4) == 0);
+}
+
+TEST(StStatus, TcpRecvSyscallTimeout) {
+  int sp[2];
+  int port = 0;
+  pid_t pid;
+  int rc = 1;
+  struct sockaddr_in dst;
+  char buf[16];
+  int bufsize = (int)sizeof(buf);
+  ASSERT_TRUE(pipe(sp) == 0);
+  pid = fork();
+  ASSERT_TRUE(pid >= 0);
+  if (pid == 0) {
+    int lfd;
+    int c;
+    char tmp[32];
+    close(sp[0]);
+    alarm(3);
+    lfd = bind_loopback(SOCK_STREAM, &port);
+    if (lfd < 0 || ::listen(lfd, 1) != 0) {
+      _exit(2);
+    }
+    write_port(sp[1], port);
+    close(sp[1]);
+    c = ::accept(lfd, NULL, NULL);
+    if (c >= 0) {
+      (void)::recv(c, tmp, sizeof(tmp), 0);
+      sleep(2);
+      ::close(c);
+    }
+    ::close(lfd);
+    _exit(0);
+  }
+  close(sp[1]);
+  ASSERT_TRUE(read_port(sp[0], &port) == 0);
+  close(sp[0]);
+  ASSERT_TRUE(st_init_frame());
+  st_set_hook_flag();
+  fill_dst(&dst, port);
+  errno = 0;
+  rc =
+      tcp_sendrecv(&dst, (void *)"PING", 4, buf, bufsize, 40, need_more, false);
+  kill(pid, SIGTERM);
+  waitpid(pid, NULL, 0);
+  /* st_recv 自己超时（-1/ETIME）也被收成 tcp_sendrecv 的 -3。 */
+  ASSERT_TRUE(rc == -3);
+  ASSERT_TRUE(errno == ETIME);
+}
+
+TEST(StStatus, UdpRecvTimeoutStatus) {
+  int lfd;
+  int port = 0;
+  struct sockaddr_in dst;
+  char buf[8];
+  int bufsize = (int)sizeof(buf);
+  int rc;
+  lfd = bind_loopback(SOCK_DGRAM, &port);
+  ASSERT_TRUE(lfd >= 0);
+  ASSERT_TRUE(st_init_frame());
+  st_set_hook_flag();
+  fill_dst(&dst, port);
+  errno = 0;
+  rc = udp_sendrecv(&dst, (void *)"PING", 4, buf, bufsize, 40);
+  ::close(lfd);
+  ASSERT_TRUE(rc == -4);
+  ASSERT_TRUE(errno == ETIME);
+}
+
+TEST(StStatus, ConnectionRecvTimeout) {
+  int sp[2];
+  int port = 0;
+  pid_t pid;
+  int fd;
+  int32_t rn;
+  int err;
+  StClientConnection<StEventItem> conn;
+  StNetAddr addr;
+  ASSERT_TRUE(pipe(sp) == 0);
+  pid = fork();
+  ASSERT_TRUE(pid >= 0);
+  if (pid == 0) {
+    int lfd;
+    int c;
+    close(sp[0]);
+    alarm(3);
+    lfd = bind_loopback(SOCK_STREAM, &port);
+    if (lfd < 0 || ::listen(lfd, 1) != 0) {
+      _exit(2);
+    }
+    write_port(sp[1], port);
+    close(sp[1]);
+    c = ::accept(lfd, NULL, NULL);
+    if (c >= 0) {
+      sleep(2);
+      ::close(c);
+    }
+    ::close(lfd);
+    _exit(0);
+  }
+  close(sp[1]);
+  ASSERT_TRUE(read_port(sp[0], &port) == 0);
+  close(sp[0]);
+  ASSERT_TRUE(st_init_frame());
+  st_set_hook_flag();
+  conn.SetConnType(eTCP_CONN);
+  conn.SetTimeout(500);
+  addr.SetAddr("127.0.0.1", (uint16_t)port);
+  fd = conn.Create(addr);
+  ASSERT_TRUE(fd >= 0);
+  conn.SetTimeout(40);
+  errno = 0;
+  rn = conn.RecvData();
+  err = errno;
+  conn.Close();
+  kill(pid, SIGTERM);
+  waitpid(pid, NULL, 0);
+  ASSERT_TRUE(rn == -2);
+  ASSERT_TRUE(err == ETIME);
+}
+
+TEST(StStatus, ConnectionSendTimeout) {
+  int sv[2];
+  int sz = 1024;
+  char junk[4096];
+  StEventItem *item = NULL;
+  StClientConnection<StEventItem> conn;
+  int32_t sn;
+  int err;
+  ASSERT_TRUE(::socketpair(AF_UNIX, SOCK_STREAM, 0, sv) == 0);
+  ASSERT_TRUE(set_nonblock(sv[0]) == 0);
+  ASSERT_TRUE(set_nonblock(sv[1]) == 0);
+  (void)::setsockopt(sv[0], SOL_SOCKET, SO_SNDBUF, &sz, sizeof(sz));
+  (void)::setsockopt(sv[1], SOL_SOCKET, SO_RCVBUF, &sz, sizeof(sz));
+  memset(junk, 'x', sizeof(junk));
+  for (;;) {
+    ssize_t n = ::send(sv[0], junk, sizeof(junk), MSG_DONTWAIT);
+    if (n < 0) {
+      break;
+    }
+  }
+  ASSERT_TRUE(st_init_frame());
+  item = watch_fd(sv[0], 0);
+  ASSERT_TRUE(item != NULL);
+  conn.SetOsfd(sv[0]);
+  conn.SetConnType(eTCP_CONN);
+  conn.SetTimeout(40);
+  errno = 0;
+  sn = conn.SendData();
+  err = errno;
+  drop_item(item);
+  conn.SetOsfd(-1);
+  ::close(sv[0]);
+  ::close(sv[1]);
+  ASSERT_TRUE(sn == -1);
+  ASSERT_TRUE(err == ETIME);
 }
 
 int main(int argc, char *argv[]) {

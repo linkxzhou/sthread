@@ -372,8 +372,8 @@ TEST(StStatus, UdpRecvfromTimeout) {
   socklen_t flen = sizeof(from);
   errno = 0;
   int n = st_recvfrom(fd, rbuf, sizeof(rbuf), 0, (struct sockaddr *)&from,
-                      &flen, 5);
-  ASSERT_TRUE(n < 0 && errno == ETIME);
+                      &flen, 40);
+  ASSERT_TRUE(n == -1 && errno == ETIME);
 
   GlobalEventSchedule()->ClearItem(item);
   UtilPtrPoolFree(item);
@@ -398,10 +398,40 @@ TEST(StStatus, ConnectBlackholeTimeout) {
   dst.sin_port = htons(81);
   dst.sin_addr.s_addr = htonl(0xC0000201); /* 192.0.2.1 TEST-NET */
   errno = 0;
-  (void)st_connect(fd, (struct sockaddr *)&dst, sizeof(dst), 5);
+  int rc = st_connect(fd, (struct sockaddr *)&dst, sizeof(dst), 40);
+  int err = errno;
   GlobalEventSchedule()->ClearItem(item);
   UtilPtrPoolFree(item);
   close(fd);
+  ASSERT_TRUE(rc == -1);
+  ASSERT_TRUE(err == ETIME);
+
+  /* 另开一个 fd。复用仍在 EINPROGRESS 的套接字会得到 EALREADY，不是超时。
+   * StConnection::Connect 把 ETIME 报成 -1，其它失败报成 -2。 */
+  int fd2 = socket(AF_INET, SOCK_STREAM, 0);
+  ASSERT_TRUE(fd2 >= 0);
+  fl = fcntl(fd2, F_GETFL, 0);
+  fcntl(fd2, F_SETFL, fl | O_NONBLOCK);
+  StEventItem *item2 = Instance<UtilPtrPool<StEventItem> >()->AllocPtr();
+  ASSERT_TRUE(item2 != NULL);
+  item2->SetOsfd(fd2);
+  item2->EnableOutput();
+  item2->SetOwnerThread(GlobalThreadSchedule()->GetActiveThread());
+  ASSERT_TRUE(GlobalEventSchedule()->Add(item2));
+  StClientConnection<StEventItem> conn;
+  StNetAddr addr;
+  conn.SetOsfd(fd2);
+  conn.SetTimeout(40);
+  addr.SetAddr("192.0.2.1", 81);
+  errno = 0;
+  int32_t cr = conn.Connect(addr);
+  int cerr = errno;
+  GlobalEventSchedule()->ClearItem(item2);
+  UtilPtrPoolFree(item2);
+  conn.SetOsfd(-1);
+  close(fd2);
+  ASSERT_TRUE(cr == -1);
+  ASSERT_TRUE(cerr == ETIME);
 }
 
 TEST(StStatus, FreeStackReleasesVaddr) {
