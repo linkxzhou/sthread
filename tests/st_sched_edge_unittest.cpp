@@ -6,6 +6,9 @@
 #include "src/st_thread.h"
 #include "stlib/st_closure.h"
 #include "tests/st_test_compat.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 ST_NAMESPACE_USING
 
@@ -68,6 +71,59 @@ TEST(StStatus, ManyReadyCoroutines) {
   /* 让出后 daemon 会先把就绪队列跑完，再等这次 sleep 到期。 */
   st_sleep(30);
   ASSERT_TRUE(g_ran == n);
+}
+
+static long self_vmsize_kb(void) {
+  FILE *fp;
+  char line[256];
+  long kb = -1;
+
+  fp = fopen("/proc/self/status", "r");
+  if (fp == NULL) {
+    return -1;
+  }
+  while (fgets(line, sizeof(line), fp) != NULL) {
+    if (strncmp(line, "VmSize:", 7) == 0) {
+      kb = atol(line + 7);
+      break;
+    }
+  }
+  fclose(fp);
+  return kb;
+}
+
+/* 完成数远大于批大小时，池里的活对象不能跟着完成数涨。
+ * 泄漏一块栈就会让 VmSize 超过下面的上限。 */
+TEST(StStatus, StackReuseDoesNotGrowWithCompletions) {
+  const int batch = 32;
+  const int rounds = 64;
+  int i;
+  int r;
+  uint32_t before;
+  uint32_t after;
+  long vm0;
+  long vm1;
+
+  ASSERT_TRUE(st_init_frame());
+  st_set_hook_flag();
+  g_ran = 0;
+  before = Instance<UtilPtrPool<StThread> >()->Size();
+  vm0 = self_vmsize_kb();
+  for (r = 0; r < rounds; r++) {
+    for (i = 0; i < batch; i++) {
+      StThread *t =
+          GlobalThreadSchedule()->CreateThread(NewStClosure(bump), true);
+      ASSERT_TRUE(t != NULL);
+    }
+    st_sleep(1);
+  }
+  ASSERT_TRUE(g_ran == batch * rounds);
+  after = Instance<UtilPtrPool<StThread> >()->Size();
+  ASSERT_TRUE(after <= before + (uint32_t)batch);
+  vm1 = self_vmsize_kb();
+  if (vm0 >= 0 && vm1 >= 0) {
+    ASSERT_TRUE(vm1 - vm0 < 16 * 1024);
+  }
 }
 
 int main(int argc, char *argv[]) {

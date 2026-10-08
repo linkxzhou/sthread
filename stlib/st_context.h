@@ -14,7 +14,7 @@ extern "C" {
 #endif
 
 enum {
-  STACK = 260096 /* 256K — restored from commit 478d209 st_ucontext.h */
+  STACK = 131072 /* 128KiB。plan/12：替代 260096。ty/tx 与 ss_sp 余量不变 */
 };
 
 #ifndef uchar

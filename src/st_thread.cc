@@ -16,9 +16,74 @@ void StThreadSchedule::SwitchThread(StThreadItem *rthread,
   SetActiveThread(sthread);
 }
 
+void StThreadSchedule::DetachForReuse(StThread *thread) {
+  if (thread->HasFlag(eIO_LIST)) {
+    RemoveIOWait(thread);
+  } else if (thread->HasFlag(eSLEEP_LIST)) {
+    RemoveSleep(thread);
+  }
+  if (thread->HasFlag(eRUN_LIST)) {
+    RemoveRunable(thread);
+  }
+  if (thread->HasFlag(ePEND_LIST)) {
+    thread->UnsetFlag(ePEND_LIST);
+    CPP_TAILQ_REMOVE(&m_pend_list_, thread, m_next_);
+  }
+  if (thread->HasFlag(eSUB_LIST)) {
+    StThreadItem *parent = thread->GetParent();
+    if (parent != NULL) {
+      parent->RemoveSubStThread(thread);
+    } else {
+      thread->UnsetFlag(eSUB_LIST);
+    }
+  }
+}
+
+void StThreadSchedule::ReapReclaim(StThreadItem *current) {
+  StThreadItem *hold = NULL;
+  unsigned int n = CPP_TAILQ_SIZE(&m_reclaim_list_);
+  unsigned int i;
+
+  for (i = 0; i < n; i++) {
+    StThreadItem *t = NULL;
+    CPP_TAILQ_POP(&m_reclaim_list_, t, m_next_);
+    if (t == NULL) {
+      break;
+    }
+    if (t == current) {
+      hold = t;
+      continue;
+    }
+    Instance<UtilPtrPool<StThread> >()->NoteDestroyed();
+    delete static_cast<StThread *>(t);
+  }
+  if (hold != NULL) {
+    CPP_TAILQ_INSERT_TAIL(&m_reclaim_list_, hold, m_next_);
+  }
+}
+
+void StThreadSchedule::Recycle(StThread *thread) {
+  UtilPtrPool<StThread> *pool;
+  if (thread == NULL) {
+    return;
+  }
+  DetachForReuse(thread);
+  thread->Reset();
+  pool = Instance<UtilPtrPool<StThread> >();
+  if (pool->IdleSize() < pool->MaxFree()) {
+    pool->PushIdle(thread);
+    Yield(thread);
+    return;
+  }
+  /* 空闲池已满。不能在当前栈上 delete 自己，切走后再由 ReapReclaim 释放。 */
+  CPP_TAILQ_INSERT_TAIL(&m_reclaim_list_, thread, m_next_);
+  Yield(thread);
+}
+
 // 让出线程
 int32_t StThreadSchedule::Yield(StThreadItem *athread) {
   StThreadItem *thread = NULL;
+  ReapReclaim(athread);
   if (CPP_TAILQ_EMPTY(&m_run_list_)) {
     thread = DaemonThread();
   } else {

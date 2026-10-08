@@ -57,7 +57,7 @@ ucontext + `stlib/ucontext/asm.S`（386 / amd64 / mips / power；**含 arm64**�
 
 新平台接入：在 `st_platform.h` 加 `ST_OS_*`；上下文走系统 ucontext 或 `stlib/ucontext/` 的 asm（不要引入 boost.context）；事件后端只在 `src/st_poll.h` 按 `ST_POLL_*` 选择；`make.inc` 用 `$(CC) -dumpmachine` 推导 `ST_OS` / `ST_ARCH`。Android 只支持 arm64-v8a 与 x86_64（`make android ABI= API=`）。
 
-勿擅动：`InitContext` 的 `ty`/`tx` 拆分、`ss_sp`/`ss_size` 余量、`STACK`（260096）、`MEM_PAGE_SIZE`（2048）。
+勿擅动：`InitContext` 的 `ty`/`tx` 拆分、`ss_sp`/`ss_size` 余量、`MEM_PAGE_SIZE`（2048）。默认 `STACK` 为 **131072**（128KB，plan/12）。
 
 ### 3. epoll + kqueue
 
@@ -86,7 +86,7 @@ C++：`StClientConnection`、`StServer`。示例里的 `Frame` 在 `app/st_frame
 
 ### 6. 高性能
 
-单协程栈：`MEM_PAGE_SIZE * 2 + (STACK / MEM_PAGE_SIZE + 1) * MEM_PAGE_SIZE`（约 266240 B）。改动勿增大该占用。
+单协程栈：`MEM_PAGE_SIZE * 2 + (STACK / MEM_PAGE_SIZE + 1) * MEM_PAGE_SIZE`（`STACK=131072` 时约 137216 B）。改动勿增大该占用。
 
 ### 7. 只用 `libmthread.a` / `.so`
 

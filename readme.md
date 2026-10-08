@@ -422,7 +422,7 @@ make -C app/st_hookdemo
 MEM_PAGE_SIZE * 2 + (STACK / MEM_PAGE_SIZE + 1) * MEM_PAGE_SIZE
 ```
 
-当前常量：`STACK = 260096`，`MEM_PAGE_SIZE = 2048` → 约 **266240 字节 / 协程**（约 260 KiB）。
+当前常量：`STACK = 131072`（128KB），`MEM_PAGE_SIZE = 2048` → 约 **137216 字节 / 协程**。
 
 | 指标 | 状态 |
 | --- | --- |

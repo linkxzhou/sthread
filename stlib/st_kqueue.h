@@ -71,6 +71,8 @@ public:
     m_size_ = 0;
   }
 
+  /* 绝对掩码：新 mask 里没有的过滤器要 EV_DELETE。
+   * epoll 的 AddEvent 同样是替换，不是或上旧兴趣。 */
   int32_t AddEvent(int32_t fd, int32_t mask) {
     if (m_file_[fd].mask == mask) {
       return ST_OK;

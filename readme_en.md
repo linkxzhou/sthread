@@ -422,7 +422,7 @@ Per-coroutine stack allocation (implementation formula, `StThread::InitStack`):
 MEM_PAGE_SIZE * 2 + (STACK / MEM_PAGE_SIZE + 1) * MEM_PAGE_SIZE
 ```
 
-Current constants: `STACK = 260096`, `MEM_PAGE_SIZE = 2048` → about **266240 bytes / coroutine** (about 260 KiB).
+Current constants: `STACK = 131072` (128KB), `MEM_PAGE_SIZE = 2048` → about **137216 bytes / coroutine**.
 
 | Metric | Status |
 | --- | --- |

@@ -31,7 +31,7 @@ public:
 
   ~StThreadSchedule() {
     m_active_thread_ = NULL;
-    // TODO: 回收sthread
+    /* 普通协程在 Recycle 里回池。daemon/primo 跟进程走，这里不 delete。 */
     m_daemon_ = NULL;
     m_primo_ = NULL;
   }
@@ -80,6 +80,15 @@ public:
   /* 给 target 记一次通知，并在它正停在睡眠堆或 IO 队列时把它放进可运行队列。
    * 不 Unpend，不跨 OS 线程。调用方已确认 target 属于本调度器。 */
   int32_t Notify(StThreadItem *target);
+
+  /* 回调结束后把普通协程放回 UtilPtrPool 并挂起，栈不释放。
+   * 池满则挂到回收队列，切走之后再 delete。daemon/primo 不走这里。 */
+  void Recycle(StThread *thread);
+
+  void DetachForReuse(StThread *thread);
+
+  /* 释放回收队列里已经切走的协程。current 还在自己的栈上，先留着。 */
+  void ReapReclaim(StThreadItem *current);
 
   // 唤醒父亲线程
   void WakeupParent(StThreadItem *thread);
@@ -195,8 +204,8 @@ protected:
 /* 用途：可切换的协程实现（栈 + ucontext + Run）。
  * 线程模型：仅在所属 OS 线程的调度器内切换。context_make 将 Stack* 拆成 ty/tx
  * 再由 ActiveThreadStartUp 拼回（makecontext 限制）。所有权：栈由 context_make
- * 分配；FreeStack → context_free 释放；对象本身由 UtilPtrPool<StThread> /
- * 调度器管理。 */
+ * 分配。普通协程回调结束后 Recycle 回 UtilPtrPool 并挂起，栈留着复用；空闲
+ * 超过上限才 delete → context_free。daemon/primo 不入池。 */
 class StThread : public StThreadItem {
 public:
   StThread() : StThreadItem() {
@@ -208,6 +217,12 @@ public:
   }
 
   virtual ~StThread() { FreeStack(); }
+
+  /* 池化复用时清掉上一次的回调和队列标志，保留栈和 ucontext。 */
+  virtual void Reset() {
+    StThreadItem::Reset();
+    m_flag_ = eNOT_INLIST;
+  }
 
   virtual void Run(void) {}
 
@@ -295,17 +310,22 @@ protected:
       context_exit(0);
       return;
     }
-    LOG_TRACE("---------- [name: %s] -----------", thread->GetName());
-    if (NULL != thread->m_callback_) {
-      thread->m_callback_->Run();
+    /* 不从 makecontext 入口返回：返回会按调用约定拆掉栈。
+     * 跑完一个回调就 Recycle，下次 CreateThread 把新回调写进来再唤醒。 */
+    for (;;) {
+      LOG_TRACE("---------- [name: %s] -----------", thread->GetName());
+      if (NULL != thread->m_callback_) {
+        thread->m_callback_->Run();
+      }
+      if (thread->IsSubStThread()) {
+        thread_schedule->WakeupParent(thread);
+      }
+      if (thread->IsDaemon() || thread->IsPrimo()) {
+        thread_schedule->Yield(thread);
+        continue;
+      }
+      thread_schedule->Recycle(thread);
     }
-    // 判断当前线程是否有子线程
-    if (thread->IsSubStThread()) {
-      thread_schedule->WakeupParent(thread);
-    }
-    /* Yield 切走后本协程不再入队，其后原 SwitchThread/context_exit
-     * 不可达（A9）。 */
-    thread_schedule->Yield(thread);
   }
 };
 
