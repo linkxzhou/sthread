@@ -7,7 +7,9 @@
 #include "process.h"
 #include "stats.h"
 #include "utils.h"
+#include "app/st_c.h"
 #include "stlib/st_log.h"
+#include "stlib/st_netaddr.h"
 #include <vector>
 
 static wrk::config cg;
@@ -120,6 +122,146 @@ static int parse_args(wrk::config *_cg, char **url,
   return 0;
 }
 
+/* 短连接上的一次 HTTP/1.1 GET。统计口径与原先按连接累计的 number 一致：
+ * 失败都记到 errors.connect，成功才 complete++，bytes 为解析器吃掉的字节。 */
+extern "C" int wrk_on_message_complete(http_parser *p) {
+  int *done = (int *)p->data;
+  if (done != NULL) {
+    *done = 1;
+  }
+  return 0;
+}
+
+static void release_client(StExecClientConnection *conn) {
+  if (conn != NULL) {
+    Instance<StConnectionManager<StExecClientConnection> >()->FreePtr(conn);
+  }
+}
+
+static int remaining_ms(uint64_t start_ms, int timeout_ms) {
+  int used = (int)(Util::TimeMs() - start_ms);
+  if (used >= timeout_ms) {
+    return 0;
+  }
+  return timeout_ms - used;
+}
+
+static void http_fail(wrk::number *num) {
+  num->errors.connect++;
+  num->end = wrk::Util::time_us();
+}
+
+static void http_get(wrk::number *num, const char *host, const std::string &path,
+                     struct sockaddr_in *dst, int timeout_ms) {
+  char req[4096];
+  int reqlen;
+  StExecClientConnection *conn = NULL;
+  int fd = -1;
+  uint64_t start_ms;
+  int left;
+  ssize_t sent;
+  char rbuf[4096];
+  int accepted = 0;
+  int done = 0;
+  http_parser parser;
+  http_parser_settings settings;
+  const char *use_host = host != NULL ? host : "";
+
+  memset(num, 0, sizeof(*num));
+  reqlen = snprintf(req, sizeof(req),
+                    "GET %s HTTP/1.1\r\nHost: %s\r\n"
+                    "User-Agent: curl/7.54.0\r\nAccept: */*\r\n\r\n",
+                    path.c_str(), use_host);
+  if (reqlen < 0 || reqlen >= (int)sizeof(req)) {
+    num->start = wrk::Util::time_us();
+    http_fail(num);
+    return;
+  }
+  num->requests++;
+  num->start = wrk::Util::time_us();
+  if (wrk::Util::s_verbose_) {
+    printf("[SEND]len : %d, buf : %s\n", reqlen, req);
+  }
+
+  start_ms = Util::TimeMs();
+  {
+    StNetAddr addr(*dst);
+    conn = Instance<StConnectionManager<StExecClientConnection> >()->AllocPtr(
+        eTCP_CONN, &addr);
+    if (conn == NULL) {
+      http_fail(num);
+      return;
+    }
+    left = remaining_ms(start_ms, timeout_ms);
+    if (left <= 0) {
+      release_client(conn);
+      http_fail(num);
+      return;
+    }
+    conn->SetTimeout(left);
+    fd = conn->Create(addr);
+  }
+  if (fd < 0) {
+    release_client(conn);
+    http_fail(num);
+    return;
+  }
+
+  left = remaining_ms(start_ms, timeout_ms);
+  sent = st_send(fd, req, (size_t)reqlen, 0, left);
+  if (sent < 0 || (int)sent != reqlen) {
+    release_client(conn);
+    http_fail(num);
+    return;
+  }
+
+  http_parser_init(&parser, HTTP_RESPONSE);
+  http_parser_settings_init(&settings);
+  parser.data = &done;
+  settings.on_message_complete = wrk_on_message_complete;
+
+  while (!done && accepted < (int)sizeof(rbuf)) {
+    int nread;
+    size_t parsed;
+    left = remaining_ms(start_ms, timeout_ms);
+    if (left <= 0) {
+      break;
+    }
+    nread = st_recv(fd, rbuf + accepted, (int)sizeof(rbuf) - accepted, 0, left);
+    if (nread < 0) {
+      break;
+    }
+    if (nread == 0) {
+      http_parser_execute(&parser, &settings, rbuf + accepted, 0);
+      break;
+    }
+    parsed =
+        http_parser_execute(&parser, &settings, rbuf + accepted, (size_t)nread);
+    if (wrk::Util::s_verbose_) {
+      printf("[RECV]http_len : %d, len : %d, buf : %.*s\n", (int)parsed, nread,
+             nread, rbuf + accepted);
+    }
+    if (HTTP_PARSER_ERRNO(&parser) != HPE_OK) {
+      break;
+    }
+    accepted += (int)parsed;
+    if (done) {
+      break;
+    }
+    if ((int)parsed != nread) {
+      break;
+    }
+  }
+  release_client(conn);
+  if (!done) {
+    http_fail(num);
+    return;
+  }
+  num->bytes += (uint64_t)accepted;
+  num->complete++;
+  num->end = wrk::Util::time_us();
+}
+
 static char *copy_url_part(char *url, struct http_parser_url *parts,
                            enum http_parser_url_fields field) {
   char *part = NULL;
@@ -158,64 +300,37 @@ void callback(void *data) {
   if (!wrk::Util::s_verbose_) {
     LOG_LEVEL(LLOG_ERR);
   }
-  IMtActionClient *actionframe = Instance<IMtActionClient>();
 
-  // -------------- 2.创建action --------------
+  // 每进程 connections/numbers 次短连接，顺序发出（与原先 SendRecv 循环一致）。
   int count = (int)(cg.connections / cg.numbers);
   if (wrk::Util::s_verbose_) {
     printf("mt_init_frame ret : %d, count : %d\n", ret, count);
   }
-  std::vector<wrk::HttpIMessage *> msg_vc;
-  std::vector<IMtAction *> action_vc;
+  std::vector<wrk::number> results;
+  results.resize(count);
   for (int i = 0; i < count; i++) {
-    wrk::HttpIMessage *msg = new wrk::HttpIMessage();
-    msg->m_host_ = cg.host;
+    std::string path = "/";
     if (cg.path != NULL) {
-      msg->m_get_ = std::string(cg.path);
+      path = cg.path;
       if (cg.query != NULL) {
-        msg->m_get_ += "?" + std::string(cg.query);
+        path += "?";
+        path += cg.query;
       }
-    } else {
-      msg->m_get_ = "/";
     }
-
-    IMtAction *action = new wrk::HttpIMtAction();
-    action->SetMsgDstAddr(&servaddr);
-    action->SetConnType(eTCP_SHORT_CONN);
-    action->SetMsgBufferSize(4096); // 设置buffsize大小
-    action->SetIMessagePtr(msg);
-    actionframe->Add(action);
-
-    msg_vc.push_back(msg);
-    action_vc.push_back(action);
+    http_get(&results[i], cg.host, path, &servaddr, 10000);
   }
 
-  ret = actionframe->SendRecv(10000);
-  // debug选项
+  ret = 0;
   if (wrk::Util::s_verbose_) {
     printf("actionframe ret : %d, count : %d\n", ret, count);
   }
 
-  std::vector<wrk::HttpIMessage *>::iterator iter = msg_vc.begin();
-  while (iter != msg_vc.end()) {
-    p->ChildProcessSend(&((*iter)->m_number_), sizeof(wrk::number));
+  for (int i = 0; i < count; i++) {
+    p->ChildProcessSend(&results[i], sizeof(wrk::number));
     if (wrk::Util::s_verbose_) {
       printf("[CHILDREN] send : \n");
-      wrk::Util::print_number_debug(&((*iter)->m_number_));
+      wrk::Util::print_number_debug(&results[i]);
     }
-    iter++;
-  }
-
-  // 删除数组元素
-  std::vector<wrk::HttpIMessage *>::iterator iter1 = msg_vc.begin();
-  while (iter1 != msg_vc.end()) {
-    safe_delete(*iter1);
-    iter1++;
-  }
-  std::vector<IMtAction *>::iterator iter2 = action_vc.begin();
-  while (iter2 != action_vc.end()) {
-    safe_delete(*iter2);
-    iter2++;
   }
 }
 

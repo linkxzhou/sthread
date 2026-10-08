@@ -1,216 +1,252 @@
 #include "memcache.h"
-#include <iostream>
-#include <sstream>
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <stdlib.h>
 #include <string.h>
-#include <string>
 
-static unsigned int check(void *buf, int len) {
-  // LOG_TRACE("buf : %s, len : %d", buf, len);
-  return len;
-}
+using namespace stlib;
 
-class MemcacheIMessage : public IMessage {
+/* 一次 memcache 文本请求/响应。解析逻辑仍走 memcache_parse_req/rsp。 */
+class MemcacheMsg {
 public:
-  MemcacheIMessage()
-      : m_request_(NULL), m_request_len_(0), m_response_(NULL),
-        m_response_len_(0) {
-    m_req_msg_ = (struct msg *)malloc(sizeof(struct msg));
-    m_rsp_msg_ = (struct msg *)malloc(sizeof(struct msg));
+  MemcacheMsg()
+      : m_req_(NULL), m_rsp_(NULL), m_request_(NULL), m_response_(NULL),
+        m_request_len_(0), m_response_len_(0) {
+    m_req_ = (struct msg *)malloc(sizeof(struct msg));
+    m_rsp_ = (struct msg *)malloc(sizeof(struct msg));
+    if (m_req_ != NULL) {
+      memset(m_req_, 0, sizeof(*m_req_));
+    }
+    if (m_rsp_ != NULL) {
+      memset(m_rsp_, 0, sizeof(*m_rsp_));
+    }
   }
 
-  ~MemcacheIMessage() {
-    safe_free(m_req_msg_);
-    safe_free(m_rsp_msg_);
-    safe_free(m_request_);
-    m_request_len_ = 0;
+  ~MemcacheMsg() {
+    if (m_req_ != NULL && m_req_->keys != NULL) {
+      array_destroy(m_req_->keys);
+    }
+    if (m_rsp_ != NULL && m_rsp_->keys != NULL) {
+      array_destroy(m_rsp_->keys);
+    }
+    st_safe_free(m_req_);
+    st_safe_free(m_rsp_);
+    st_safe_free(m_request_);
+    st_safe_free(m_response_);
   }
 
-  eParseResult SetMemcacheRequest(const char *request) {
+  eParseResult SetRequest(const char *request) {
+    if (m_req_ == NULL || request == NULL) {
+      return MSG_PARSE_ERROR;
+    }
+    st_safe_free(m_request_);
     m_request_ = strdup(request);
-    m_request_len_ = strlen(m_request_);
-
-    m_req_msg_->token = (uint8_t *)m_request_;
-    m_req_msg_->pos = (uint8_t *)m_request_;
-    m_req_msg_->last = (uint8_t *)(m_request_ + m_request_len_);
-    m_req_msg_->end = (uint8_t *)(m_request_ + m_request_len_);
-    m_req_msg_->state = SW_START;
-    m_req_msg_->keys = array_create(1, sizeof(struct keypos));
-
+    if (m_request_ == NULL) {
+      return MSG_PARSE_ERROR;
+    }
+    m_request_len_ = (int)strlen(m_request_);
+    m_req_->token = (uint8_t *)m_request_;
+    m_req_->pos = (uint8_t *)m_request_;
+    m_req_->last = (uint8_t *)(m_request_ + m_request_len_);
+    m_req_->end = (uint8_t *)(m_request_ + m_request_len_);
+    m_req_->state = SW_START;
+    if (m_req_->keys == NULL) {
+      m_req_->keys = array_create(1, sizeof(struct keypos));
+    } else {
+      m_req_->keys->nelem = 0;
+    }
+    if (m_req_->keys == NULL) {
+      return MSG_PARSE_ERROR;
+    }
     do {
-      memcache_parse_req(m_req_msg_);
-    } while (m_req_msg_->result == MSG_PARSE_AGAIN);
-
-    LOG_DEBUG("keys : %d", array_n(m_req_msg_->keys));
-
-    return m_req_msg_->result;
+      memcache_parse_req(m_req_);
+    } while (m_req_->result == MSG_PARSE_AGAIN);
+    LOG_DEBUG("keys : %d", array_n(m_req_->keys));
+    return m_req_->result;
   }
 
-  inline const char *GetMemcacheRequest() const { return m_request_; }
+  const char *Request() const { return m_request_; }
+  int RequestLen() const { return m_request_len_; }
 
-  inline int GetMemcacheRequestLen() { return m_request_len_; }
-
-  eParseResult SetMemcacheResponse(const char *response, int len) {
-    m_response_ = (char *)malloc(len);
+  /* 用当前已收到的缓冲区重解析。OK 表示至少一条响应完整。 */
+  eParseResult FeedResponse(const char *response, int len) {
+    if (m_rsp_ == NULL || response == NULL || len < 0) {
+      return MSG_PARSE_ERROR;
+    }
+    st_safe_free(m_response_);
+    m_response_ = (char *)malloc((size_t)len + 1);
+    if (m_response_ == NULL) {
+      return MSG_PARSE_ERROR;
+    }
+    memcpy(m_response_, response, (size_t)len);
+    m_response_[len] = '\0';
     m_response_len_ = len;
-    memcpy(m_response_, response, m_response_len_);
-
-    m_rsp_msg_->token = (uint8_t *)m_response_;
-    m_rsp_msg_->pos = (uint8_t *)m_response_;
-    m_rsp_msg_->last = (uint8_t *)(m_response_ + m_response_len_);
-    m_rsp_msg_->end = (uint8_t *)(m_response_ + m_response_len_);
-    m_rsp_msg_->state = SW_START;
-    m_rsp_msg_->keys = array_create(1, sizeof(struct keypos));
-
+    m_rsp_->token = (uint8_t *)m_response_;
+    m_rsp_->pos = (uint8_t *)m_response_;
+    m_rsp_->last = (uint8_t *)(m_response_ + m_response_len_);
+    m_rsp_->end = (uint8_t *)(m_response_ + m_response_len_);
+    m_rsp_->state = SW_START;
+    if (m_rsp_->keys == NULL) {
+      m_rsp_->keys = array_create(1, sizeof(struct keypos));
+    } else {
+      m_rsp_->keys->nelem = 0;
+    }
+    if (m_rsp_->keys == NULL) {
+      return MSG_PARSE_ERROR;
+    }
     do {
-      memcache_parse_rsp(m_rsp_msg_);
-    } while (m_rsp_msg_->result == MSG_PARSE_AGAIN);
-
-    LOG_DEBUG("keys : %d", array_n(m_rsp_msg_->keys));
-
-    return m_rsp_msg_->result;
+      memcache_parse_rsp(m_rsp_);
+    } while (m_rsp_->result == MSG_PARSE_AGAIN);
+    LOG_DEBUG("keys : %d", array_n(m_rsp_->keys));
+    return m_rsp_->result;
   }
 
-  inline const char *GetMemcacheResponse() const { return m_response_; }
-
-  inline int GetMemcacheResponseLen() { return m_response_len_; }
+  const char *Response() const { return m_response_; }
+  int ResponseLen() const { return m_response_len_; }
 
 private:
-  struct msg *m_req_msg_, *m_rsp_msg_;
-  char *m_request_, *m_response_;
-  int m_request_len_, m_response_len_;
+  struct msg *m_req_;
+  struct msg *m_rsp_;
+  char *m_request_;
+  char *m_response_;
+  int m_request_len_;
+  int m_response_len_;
 };
 
-class MemcacheIMtAction : public IMtAction {
-public:
-  virtual int HandleEncode(void *buf, int &len, IMessage *msg) {
-    if (msg == NULL) {
-      return -1;
-    }
-    if (((MemcacheIMessage *)msg)->GetMemcacheRequestLen() <= 0) {
-      return -2;
-    }
-    len = ((MemcacheIMessage *)msg)->GetMemcacheRequestLen();
-    memcpy(buf, ((MemcacheIMessage *)msg)->GetMemcacheRequest(), len);
-    ((char *)buf)[len] = '\0';
-
+static int remaining_ms(uint64_t start_ms, int timeout_ms) {
+  int used = (int)(Util::TimeMs() - start_ms);
+  if (used >= timeout_ms) {
     return 0;
   }
-  virtual int HandleInput(void *buf, int len, IMessage *msg) {
-    LOG_DEBUG("send : %s", ((MemcacheIMessage *)msg)->GetMemcacheRequest());
-    LOG_DEBUG("buf : %s, len : %d", (char *)buf, len);
+  return timeout_ms - used;
+}
 
-    // 拷贝数据
-    eParseResult s =
-        ((MemcacheIMessage *)msg)->SetMemcacheResponse((const char *)buf, len);
-    if (s != MSG_PARSE_OK) {
-      LOG_ERROR("eParseResult s : %d", s);
-      return 0;
+static void release_client(StExecClientConnection *conn) {
+  if (conn != NULL) {
+    Instance<StConnectionManager<StExecClientConnection> >()->FreePtr(conn);
+  }
+}
+
+/* 短连接：把已解析的请求发出去，读到解析器认为响应完整。 */
+static int memcache_exchange(MemcacheMsg *msg, struct sockaddr_in *dst,
+                             int timeout_ms) {
+  StNetAddr addr(*dst);
+  StExecClientConnection *conn = NULL;
+  int fd;
+  uint64_t start_ms;
+  int left;
+  ssize_t sent;
+  char *buf = NULL;
+  int cap = 65535;
+  int got = 0;
+  int ret = -1;
+  eParseResult parsed = MSG_PARSE_ERROR;
+
+  if (msg == NULL || msg->Request() == NULL || msg->RequestLen() <= 0) {
+    return -1;
+  }
+  LOG_DEBUG("send : %s", msg->Request());
+  start_ms = Util::TimeMs();
+  conn = Instance<StConnectionManager<StExecClientConnection> >()->AllocPtr(
+      eTCP_CONN, &addr);
+  if (conn == NULL) {
+    LOG_ERROR("memcache alloc connection failed");
+    return -1;
+  }
+  left = remaining_ms(start_ms, timeout_ms);
+  if (left <= 0) {
+    release_client(conn);
+    return -1;
+  }
+  conn->SetTimeout(left);
+  fd = conn->Create(addr);
+  if (fd < 0) {
+    release_client(conn);
+    return -1;
+  }
+  left = remaining_ms(start_ms, timeout_ms);
+  sent = st_send(fd, msg->Request(), (size_t)msg->RequestLen(), 0, left);
+  if (sent < 0 || (int)sent != msg->RequestLen()) {
+    release_client(conn);
+    return -1;
+  }
+
+  buf = (char *)malloc((size_t)cap + 1);
+  if (buf == NULL) {
+    release_client(conn);
+    return -1;
+  }
+  while (got < cap) {
+    int nread;
+    left = remaining_ms(start_ms, timeout_ms);
+    if (left <= 0) {
+      break;
     }
-    LOG_DEBUG("eParseResult s : %d", s);
-
-    return len;
+    nread = st_recv(fd, buf + got, cap - got, 0, left);
+    if (nread < 0) {
+      break;
+    }
+    if (nread == 0) {
+      break;
+    }
+    got += nread;
+    buf[got] = '\0';
+    LOG_DEBUG("buf : %s, len : %d", buf, got);
+    parsed = msg->FeedResponse(buf, got);
+    if (parsed == MSG_PARSE_OK) {
+      LOG_DEBUG("eParseResult s : %d", parsed);
+      LOG_DEBUG("buf : %s, len : %d", msg->Response(), msg->ResponseLen());
+      ret = 0;
+      break;
+    }
+    if (parsed != MSG_PARSE_AGAIN) {
+      LOG_ERROR("eParseResult s : %d", parsed);
+      break;
+    }
   }
-  virtual int HandleProcess(void *buf, int len, IMessage *msg) {
-    LOG_DEBUG("buf : %s, len : %d",
-              ((MemcacheIMessage *)msg)->GetMemcacheResponse(),
-              ((MemcacheIMessage *)msg)->GetMemcacheResponseLen());
-
-    return 0;
-  }
-  virtual int HandleError(int err, IMessage *msg) { return 0; }
-};
+  free(buf);
+  release_client(conn);
+  return ret;
+}
 
 static void *thread_func(void *) {
-  //定义sockaddr_in
   struct sockaddr_in servaddr;
   memset(&servaddr, 0, sizeof(servaddr));
   servaddr.sin_family = AF_INET;
-  servaddr.sin_port = htons(11211);                  ///服务器端口
-  servaddr.sin_addr.s_addr = inet_addr("127.0.0.1"); ///服务器ip
+  servaddr.sin_port = htons(11211);
+  servaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
 
   int ret = mt_init_frame();
   LOG_TRACE("init ret : %d, servaddr : %p", ret, &servaddr);
   mt_set_hook_flag();
 
-  IMtActionClient *actionclient = Instance<IMtActionClient>();
-
-  MemcacheIMessage *msg1 = new MemcacheIMessage();
-  eParseResult s = msg1->SetMemcacheRequest(
+  MemcacheMsg msg1;
+  eParseResult s = msg1.SetRequest(
       "get key1\r\nget key2\r\nset k1 0 900 9\r\nmemcached\r\n");
   if (s != MSG_PARSE_OK) {
     return NULL;
   }
-  IMtAction *action1 = new MemcacheIMtAction();
-  action1->SetIMessagePtr(msg1);
-  action1->SetMsgDstAddr(&servaddr);
-  action1->SetConnType(eTCP_SHORT_CONN);
-  actionclient->Add(action1);
-
-  MemcacheIMessage *msg2 = new MemcacheIMessage();
-  s = msg2->SetMemcacheRequest("get k1\r\n");
+  MemcacheMsg msg2;
+  s = msg2.SetRequest("get k1\r\n");
   if (s != MSG_PARSE_OK) {
     return NULL;
   }
-  IMtAction *action2 = new MemcacheIMtAction();
-  action2->SetIMessagePtr(msg2);
-  action2->SetMsgDstAddr(&servaddr);
-  action2->SetConnType(eTCP_SHORT_CONN);
-  actionclient->Add(action2);
 
   LOG_TRACE("wait thread : %d", Instance<Frame>()->m_wait_num_);
 
-  int count = 1;
-  while (count-- > 0) {
-    ret = actionclient->SendRecv(1000); // 设置超时时间1000ms
-    LOG_TRACE("ret : %d", ret);
-  }
+  ret = memcache_exchange(&msg1, &servaddr, 1000);
+  LOG_TRACE("ret : %d", ret);
+  ret = memcache_exchange(&msg2, &servaddr, 1000);
+  LOG_TRACE("ret : %d", ret);
 
-  LOG_TRACE("thread id : %d, frame id : %p", pthread_self(), Instance<Frame>());
+  LOG_TRACE("thread id : %d, frame id : %p", (int)pthread_self(),
+            Instance<Frame>());
   return NULL;
 }
 
 int main(int argc, char *argv[]) {
-  struct msg *msg_;
-  msg_ = (struct msg *)malloc(sizeof(struct msg));
-  memset(msg_, 0, sizeof(struct msg));
-
-  // const char *str = "get key1\r\nget key2\r\nset k1 0 900 9\nmemcached\r\n";
-  // msg_->token = (uint8_t *)str;
-  // msg_->pos = (uint8_t *)str;
-  // msg_->last = (uint8_t *)(str + strlen(str));
-  // msg_->end = (uint8_t *)(str + strlen(str));
-  // msg_->state = SW_START;
-  // msg_->keys = array_create(1024, 1);
-  // do
-  // {
-  //     memcache_parse_req(msg_);
-  // } while (msg_->result == MSG_PARSE_AGAIN);
-
-  // const char *str1 = "set k1 0 900 9\nmemcached\r\n";
-  // msg_->token = (uint8_t *)str1;
-  // msg_->pos = (uint8_t *)str1;
-  // msg_->last = (uint8_t *)(str1 + strlen(str1));
-  // msg_->end = (uint8_t *)(str1 + strlen(str1));
-  // msg_->state = SW_START;
-  // msg_->keys = array_create(1024, 1);
-  // do
-  // {
-  //     memcache_parse_rsp(msg_);
-  // } while (msg_->result == MSG_PARSE_AGAIN);
-
-  // const char *str2 = "VALUE k1 0 9\r\nmemcached\r\nEND\r\n";
-  // msg_->token = (uint8_t *)str2;
-  // msg_->pos = (uint8_t *)str2;
-  // msg_->last = (uint8_t *)(str2 + strlen(str2));
-  // msg_->end = (uint8_t *)(str2 + strlen(str2));
-  // msg_->state = SW_START;
-  // msg_->keys = array_create(1024, 1);
-  // do
-  // {
-  //     memcache_parse_rsp(msg_);
-  // } while (msg_->result == MSG_PARSE_AGAIN);
-
+  (void)argc;
+  (void)argv;
   thread_func(NULL);
-
   return 0;
 }

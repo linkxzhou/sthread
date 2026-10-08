@@ -2,7 +2,6 @@
 #define _MEMCACHE_H_
 
 #include "mt_array.h"
-#include "app/st_action.h"
 #include "app/st_frame.h"
 
 #define LF                  (uint8_t) 10

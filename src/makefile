@@ -19,7 +19,7 @@ endif
 #   src/:       st_thread.o  st_connection.o  st_sys.o
 #   stlib/:     st_log.o  st_context.o  ucontext/{ucontext,asm}.o
 #               （不含 st_test.o；测试单独链 stlib/st_test.cc）
-#   app/（库侧）: st_c.o  st_sys.o  st_action.o
+#   app/（库侧）: st_c.o  st_sys.o
 #               C API / syscall hook；物理仍在 app/，语义属库
 #
 # 归档内可有两个 st_sys.o（src 与 app）；符号名空间已错开，链接正常。
@@ -35,7 +35,7 @@ STLIB_O = $(ST_ROOT)/stlib/st_log.o \
 	$(ST_ROOT)/stlib/ucontext/ucontext.o \
 	$(UCONTEXT_ASM_O)
 
-APP_O = $(ST_ROOT)/app/st_c.o $(ST_ROOT)/app/st_sys.o $(ST_ROOT)/app/st_action.o
+APP_O = $(ST_ROOT)/app/st_c.o $(ST_ROOT)/app/st_sys.o
 
 LIB_O = $(SRC_O) $(STLIB_O) $(APP_O)
 
