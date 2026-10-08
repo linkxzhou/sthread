@@ -16,7 +16,7 @@
 > - `09`：**进行中** — 主分支缺陷修复、生命周期清理与跨平台验收——[`09`](09-main-bugfix-cleanup.md)
 > - `10`：**✅ 已完成** — 平台抽象层 + Android（NDK，arm64-v8a / x86_64，只编译）+ `st_httpclient`——[`10`](10-cross-platform-android-httpclient.md)
 > - `11`：**✅ 已落地** — 六个新样例（echo / 端口扫描 / HTTP 反代 / Redis / 聊天室 / POSIX hook）——[`11`](11-apps-more-scenarios.md)
-> - `12`：**计划** — 短连接曲线的性能优化（测量已完成，未改库）——[`12`](12-performance-optimization.md)
+> - `12`：**已拍板** — 本轮只做 epoll 掩码、去掉多余 DEL 日志、协程栈复用，以及默认栈 128KB；其余延期——[`12`](12-performance-optimization.md)
 >
 > 各份 `0x-*.md` 正文含计划原文 + §9 落地记录；**当前状态以各文顶部「状态」行、根 README、AGENTS 为准**。
 
@@ -109,7 +109,7 @@
 | 09 ⏳ | [`09-main-bugfix-cleanup.md`](09-main-bugfix-cleanup.md) | 主分支缺陷修复、生命周期清理、跨平台验收 | macOS + Linux 三件套全绿；见 09「最终验收」 |
 | 10 ✅ | [`10-cross-platform-android-httpclient.md`](10-cross-platform-android-httpclient.md) | 平台抽象层、Android（NDK，arm64-v8a / x86_64）、`st_httpclient` | P0–P2、P4 已落地；`build-android.yml` 只编译；Windows / 模拟器 / armv7 不做。见 10 §9 |
 | 11 ✅ | [`11-apps-more-scenarios.md`](11-apps-more-scenarios.md) | `st_echo`、`st_portscan`、`st_httpproxy`、`st_redisclient`、`st_chat`、`st_hookdemo` | 已落地。库单测进 `make -C tests run`；六个 `make smoke-*` 只在本地跑 |
-| 12 📋 | [`12-performance-optimization.md`](12-performance-optimization.md) | 短连接平台期：epoll 掩码、多余 DEL 日志、协程栈复用、keepalive 曲线、`-O2` | 计划。实现时按文中 P0–P8 的出口；QPS 不进 CI |
+| 12 📋 | [`12-performance-optimization.md`](12-performance-optimization.md) | 短连接平台期。本轮：epoll 掩码、多余 DEL 日志、栈复用、`STACK=131072` | 已拍板（§11）。O4/O5/O6/O7/O8/O9/P8 延期。QPS 不进 CI |
 
 ---
 
@@ -329,6 +329,6 @@ app/st_sys.h:  ssize_t __sendto(int fd, const void *message, size_t length, int 
 | `09-main-bugfix-cleanup.md` | 主分支缺陷修复与精简（执行中） |
 | `10-cross-platform-android-httpclient.md` | 平台抽象层 + Android + `st_httpclient`（✅ 已完成；Windows 移到后续） |
 | `11-apps-more-scenarios.md` | 六个新样例：echo / 端口扫描 / HTTP 反代 / Redis / 聊天室 / POSIX hook（✅ 已落地） |
-| `12-performance-optimization.md` | 短连接曲线为何在并发 10 附近变平，以及按证据排序的优化（计划，未改库） |
+| `12-performance-optimization.md` | 短连接曲线为何在并发 10 附近变平。§11 已拍板：本轮只做 epoll 掩码、多余 DEL、栈复用和 128KB 默认栈 |
 
 根目录另有 [`../AGENTS.md`](../AGENTS.md)：面向 AI 助手与新贡献者的仓库约定。
