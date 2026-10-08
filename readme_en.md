@@ -356,6 +356,18 @@ Short-connection loopback curve of `st_httpclient` against `st_httpserver` (the 
 
 ![HTTP latency vs concurrency](docs/perf/http-latency-vs-concurrency.svg)
 
+| Concurrency | QPS (req/s) | p50 (ms) | p99 (ms) | Errors |
+| --- | ---: | ---: | ---: | ---: |
+| 1 | 21710.81 | 0 | 1 | 0 |
+| 10 | 38461.54 | 0 | 1 | 0 |
+| 50 | 38051.75 | 1 | 2 | 0 |
+| 100 | 37037.04 | 3 | 4 | 0 |
+| 200 | 36576.44 | 5 | 6 | 0 |
+| 500 | 36549.71 | 13 | 14 | 0 |
+| 1000 | 35868.01 | 25 | 30 | 0 |
+
+Each point is 50000 requests, median of 3 repeats. The client clock has 1 ms resolution, so a p50 of 0 means under 1 ms.
+
 The table, raw CSV, commands, and caveats (including one slower repeat at concurrency 500) are in [`reports/baseline-curve.md`](reports/baseline-curve.md). Regenerate (timestamped output under `reports/curve-*` is not committed):
 
 ```bash
