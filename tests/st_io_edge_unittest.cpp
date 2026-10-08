@@ -185,20 +185,21 @@ TEST(StStatus, ConnectRefused) {
   int rc;
   int err;
   StEventItem *item;
-  /* 只 bind 不 listen。非阻塞 connect 常常先 EINPROGRESS，完成后再是 RST。 */
+  /* 先占一个临时端口再关掉。无人监听时 Linux 和 macOS 都回 ECONNREFUSED。
+   * 套接字若一直占着端口，BSD 会丢掉 SYN，st_connect 只会等到 ETIME。 */
   lfd = bind_loopback(SOCK_STREAM, &port);
   ASSERT_TRUE(lfd >= 0);
+  ::close(lfd);
   ASSERT_TRUE(st_init_frame());
   fd = sys_socket(AF_INET, SOCK_STREAM, 0);
   ASSERT_TRUE(fd >= 0);
   item = watch_fd(fd, 0);
   ASSERT_TRUE(item != NULL);
   fill_dst(&dst, port);
-  rc = st_connect(fd, (struct sockaddr *)&dst, (int)sizeof(dst), 200);
+  rc = st_connect(fd, (struct sockaddr *)&dst, (int)sizeof(dst), 500);
   err = errno;
   drop_item(item);
   sys_close(fd);
-  ::close(lfd);
   ASSERT_TRUE(rc < 0);
   ASSERT_TRUE(err == ECONNREFUSED);
 }
