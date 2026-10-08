@@ -4,10 +4,10 @@
 
 #include "st_sys.h"
 #include "src/st_sys.h"
-#include <fcntl.h>
-#include <sys/socket.h>
-#include <stdarg.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <stdarg.h>
+#include <sys/socket.h>
 
 SyscallCallbackTab g_syscall_tab;
 int g_hook_flag = 0;
@@ -56,7 +56,7 @@ int sys_socket(int domain, int type, int protocol) {
     return fd;
   }
   sys_new_fd(fd); // 设置新的FD
-  int flags;    // 默认都设置为非阻塞
+  int flags;      // 默认都设置为非阻塞
   flags = sys_fcntl(fd, F_GETFL, 0);
   flags |= O_NONBLOCK;
   sys_fcntl(fd, F_SETFL, flags);
@@ -67,6 +67,12 @@ int sys_close(int fd) {
   sys_fd *_fd = sys_find_fd(fd);
   if (_fd) {
     sys_free_fd(fd);
+  }
+  /* close 会让内核摘掉 epoll/kqueue 登记，但 StIOState 的 per-fd mask
+   * 还在。fd 号一复用，AddEvent 就 MOD 一个不存在的登记（ENOENT），
+   * 或因 mask 碰巧相同而直接返回。先把缓存清掉。 */
+  if (GlobalEventSchedule() != NULL) {
+    GlobalEventSchedule()->ClearOsfd(fd);
   }
   HOOK_SYSCALL(close);
   if (!HAS_REAL(close)) {
@@ -133,7 +139,7 @@ ssize_t sys_write(int fd, const void *buffer, size_t nbyte) {
 }
 
 ssize_t sys_sendto(int fd, const void *buffer, size_t length, int flags,
-                 const struct sockaddr *de__addr, socklen_t de__len) {
+                   const struct sockaddr *de__addr, socklen_t de__len) {
   HOOK_SYSCALL(sendto);
   if (!HAS_REAL(sendto)) {
     errno = ENOSYS;
@@ -152,7 +158,7 @@ ssize_t sys_sendto(int fd, const void *buffer, size_t length, int flags,
 }
 
 ssize_t sys_recvfrom(int fd, void *buffer, size_t length, int flags,
-                   struct sockaddr *address, socklen_t *address_len) {
+                     struct sockaddr *address, socklen_t *address_len) {
   HOOK_SYSCALL(recvfrom);
   if (!HAS_REAL(recvfrom)) {
     errno = ENOSYS;
@@ -205,7 +211,7 @@ ssize_t sys_send(int fd, const void *buffer, size_t nbyte, int flags) {
 }
 
 int sys_setsockopt(int fd, int level, int option_name, const void *option_value,
-                 socklen_t option_len) {
+                   socklen_t option_len) {
   HOOK_SYSCALL(setsockopt);
   if (!HAS_REAL(setsockopt)) {
     errno = ENOSYS;

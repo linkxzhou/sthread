@@ -114,6 +114,14 @@ public:
     return AddEvent(fd, mask);
   }
 
+  /* 与 epoll 的 ClearFd 同义：close 后丢掉用户态兴趣缓存。 */
+  void ClearFd(int32_t fd) {
+    if (m_file_ == NULL || fd < 0 || fd >= m_size_) {
+      return;
+    }
+    m_file_[fd].mask = ST_NONE;
+  }
+
   int32_t Poll(struct timeval *tvp = NULL) {
     int32_t retval, numevents = 0;
 

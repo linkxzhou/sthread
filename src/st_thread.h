@@ -164,6 +164,13 @@ public:
     st_safe_free(m_event_);
   }
 
+  /* sys_close 在真正 close 之前调用。只清兴趣缓存，不碰 item 所有权。 */
+  inline void ClearOsfd(int32_t fd) {
+    if (m_iostate_ != NULL) {
+      m_iostate_->ClearFd(fd);
+    }
+  }
+
   inline void ClearItem(StEventItem *item) {
     Delete(item);
     int osfd = item->GetOsfd();

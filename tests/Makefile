@@ -10,12 +10,14 @@ FLAGS = $(ST_CXXFLAGS) $(ST_LDFLAGS) $(ST_LDLIBS)
 .PHONY: all clean run extra coverage coverage-report \
 	singleton base thread manager connection session keepalive c main server ucontext \
 	util buffer heap hash scheduler connmgr loopback context accept \
-	sysapi connio logbuf harvest httpserver covextra dnsproto httpclient
+	sysapi connio logbuf harvest httpserver covextra dnsproto httpclient \
+	ioedge fdreuse schededge hook serveredge
 
 # Primary suite (used by make -C tests run and coverage)
 all: singleton base thread manager connection session keepalive main \
 	util buffer heap hash scheduler connmgr loopback context server accept \
-	sysapi connio logbuf harvest httpserver covextra dnsproto httpclient
+	sysapi connio logbuf harvest httpserver covextra dnsproto httpclient \
+	ioedge fdreuse schededge hook serveredge
 
 extra: c
 
@@ -107,6 +109,43 @@ httpclient: st_http_client_unittest.cpp
 		$(ST_TEST_SRC) $(INCLUDE) -I$(ST_ROOT)/app/st_httpclient \
 		-I$(ST_ROOT)/app/st_wrk $(FLAGS) $(LIB) -o st_http_client_unittest
 
+ioedge: st_io_edge_unittest.cpp
+	$(CC) $< $(ST_TEST_SRC) $(INCLUDE) $(FLAGS) $(LIB) -o st_io_edge_unittest
+
+fdreuse: st_fd_reuse_unittest.cpp
+	$(CC) $< $(ST_TEST_SRC) $(INCLUDE) $(FLAGS) $(LIB) -o st_fd_reuse_unittest
+
+schededge: st_sched_edge_unittest.cpp
+	$(CC) $< $(ST_TEST_SRC) $(INCLUDE) $(FLAGS) $(LIB) -o st_sched_edge_unittest
+
+serveredge: st_server_edge_unittest.cpp
+	$(CC) $< $(ST_TEST_SRC) $(INCLUDE) $(FLAGS) $(LIB) -o st_server_edge_unittest
+
+# dlsym 回退只在动态链接的宿主机上测。Android 交叉编译不编这个 .so。
+ifeq ($(ST_OS),android)
+HOOK_LIB =
+HOOK_PRELOAD =
+HOOK_LDFLAGS =
+else ifeq ($(ST_OS),darwin)
+HOOK_LIB = libst_dlsym_null.dylib
+HOOK_PRELOAD = DYLD_INSERT_LIBRARIES=$(CURDIR)/libst_dlsym_null.dylib
+# 计数器只在插入的 dylib 里。允许链接期未定义，运行时没有库则为空。
+HOOK_LDFLAGS = -Wl,-U,_st_dlsym_null_hits
+else
+HOOK_LIB = libst_dlsym_null.so
+HOOK_PRELOAD = LD_PRELOAD=$(CURDIR)/libst_dlsym_null.so
+HOOK_LDFLAGS =
+endif
+
+libst_dlsym_null.so: dlsym_null_preload.c
+	$(CC) -shared -fPIC $< -ldl -o $@
+
+libst_dlsym_null.dylib: dlsym_null_preload.c
+	$(CC) -dynamiclib -fPIC $< -o $@
+
+hook: st_hook_unittest.cpp $(HOOK_LIB)
+	$(CC) $< $(ST_TEST_SRC) $(INCLUDE) $(FLAGS) $(HOOK_LDFLAGS) $(LIB) -o st_hook_unittest
+
 RUN_TESTS = \
 	st_singleton_unittest st_base_unittest st_thread_unittest \
 	st_manager_unittest st_connection_unittest st_session_unittest \
@@ -119,13 +158,22 @@ RUN_TESTS = \
 	st_http_server_unittest \
 	st_coverage_extra_unittest \
 	st_dns_proto_unittest \
-	st_http_client_unittest
+	st_http_client_unittest \
+	st_io_edge_unittest \
+	st_fd_reuse_unittest \
+	st_sched_edge_unittest \
+	st_hook_unittest \
+	st_server_edge_unittest
 
 run: all
 	@set -e; \
 	for t in $(RUN_TESTS); do \
 	  echo "=== run $$t ==="; \
-	  ./$$t; \
+	  if [ "$$t" = "st_hook_unittest" ] && [ -n "$(HOOK_PRELOAD)" ]; then \
+	    $(HOOK_PRELOAD) ./$$t; \
+	  else \
+	    ./$$t; \
+	  fi; \
 	done
 
 # LLVM source coverage. Requires COVERAGE=1 rebuild of lib + tests.
@@ -143,7 +191,12 @@ coverage: all
 	@failed=0; \
 	for t in $(RUN_TESTS); do \
 	  echo "=== cov $$t ==="; \
-	  LLVM_PROFILE_FILE="$(COV_DIR)/$${t}.%p%c.profraw" ./$$t \
+	  if [ "$$t" = "st_hook_unittest" ] && [ -n "$(HOOK_PRELOAD)" ]; then \
+	    preload="$(HOOK_PRELOAD)"; \
+	  else \
+	    preload=""; \
+	  fi; \
+	  LLVM_PROFILE_FILE="$(COV_DIR)/$${t}.%p%c.profraw" $$preload ./$$t \
 	    >$(COV_DIR)/$${t}.out 2>$(COV_DIR)/$${t}.err || { echo "FAIL $$t exit $$?"; failed=1; }; \
 	done; \
 	if [ $$failed -ne 0 ]; then exit 1; fi
@@ -162,4 +215,5 @@ coverage-report:
 	  --threshold=$(COV_THRESHOLD)
 
 clean:
-	@rm -rf st_*_unittest uthread_unittest server_unittest *.dSYM *.o
+	@rm -rf st_*_unittest uthread_unittest server_unittest *.dSYM *.o \
+		libst_dlsym_null.so libst_dlsym_null.dylib *.profraw *.profdata

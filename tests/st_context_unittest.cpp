@@ -7,11 +7,15 @@ ST_NAMESPACE_USING
 static Context g_main_ctx, g_child_ctx;
 static volatile int g_child_ran = 0;
 
+/* 子协程还在自己的栈上时用 context_exit 回到 initial。
+ * 不要在主上下文里再调一次 context_exit：setcontext/swapcontext
+ * 已经把 initial 恢复过了，再切回去会重放那次 epilogue，
+ * glibc + -fstack-protector 下表现为 stack smashing。 */
 static void child(uint ty, uint tx) {
   (void)ty;
   (void)tx;
   g_child_ran = 1;
-  setcontext(&g_main_ctx.uc);
+  context_exit(0);
 }
 
 TEST(StStatus, ContextSwitch) {
@@ -30,7 +34,6 @@ TEST(StStatus, ContextSwitch) {
   int r = context_switch(&g_main_ctx, &g_child_ctx);
   ASSERT_TRUE(r == 0);
   ASSERT_TRUE(g_child_ran == 1);
-  context_exit(0);
 }
 
 int main(int argc, char *argv[]) {

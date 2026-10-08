@@ -215,7 +215,11 @@ TCP_SENDRECV_EXIT_LABEL:
 /* B2: private 数据所有权归调用方，框架 Reset 不会 free。 */
 void st_set_private(void *data) {
   StThread *athread = (StThread *)(GlobalThreadSchedule()->GetActiveThread());
-  LOG_ASSERT(athread == NULL);
+  /* 原先 LOG_ASSERT(athread == NULL) 把条件写反了：有活动协程时直接
+   * abort，没有时再解引用空指针。这里改成空则返回。 */
+  if (athread == NULL) {
+    return;
+  }
   StThread *thread = (StThread *)(athread->GetRootStThread());
 
   if (thread != NULL) {
@@ -226,7 +230,9 @@ void st_set_private(void *data) {
 // 获取私有数据
 void *st_get_private() {
   StThread *athread = (StThread *)(GlobalThreadSchedule()->GetActiveThread());
-  LOG_ASSERT(athread == NULL);
+  if (athread == NULL) {
+    return NULL;
+  }
   StThread *thread = (StThread *)(athread->GetRootStThread());
 
   if (thread != NULL) {

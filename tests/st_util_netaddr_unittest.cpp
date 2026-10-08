@@ -1,6 +1,7 @@
 #include "stlib/st_closure.h"
 #include "stlib/st_log.h"
 #include "stlib/st_netaddr.h"
+#include "stlib/st_platform.h"
 #include "stlib/st_util.h"
 #include "tests/st_test_compat.h"
 
@@ -95,6 +96,55 @@ TEST(StStatus, Closure) {
   cl->Run();
   ASSERT_TRUE(g_clos_n == 3);
   delete cl;
+}
+
+TEST(StStatus, NetAddrParseErrors) {
+  StNetAddr bad4;
+  StNetAddr bad6;
+  StNetAddr any4;
+  StNetAddr any6;
+  StNetAddr v4;
+  StNetAddr v6;
+  bad4.SetAddr("999.999.999.999", 9);
+  ASSERT_TRUE(bad4.IsError());
+  bad6.SetAddr("gggg::1", 9, true);
+  ASSERT_TRUE(bad6.IsError());
+  any4.SetAddr((uint16_t)0, false, false);
+  ASSERT_TRUE(any4.IsError() == false);
+  ASSERT_TRUE(any4.Port() == 0);
+  ASSERT_TRUE(any4.IsIPV6() == false);
+  any6.SetAddr((uint16_t)53, false, true);
+  ASSERT_TRUE(any6.IsIPV6());
+  ASSERT_TRUE(any6.Port() == 53);
+  v4.SetAddr("127.0.0.1", 1);
+  v6.SetAddr("::1", 1, true);
+  ASSERT_TRUE((v4 == v6) == false);
+}
+
+TEST(StStatus, PlatformMacros) {
+#if defined(__ANDROID__)
+  ASSERT_TRUE(ST_OS_ANDROID == 1);
+  ASSERT_TRUE(ST_OS_LINUX == 0);
+  ASSERT_TRUE(ST_POLL_EPOLL == 1);
+  ASSERT_TRUE(ST_POLL_KQUEUE == 0);
+#elif defined(__APPLE__)
+  ASSERT_TRUE(ST_OS_DARWIN == 1);
+  ASSERT_TRUE(ST_OS_LINUX == 0);
+  ASSERT_TRUE(ST_POLL_KQUEUE == 1);
+  ASSERT_TRUE(ST_POLL_EPOLL == 0);
+#elif defined(__linux__)
+  ASSERT_TRUE(ST_OS_LINUX == 1);
+  ASSERT_TRUE(ST_OS_ANDROID == 0);
+  ASSERT_TRUE(ST_OS_DARWIN == 0);
+  ASSERT_TRUE(ST_POLL_EPOLL == 1);
+  ASSERT_TRUE(ST_POLL_KQUEUE == 0);
+#else
+  ASSERT_TRUE(ST_OS_LINUX + ST_OS_DARWIN + ST_OS_ANDROID + ST_OS_OPENBSD +
+                  ST_OS_FREEBSD >=
+              0);
+#endif
+  ASSERT_TRUE(ST_HOOK == 1);
+  ASSERT_TRUE(ST_OS_OPENBSD == 0 || ST_POLL_KQUEUE == 1);
 }
 
 TEST(StStatus, LogLevels) {
