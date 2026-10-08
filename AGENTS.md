@@ -14,7 +14,7 @@ sthread 是一个**基于协程的高性能网络库**，C++98，提供非阻塞
 
 ---
 
-## 仓库当前状态（plan/01～10）
+## 仓库当前状态（plan/01～11）
 
 | 范围 | 状态 |
 | --- | --- |
@@ -27,6 +27,7 @@ sthread 是一个**基于协程的高性能网络库**，C++98，提供非阻塞
 | Apple Silicon arm64 | **真实 ucontext/asm**（`NEEDARM64CONTEXT`） |
 | keepalive（L4） | **已修**：`eTCP_KEEPLIVE_CONN=0x11`，`Keeplive()`=`IS_KEEPLIVE` |
 | 本仓库 `LICENSE` | **未发布**（仅有 vendored 的 [`COPYRIGHT`](COPYRIGHT)） |
+| 六个新样例（echo / 端口扫描 / 反代 / Redis / 聊天室 / hook） | **计划**见 [`plan/11-apps-more-scenarios.md`](plan/11-apps-more-scenarios.md)；未开工 |
 
 回归记录：[`plan/04-regression-checklist.md`](plan/04-regression-checklist.md)。
 
