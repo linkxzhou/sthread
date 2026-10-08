@@ -12,7 +12,10 @@ CLANG_FORMAT ?= clang-format
 # 以及 app/、tests/ 下尚未整理的历史代码（属 plan/04、plan/05 范围）。
 FORMAT_SRC = $(wildcard stlib/*.h stlib/*.cc src/*.h src/*.cc stlib/tests/*.cc) \
 	app/st_httpclient/main.cpp app/st_httpclient/http_client.h \
-	app/st_httpclient/http_client.cc tests/st_http_client_unittest.cpp
+	app/st_httpclient/http_client.cc tests/st_http_client_unittest.cpp \
+	tests/st_io_edge_unittest.cpp tests/st_fd_reuse_unittest.cpp \
+	tests/st_sched_edge_unittest.cpp tests/st_hook_unittest.cpp \
+	tests/st_server_edge_unittest.cpp tests/dlsym_null_preload.c
 
 .PHONY: all help stlib lib apps tests stlib-tests test format format-check clean \
 	bench-http bench-dns bench bench-curve smoke-httpclient android

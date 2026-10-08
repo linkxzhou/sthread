@@ -56,8 +56,7 @@ jobs:
         timeout-minutes: 5
         run: make -C stlib/tests run CC=${{ matrix.cxx }}
 
-      - name: "[非阻塞] run tests/"
-        continue-on-error: true
+      - name: run tests/
         timeout-minutes: 10
         run: make -C tests run CC=${{ matrix.cxx }}
 

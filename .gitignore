@@ -4,7 +4,13 @@
 **/*.a
 **/*.so
 **/*.o
+**/*.dylib
 **/*.dSYM
+*.profraw
+*.profdata
+*.gcno
+*.gcda
+*.gcov
 /libmthread.a
 /libmthread.so
 **/libtask
