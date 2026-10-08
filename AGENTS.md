@@ -20,14 +20,14 @@ sthread 是一个**基于协程的高性能网络库**，C++98，提供非阻塞
 | --- | --- |
 | `stlib/` | 绿：`-std=c++98`，`make test`（stlib/tests）可跑 |
 | `make lib` | 绿：产出 `libmthread.a` / `.so`，无第三方运行时依赖 |
-| `make apps` | 绿：dns / memcache / wrk / httpserver / **dnsserver** / **httpclient** |
+| `make apps` | 绿：dns / memcache / wrk / httpserver / dnsserver / httpclient / echo / portscan / hookdemo / redis / httpproxy / chat |
 | Android | NDK 交叉编译 arm64-v8a / x86_64（API 21，`make android`，只编译）。无 armv7 / x86，不跑模拟器 |
 | `make bench-http` / `make bench-dns` | 绿：脚本起停 server（PID），写 `reports/`；冻结基线见 `reports/baseline-*.md` |
 | `make -C tests run` | macOS arm64 回归见 [`plan/09-main-bugfix-cleanup.md`](plan/09-main-bugfix-cleanup.md)；Linux 待验证 |
 | Apple Silicon arm64 | **真实 ucontext/asm**（`NEEDARM64CONTEXT`） |
 | keepalive（L4） | **已修**：`eTCP_KEEPLIVE_CONN=0x11`，`Keeplive()`=`IS_KEEPLIVE` |
 | 本仓库 `LICENSE` | **未发布**（仅有 vendored 的 [`COPYRIGHT`](COPYRIGHT)） |
-| 六个新样例（echo / 端口扫描 / 反代 / Redis / 聊天室 / hook） | **计划**见 [`plan/11-apps-more-scenarios.md`](plan/11-apps-more-scenarios.md)；未开工 |
+| 六个新样例（echo / 端口扫描 / 反代 / Redis / 聊天室 / hook） | **已落地**见 [`plan/11-apps-more-scenarios.md`](plan/11-apps-more-scenarios.md)。冒烟是 `make smoke-*`，只在本地跑，不进 CI |
 
 回归记录：[`plan/04-regression-checklist.md`](plan/04-regression-checklist.md)。
 
@@ -79,7 +79,7 @@ udp_sendrecv(...);
 tcp_sendrecv(..., CheckLengthCallback, bool keeplive = false);
 ```
 
-`st_*` I/O 包装（`src/st_sys.h`）超时一律返回 `-1` 且 `errno == ETIME`；`-3` 只表示 `Schedule` / `Add` 失败。`app/st_sys.cc` 的 hook（`sys_read` / `sys_recv` / …）对调用方是 libc 形状：失败 `-1` 且 errno 已设置。`tcp_sendrecv` / `udp_sendrecv` 的状态码是另一套（TCP 接收超时为 `-3`），见 `app/st_c.h`，不要和 `st_*` 的 `-3` 混用。
+`st_*` I/O 包装（`src/st_sys.h`）超时一律返回 `-1` 且 `errno == ETIME`；`-3` 只表示 `Schedule` / `Add` 失败。`app/st_sys.cc` 的 hook（`sys_read` / `sys_recv` / …）对调用方是 libc 形状：失败 `-1` 且 errno 已设置。样例见 `app/st_hookdemo`。`tcp_sendrecv` / `udp_sendrecv` 的状态码是另一套（TCP 接收超时为 `-3`），见 `app/st_c.h`，不要和 `st_*` 的 `-3` 混用。同一 OS 线程的协程通知是 `st_notify` / `st_notify_wait` / `st_wait`（`src/st_sys.h`），不占 fd。
 
 C++：`StClientConnection`、`StServer`。示例里的 `Frame` 在 `app/st_frame.h`；HTTP 样例见 `app/st_httpclient`。
 
@@ -181,7 +181,7 @@ make -C stlib/tests run    # stlib 单测
 | --- | --- |
 | 最简 C 风格入口（init / hook / udp·tcp_sendrecv） | `app/st_c.h` + `app/st_frame.h` |
 | 自写 `StServer` / 连接派生类 | `src/st_server.h`（会拉 `st_connection.h` / `st_sys.h`） |
-| 仅用带超时 `st_read`/`st_write`/… | `src/st_sys.h` |
+| 仅用带超时 `st_read`/`st_write`/…，或 `st_notify` / `st_wait` | `src/st_sys.h` |
 | 基础类型 / 连接枚举 | `src/st_public.h`、`stlib/st_netaddr.h` |
 
 不要直接 include `app/st_sys.h`（hook 实现细节），除非自己做 syscall 表扩展。不要 include `stlib/st_test.h`（仅测试）。

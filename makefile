@@ -15,10 +15,22 @@ FORMAT_SRC = $(wildcard stlib/*.h stlib/*.cc src/*.h src/*.cc stlib/tests/*.cc) 
 	app/st_httpclient/http_client.cc tests/st_http_client_unittest.cpp \
 	tests/st_io_edge_unittest.cpp tests/st_fd_reuse_unittest.cpp \
 	tests/st_sched_edge_unittest.cpp tests/st_hook_unittest.cpp \
-	tests/st_server_edge_unittest.cpp tests/dlsym_null_preload.c
+	tests/st_notify_unittest.cpp \
+	tests/st_connect_errno_unittest.cpp \
+	tests/st_redis_resp_unittest.cpp \
+	tests/st_server_edge_unittest.cpp tests/dlsym_null_preload.c \
+	app/st_echo/server.cpp app/st_echo/client.cpp \
+	app/st_hookdemo/main.cpp app/st_hookdemo/blocking_client.c \
+	app/st_hookdemo/st_posix_alias.h \
+	app/st_portscan/main.cpp \
+	app/st_redisclient/main.cpp app/st_redisclient/resp.h \
+	app/st_redisclient/resp.cc \
+	app/st_httpproxy/main.cpp \
+	app/st_chat/server.cpp app/st_chat/client.cpp
 
 .PHONY: all help stlib lib apps tests stlib-tests test format format-check clean \
-	bench-http bench-dns bench bench-curve smoke-httpclient android
+	bench-http bench-dns bench bench-curve smoke-httpclient android \
+	smoke-echo smoke-portscan smoke-hook smoke-redis smoke-proxy smoke-chat
 
 # 默认目标保持 stlib；lib / apps / tests 已由 plan/01～08 打通，
 # 框架回归与后续改进见 plan/09-main-bugfix-cleanup.md。
@@ -34,13 +46,15 @@ help:
 	@echo "  make stlib-tests   构建 stlib/tests 的四个测试"
 	@echo "  make test          构建并运行 stlib/tests 的四个测试"
 	@echo "  make lib           构建 libmthread.a / libmthread.so（仓库根目录）"
-	@echo "  make apps          构建 app/st_dns、st_memcacheclient、st_wrk、st_httpserver、st_dnsserver、st_httpclient"
+	@echo "  make apps          构建 dns、memcache、wrk、httpserver、dnsserver、httpclient、echo、portscan、hookdemo、redis、httpproxy、chat"
 	@echo "  make tests         构建 tests/ 下的 unittest"
 	@echo "  make bench-http    HTTP 压测闭环（默认 BENCH_PROFILE=smoke，TRACE=0）"
 	@echo "  make bench-dns     DNS 压测闭环（本地 st_dnsserver，默认 smoke，TRACE=0）"
 	@echo "  make bench         bench-http + bench-dns"
 	@echo "  make bench-curve  并发曲线（TRACE=0，st_httpclient，重复取中位数）"
 	@echo "  make smoke-httpclient  起 st_httpserver，跑 st_httpclient 冒烟"
+	@echo "  make smoke-echo / smoke-portscan / smoke-hook / smoke-redis / smoke-proxy / smoke-chat"
+	@echo "                     六个新样例的本地冒烟，不进 CI"
 	@echo "  make android      NDK 交叉编译 lib/apps/tests（ABI=arm64-v8a|x86_64，API=21，只编译）"
 	@echo "  make format        对本仓库自己的代码跑 clang-format -i"
 	@echo "  make format-check  只检查不改写（--dry-run --Werror）"
@@ -73,6 +87,12 @@ apps: lib
 	@$(MAKE) -C app/st_httpserver
 	@$(MAKE) -C app/st_dnsserver
 	@$(MAKE) -C app/st_httpclient
+	@$(MAKE) -C app/st_echo
+	@$(MAKE) -C app/st_portscan
+	@$(MAKE) -C app/st_hookdemo
+	@$(MAKE) -C app/st_redisclient
+	@$(MAKE) -C app/st_httpproxy
+	@$(MAKE) -C app/st_chat
 
 BENCH_PROFILE ?= smoke
 
@@ -98,6 +118,31 @@ bench-curve:
 smoke-httpclient:
 	@$(MAKE) apps TRACE=0
 	TRACE=0 ./scripts/smoke_httpclient.sh
+
+# 六个新样例的冒烟只给本地手动跑，不写进 _build.yml。
+smoke-echo:
+	@$(MAKE) apps TRACE=0
+	TRACE=0 ./scripts/smoke_echo.sh
+
+smoke-portscan:
+	@$(MAKE) apps TRACE=0
+	TRACE=0 ./scripts/smoke_portscan.sh
+
+smoke-hook:
+	@$(MAKE) apps TRACE=0
+	TRACE=0 ./scripts/smoke_hook.sh
+
+smoke-redis:
+	@$(MAKE) apps TRACE=0
+	TRACE=0 ./scripts/smoke_redis.sh
+
+smoke-proxy:
+	@$(MAKE) apps TRACE=0
+	TRACE=0 ./scripts/smoke_httpproxy.sh
+
+smoke-chat:
+	@$(MAKE) apps TRACE=0
+	TRACE=0 ./scripts/smoke_chat.sh
 
 # Android NDK 交叉编译。只编译 lib、apps、tests、stlib-tests，不在宿主机上运行。
 # 需要 ANDROID_NDK 或 ANDROID_NDK_HOME。不在解析期 $(error)，普通 make lib 不受影响。
@@ -151,6 +196,12 @@ clean:
 	@$(MAKE) -C app/st_httpserver clean
 	@$(MAKE) -C app/st_dnsserver clean
 	@$(MAKE) -C app/st_httpclient clean
+	@$(MAKE) -C app/st_echo clean
+	@$(MAKE) -C app/st_portscan clean
+	@$(MAKE) -C app/st_hookdemo clean
+	@$(MAKE) -C app/st_redisclient clean
+	@$(MAKE) -C app/st_httpproxy clean
+	@$(MAKE) -C app/st_chat clean
 	@rm -f libmthread.a libmthread.so
 	@rm -f app/st_wrk/wrk
 	@rm -rf *.dSYM

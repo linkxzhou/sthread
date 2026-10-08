@@ -25,6 +25,15 @@ app/st_httpserver/main
 app/st_dnsserver/main
 app/st_httpclient/st_httpclient
 app/st_wrk/wrk
+app/st_echo/st_echoserver
+app/st_echo/st_echoclient
+app/st_portscan/st_portscan
+app/st_httpproxy/st_httpproxy
+app/st_redisclient/st_redisclient
+app/st_chat/st_chatserver
+app/st_chat/st_chatclient
+app/st_hookdemo/st_hookdemo
+app/st_hookdemo/blocking_client
 
 # 运行期日志与一次性压测报告（冻结 baseline-*.md 要提交）
 *.log

@@ -11,13 +11,13 @@ FLAGS = $(ST_CXXFLAGS) $(ST_LDFLAGS) $(ST_LDLIBS)
 	singleton base thread manager connection session keepalive c main server ucontext \
 	util buffer heap hash scheduler connmgr loopback context accept \
 	sysapi connio logbuf harvest httpserver covextra dnsproto httpclient \
-	ioedge fdreuse schededge hook serveredge
+	ioedge fdreuse schededge hook serveredge notify connerrno redisresp
 
 # Primary suite (used by make -C tests run and coverage)
 all: singleton base thread manager connection session keepalive main \
 	util buffer heap hash scheduler connmgr loopback context server accept \
 	sysapi connio logbuf harvest httpserver covextra dnsproto httpclient \
-	ioedge fdreuse schededge hook serveredge
+	ioedge fdreuse schededge hook serveredge notify connerrno redisresp
 
 extra: c
 
@@ -143,6 +143,17 @@ libst_dlsym_null.so: dlsym_null_preload.c
 libst_dlsym_null.dylib: dlsym_null_preload.c
 	$(CC) -dynamiclib -fPIC $< -o $@
 
+notify: st_notify_unittest.cpp
+	$(CC) $< $(ST_TEST_SRC) $(INCLUDE) $(FLAGS) $(LIB) -o st_notify_unittest
+
+connerrno: st_connect_errno_unittest.cpp
+	$(CC) $< $(ST_TEST_SRC) $(INCLUDE) $(FLAGS) $(LIB) -o st_connect_errno_unittest
+
+redisresp: st_redis_resp_unittest.cpp
+	$(CC) $< $(ST_ROOT)/app/st_redisclient/resp.cc $(ST_TEST_SRC) \
+		$(INCLUDE) -I$(ST_ROOT)/app/st_redisclient $(FLAGS) $(LIB) \
+		-o st_redis_resp_unittest
+
 hook: st_hook_unittest.cpp $(HOOK_LIB)
 	$(CC) $< $(ST_TEST_SRC) $(INCLUDE) $(FLAGS) $(HOOK_LDFLAGS) $(LIB) -o st_hook_unittest
 
@@ -163,6 +174,9 @@ RUN_TESTS = \
 	st_fd_reuse_unittest \
 	st_sched_edge_unittest \
 	st_hook_unittest \
+	st_notify_unittest \
+	st_connect_errno_unittest \
+	st_redis_resp_unittest \
 	st_server_edge_unittest
 
 run: all

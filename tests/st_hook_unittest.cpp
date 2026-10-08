@@ -4,8 +4,10 @@
  * dlsym 返回 NULL，HOOK_SYSCALL 改走 libc 本体，调用仍然成功。
  */
 #include "app/st_c.h"
+#include "app/st_frame.h"
 #include "app/st_sys.h"
 #include "src/st_sys.h"
+#include "stlib/st_util.h"
 #include "tests/st_test_compat.h"
 #include <errno.h>
 #include <fcntl.h>
@@ -51,7 +53,7 @@ TEST(StStatus, HookReadWriteSendRecv) {
   ssize_t n;
   ASSERT_TRUE(::socketpair(AF_UNIX, SOCK_STREAM, 0, sv) == 0);
   ASSERT_TRUE(::send(sv[1], "abcd", 4, 0) == 4);
-  /* sys_socket 会顺手设 O_NONBLOCK，st_* 分支就走不到。这里只登记 fd。 */
+  /* 不走 sys_socket：只登记 fd。第一次 sys_read 由 hook 自己补事件项。 */
   sys_new_fd(sv[0]);
   ASSERT_TRUE(st_init_frame());
   st_set_hook_flag();
@@ -64,18 +66,7 @@ TEST(StStatus, HookReadWriteSendRecv) {
   ASSERT_TRUE(::recv(sv[1], buf, 1, 0) == 1);
   ASSERT_TRUE(buf[0] == 'W');
   ASSERT_TRUE(::send(sv[1], "xyz", 3, 0) == 3);
-  {
-    /* st_recv 会先等可读。没登记事件时直接 -2，到不了内核 recv。 */
-    StEventItem *item = Instance<UtilPtrPool<StEventItem> >()->AllocPtr();
-    ASSERT_TRUE(item != NULL);
-    item->SetOsfd(sv[0]);
-    item->EnableInput();
-    item->DisableOutput();
-    ASSERT_TRUE(GlobalEventSchedule()->Add(item));
-    n = sys_recv(sv[0], buf, 3, 0);
-    GlobalEventSchedule()->ClearItem(item);
-    UtilPtrPoolFree(item);
-  }
+  n = sys_recv(sv[0], buf, 3, 0);
   ASSERT_TRUE(n == 3);
   ASSERT_TRUE(memcmp(buf, "xyz", 3) == 0);
   n = sys_send(sv[0], "Q", 1, 0);
@@ -262,6 +253,137 @@ TEST(StStatus, HookSendTimeout) {
   UtilPtrPoolFree(item);
   sys_close(sv[0]);
   ::close(sv[1]);
+}
+
+static volatile int g_ticks = 0;
+static volatile int g_tick_stop = 0;
+static volatile int g_tick_done = 0;
+
+static void tick_loop(void *arg) {
+  (void)arg;
+  while (!g_tick_stop) {
+    g_ticks++;
+    st_sleep(1);
+  }
+  g_tick_done = 1;
+}
+
+/* sys_socket 不再把库自己的非阻塞标成 UNBLOCK。对端不写时 sys_read 挂起。 */
+TEST(StStatus, HookSocketReadTimesOut) {
+  int lfd;
+  int port = 0;
+  int cfd;
+  int afd;
+  struct sockaddr_in dst;
+  struct timeval tv;
+  sys_fd *info;
+  char buf[8];
+  ssize_t n;
+  int kflags;
+  lfd = bind_loopback(SOCK_STREAM, &port);
+  ASSERT_TRUE(lfd >= 0);
+  ASSERT_TRUE(::listen(lfd, 1) == 0);
+  ASSERT_TRUE(st_init_frame());
+  st_set_hook_flag();
+  cfd = sys_socket(AF_INET, SOCK_STREAM, 0);
+  ASSERT_TRUE(cfd >= 0);
+  info = sys_find_fd(cfd);
+  ASSERT_TRUE(info != NULL);
+  ASSERT_TRUE((info->sock_flag & ST_FD_FLG_UNBLOCK) == 0);
+  kflags = ::fcntl(cfd, F_GETFL, 0);
+  ASSERT_TRUE((kflags & O_NONBLOCK) != 0);
+  memset(&dst, 0, sizeof(dst));
+  dst.sin_family = AF_INET;
+  dst.sin_port = htons((uint16_t)port);
+  dst.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+  ASSERT_TRUE(sys_connect(cfd, (struct sockaddr *)&dst, sizeof(dst)) == 0);
+  afd = ::accept(lfd, NULL, NULL);
+  ASSERT_TRUE(afd >= 0);
+  tv.tv_sec = 0;
+  tv.tv_usec = 40000;
+  ASSERT_TRUE(sys_setsockopt(cfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) ==
+              0);
+  errno = 0;
+  n = sys_read(cfd, buf, sizeof(buf));
+  ASSERT_TRUE(n == -1);
+  ASSERT_TRUE(errno == ETIME);
+  ASSERT_TRUE(GlobalEventSchedule()->GetEventItem(cfd) != NULL);
+  sys_close(cfd);
+  ASSERT_TRUE(GlobalEventSchedule()->GetEventItem(cfd) == NULL);
+  errno = 0;
+  ASSERT_TRUE(sys_close(cfd) < 0);
+  ASSERT_TRUE(errno == EBADF);
+  ::close(afd);
+  ::close(lfd);
+}
+
+/* 用户再 fcntl(O_NONBLOCK) 之后，hook 让开，立刻 EAGAIN。 */
+TEST(StStatus, HookSocketUserNonblockRead) {
+  int lfd;
+  int port = 0;
+  int cfd;
+  int afd;
+  struct sockaddr_in dst;
+  char buf[8];
+  ssize_t n;
+  uint64_t t0;
+  lfd = bind_loopback(SOCK_STREAM, &port);
+  ASSERT_TRUE(lfd >= 0);
+  ASSERT_TRUE(::listen(lfd, 1) == 0);
+  ASSERT_TRUE(st_init_frame());
+  st_set_hook_flag();
+  cfd = sys_socket(AF_INET, SOCK_STREAM, 0);
+  ASSERT_TRUE(cfd >= 0);
+  memset(&dst, 0, sizeof(dst));
+  dst.sin_family = AF_INET;
+  dst.sin_port = htons((uint16_t)port);
+  dst.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+  ASSERT_TRUE(sys_connect(cfd, (struct sockaddr *)&dst, sizeof(dst)) == 0);
+  afd = ::accept(lfd, NULL, NULL);
+  ASSERT_TRUE(afd >= 0);
+  ASSERT_TRUE(sys_fcntl(cfd, F_SETFL, O_NONBLOCK) >= 0);
+  t0 = stlib::Util::TimeMs();
+  errno = 0;
+  n = sys_read(cfd, buf, sizeof(buf));
+  ASSERT_TRUE(n == -1);
+  ASSERT_TRUE(errno == EAGAIN || errno == EWOULDBLOCK);
+  ASSERT_TRUE(stlib::Util::TimeMs() - t0 < 200);
+  sys_close(cfd);
+  ::close(afd);
+  ::close(lfd);
+}
+
+/* connect 到正在 listen 的端口会 Yield，另一个协程的计数会增加。 */
+TEST(StStatus, HookSocketConnectYields) {
+  int lfd;
+  int port = 0;
+  int cfd;
+  int before;
+  struct sockaddr_in dst;
+  lfd = bind_loopback(SOCK_STREAM, &port);
+  ASSERT_TRUE(lfd >= 0);
+  ASSERT_TRUE(::listen(lfd, 1) == 0);
+  ASSERT_TRUE(st_init_frame());
+  st_set_hook_flag();
+  g_ticks = 0;
+  g_tick_stop = 0;
+  g_tick_done = 0;
+  ASSERT_TRUE(Frame::CreateThread(tick_loop, NULL) != NULL);
+  cfd = sys_socket(AF_INET, SOCK_STREAM, 0);
+  ASSERT_TRUE(cfd >= 0);
+  memset(&dst, 0, sizeof(dst));
+  dst.sin_family = AF_INET;
+  dst.sin_port = htons((uint16_t)port);
+  dst.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+  before = g_ticks;
+  ASSERT_TRUE(sys_connect(cfd, (struct sockaddr *)&dst, sizeof(dst)) == 0);
+  ASSERT_TRUE(g_ticks > before);
+  g_tick_stop = 1;
+  while (!g_tick_done) {
+    st_sleep(5);
+  }
+  sys_close(cfd);
+  ::close(lfd);
 }
 
 int main(int argc, char *argv[]) {

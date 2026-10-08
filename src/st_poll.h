@@ -29,6 +29,7 @@ using namespace stlib; /* C3: 嵌套 using，避免污染全局 */
 
 class StEventItem;
 class StThreadItem;
+class StThreadSchedule;
 
 typedef CPP_TAILQ_HEAD<StEventItem> StEventItemQueue;
 typedef CPP_TAILQ_HEAD<StThreadItem> StThreadItemQueue;
@@ -118,7 +119,8 @@ public:
   StThreadItem()
       : StHeap(), m_wakeup_time_(0), m_type_(eNORMAL), m_state_(eINITIAL),
         m_callback_(NULL), m_stack_(NULL), m_private_(NULL), m_parent_(NULL),
-        m_flag_(eNOT_INLIST), m_stack_size_(STACK) {
+        m_flag_(eNOT_INLIST), m_stack_size_(STACK), m_notified_(0),
+        m_sched_(NULL) {
     CPP_TAILQ_INIT(&m_fdset_);
     CPP_TAILQ_INIT(&m_sub_threadlist_);
   }
@@ -136,8 +138,26 @@ public:
     CPP_TAILQ_INIT(&m_fdset_);
     CPP_TAILQ_INIT(&m_sub_threadlist_);
     m_parent_ = NULL;
+    /* 对象池复用时不能把上一个协程的粘滞通知带过去。调度器指针留着：
+     * 池是线程局部的，下一次 AllocThread 会再绑一次。 */
+    m_notified_ = 0;
 
     CPP_TAILQ_REMOVE_SELF(this, m_next_);
+  }
+
+  inline void SetSchedule(StThreadSchedule *sched) { m_sched_ = sched; }
+
+  inline StThreadSchedule *GetSchedule() { return m_sched_; }
+
+  inline void SetNotified(int on) { m_notified_ = on ? 1 : 0; }
+
+  inline int Notified() const { return m_notified_; }
+
+  /* 读出粘滞位并清掉。1 表示有人通知过。 */
+  inline int TakeNotified() {
+    int on = m_notified_;
+    m_notified_ = 0;
+    return on;
   }
 
   inline void SetFlag(eThreadFlag flag) {
@@ -285,6 +305,9 @@ public:
   StThreadItemNext m_next_, m_sub_next_;
   uint32_t m_stack_size_;
   char m_name_[64];
+  /* 0/1。不是队列标志，不进 eThreadFlag。 */
+  int m_notified_;
+  StThreadSchedule *m_sched_;
 };
 
 } // namespace sthread

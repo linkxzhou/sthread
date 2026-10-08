@@ -29,7 +29,7 @@ sthread
 6. 跨平台；在内存与句柄足够时可以创建大量协程（见下方「性能」）
 7. 使用简单，只需链接一个 `libmthread.a` 或 `libmthread.so`
 
-示例应用：`app/st_dns`、`app/st_memcacheclient`、`app/st_wrk`、`app/st_httpserver`、`app/st_dnsserver`、`app/st_httpclient`。
+示例应用：`app/st_dns`、`app/st_memcacheclient`、`app/st_wrk`、`app/st_httpserver`、`app/st_dnsserver`、`app/st_httpclient`、`app/st_echo`、`app/st_portscan`、`app/st_httpproxy`、`app/st_redisclient`、`app/st_chat`、`app/st_hookdemo`。
 
 # 环境要求
 
@@ -69,7 +69,7 @@ sthread
 | 项 | 状态 |
 | --- | --- |
 | `make lib` / `make -C tests run` / `make -C stlib/tests run` | 三件套门禁 |
-| `make apps` | dns / memcache / wrk / httpserver / **dnsserver** / **httpclient** |
+| `make apps` | dns / memcache / wrk / httpserver / dnsserver / httpclient / echo / portscan / hookdemo / redis / httpproxy / chat |
 | `make bench-http` | 起 `st_httpserver`，`st_wrk` 矩阵，报告 `reports/http-*.md` |
 | `make bench-dns` | 起 `st_dnsserver` `:5353`，`st_dns` 协程压测后**退出** |
 | 冻结基线 | [`reports/baseline-http.md`](reports/baseline-http.md) / [`reports/baseline-dns.md`](reports/baseline-dns.md)（标 OS/arch/commit） |
@@ -90,7 +90,7 @@ sthread
 
 ```bash
 make lib                 # 产出 libmthread.a 与 libmthread.so（仓库根）
-make apps                # dns / memcache / wrk / httpserver / dnsserver
+make apps                # dns / memcache / wrk / httpserver / dnsserver / httpclient / echo / portscan / hook / redis / proxy / chat
 make tests               # 编译 tests/ 下的 unittest
 make -C tests run        # 运行核心单测（含 keepalive）
 make bench-http          # HTTP 压测闭环（默认 BENCH_PROFILE=smoke）
@@ -192,7 +192,22 @@ int main() {
 }
 ```
 
-完整可编译示例见 `app/st_dns/main.cpp`（DNS 客户端，查询完退出）、`app/st_dnsserver/main.cpp`（UDP 权威样例）与 `tests/st_server_unittest.cpp`（Listen 路径）。
+完整可编译示例见 `app/st_echo/`（下面这一节）、`app/st_dns/main.cpp`（DNS 客户端，查询完退出）、`app/st_dnsserver/main.cpp`（UDP 权威样例）与 `tests/st_server_unittest.cpp`（Listen 路径）。
+
+## TCP echo
+
+最短的一行回显。DNS 示例仍在后面，这一节只是多一个更短的入口。
+
+```bash
+make lib && make -C app/st_echo
+./app/st_echo/st_echoserver                 # 0.0.0.0:7707
+./app/st_echo/st_echoclient 127.0.0.1 7707
+./app/st_echo/st_echoclient -c 8 -n 40 -s ping 127.0.0.1 7707
+```
+
+`-c 1 -n 1` 先打回显，再打 `SUMMARY ok=.. fail=.. qps=.. elapsed_ms=..`。客户端每个请求一次 `tcp_sendrecv`，短连接（`keeplive=false`）。接收超时是 `app/st_c.h` 里的 **-3**（`errno=ETIME`），不要和 `st_recv` 的 `-1` 混用。
+
+服务端用 `eTCP_KEEPLIVE_CONN` 只为了把拆开的一行收齐。`FreePtr` 仍然关掉 fd，这不是连接池。一次只保证一行，`\n` 后面的粘包会被清掉。详见 [`app/st_echo/README.md`](app/st_echo/README.md)。
 
 ## 对外头文件（推荐）
 
@@ -204,6 +219,7 @@ int main() {
 | TCP/UDP `StServer` 服务 | `#include "src/st_server.h"` |
 | 客户端连接 / 连接池 | `#include "src/st_connection.h"` |
 | 带超时的 `st_read` / `st_write` / `st_accept` / … | `#include "src/st_sys.h"` |
+| 同一 OS 线程上的协程通知 `st_notify` / `st_wait` | `#include "src/st_sys.h"` |
 | 连接类型枚举、`ST_CONN_RESET_RECVBUF` 等 | `#include "src/st_public.h"` |
 
 说明：`app/st_c.*` / `app/st_sys.*` 已编进库，但 **hook 头 `app/st_sys.h` 非稳定对外 API**；业务优先走 `st_c` / `st_frame` / `src/st_*.h`。`stlib/` 多为被上述头间接包含的基础设施。
@@ -283,6 +299,32 @@ make -C app/st_wrk
 
 `st_wrk` 和 `st_memcacheclient` 直接使用 `StExecClientConnection`（`StClientConnection` + `st_send` / `st_recv`），写法和 `app/st_httpclient` 一样：短连接上发请求，读到协议报文结束。
 
+## Redis
+
+和 Memcache 一样，协议在样例里，不进库。`app/st_redisclient` 自己解析 RESP 子集，不链接 hiredis。端到端需要本机 `redis-server`，或者冒烟脚本里的 `scripts/redis_stub.py`。
+
+```bash
+make -C app/st_redisclient
+./app/st_redisclient -h 127.0.0.1 -p 6379 ping
+./app/st_redisclient -c 4 -n 20 ping
+```
+
+`SUMMARY` 里带 `p50_ms` / `p99_ms`。详见 [`app/st_redisclient/README.md`](app/st_redisclient/README.md)。
+
+## HTTP 反代
+
+`app/st_httpproxy` 前面是 `StServer`，后面用 `st_http_exchange` 转发。每个后端的槽位只活在这个样例里，不是 `StConnectionManager` 的真复用。请求头和正文受 8192 字节缓冲限制，只接受 IPv4 字面量。详见 [`app/st_httpproxy/README.md`](app/st_httpproxy/README.md)。
+
+## 端口扫描 / 聊天室
+
+```bash
+./app/st_portscan/st_portscan -c 32 -t 300 -p 80,443 127.0.0.1
+./app/st_chat/st_chatserver
+./app/st_chat/st_chatclient -n ada 127.0.0.1 7700 hello
+```
+
+扫描把 `ETIME` 和 `ECONNREFUSED` 分成 timeout 和 refused。`st_connect` 超时仍是 `-1` 且 `errno=ETIME`。聊天室用下一节的 `st_notify` / `st_wait` 广播，不在别人的 socket 上 `st_send`。
+
 ## TCP / UDP 客户端 API
 
 头文件：`app/st_c.h`（已编进 `libmthread`）。
@@ -345,6 +387,32 @@ make -C tests server
 `app/st_sys.cc` 里 hook 出去的 `sys_read` / `sys_recv` / `sys_send` / `sys_write` / `sys_connect` 对调用方保持 libc 形状：失败一律 `-1`，并且 `errno` 已设置。超时仍是 `errno == ETIME`。
 
 `udp_sendrecv` / `tcp_sendrecv` 用另一套状态码（接收超时在 TCP 上是 `-3`），见 `app/st_c.h`。不要和 `st_*` 的 `-3`（调度失败）混用。
+
+## 协程通知
+
+同一 OS 线程上叫醒另一个协程，不占 fd，也不建 pipe。声明在 `src/st_sys.h`：`st_notify`、`st_notify_wait`、`st_wait`。
+
+| 调用 | 返回 |
+| --- | --- |
+| `st_notify(target)` | `0` 已记下。`target` 正在等，就离开睡眠堆或 IO 队列，进入可运行队列。没在等则只留粘滞位，下次 wait 立刻成功。多次 notify 合并成一次。`target` 为空或不属于当前调度器：`-1`，`errno=EINVAL` |
+| `st_notify_wait(ms)` | `0` 被叫醒（含调用前已经记下的粘滞）。超时 `-1` 且 `errno=ETIME` |
+| `st_wait(fd, want_read, ms)` | `>0` 是位掩码：`ST_WAIT_FD`（0x1）和 `ST_WAIT_NOTIFY`（0x2）可以同时置上。超时 `-1`/`ETIME`。fd 没有事件项 `-2`/`EINVAL`。调度失败 `-3` |
+
+`st_wait` 返回值含 `ST_WAIT_FD` 时，用一次非阻塞 `recv` / `send` 把字节取走，不要接着再调 `st_recv` / `st_send`。进入时若粘滞位已经是 1，先清掉，再用 `poll(timeout=0)` 看 fd 是否已经有事件。不走 `Schedule(超时 0)`：`StEventSchedule::Wait(0)` 会 `Poll(NULL)`，那是一直阻塞。
+
+聊天室样例：[`app/st_chat/README.md`](app/st_chat/README.md)。
+
+## syscall hook
+
+业务文件可以按阻塞 POSIX 来写（`socket` / `connect` / `read` / `write` / `close` / `setsockopt`）。协程目标在编译时 `-include app/st_hookdemo/st_posix_alias.h`，把这些名字换成 `sys_*`。不在 `libmthread.so` 里定义全局 `read`，也不做 `LD_PRELOAD`。同一份 `blocking_client.c` 不加 `-include`、不链库，就是普通阻塞客户端。
+
+```bash
+make -C app/st_hookdemo
+./app/st_hookdemo/blocking_client 127.0.0.1 7707 hook
+./app/st_hookdemo/st_hookdemo -c 4 -n 4 127.0.0.1 7707
+```
+
+`sys_socket` 会把内核 fd 设成非阻塞，但不再打上 `ST_FD_FLG_UNBLOCK`。这样 hook 打开时 `sys_read` 会进 `st_read` 并 Yield。用户自己的 `fcntl(O_NONBLOCK)` 仍然是立刻 `EAGAIN`。超时用 `setsockopt(SO_RCVTIMEO / SO_SNDTIMEO)`，不要依赖默认的 512 ms。详见 [`app/st_hookdemo/README.md`](app/st_hookdemo/README.md)。
 
 # 性能
 

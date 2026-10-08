@@ -1,5 +1,6 @@
 #include "app/st_sys.h"
 #include "st_sys.h"
+#include <poll.h>
 
 using namespace sthread;
 
@@ -384,6 +385,110 @@ ssize_t st_send(int fd, const void *buf, size_t nbyte, int flags, int timeout) {
   }
 
   return nbyte;
+}
+
+static int FdReadyNow(int fd, int want_read) {
+  struct pollfd pfd;
+  int rc;
+  pfd.fd = fd;
+  pfd.events = want_read ? POLLIN : POLLOUT;
+  pfd.revents = 0;
+  do {
+    rc = ::poll(&pfd, 1, 0);
+  } while (rc < 0 && errno == EINTR);
+  if (rc > 0 && pfd.revents != 0) {
+    return 1;
+  }
+  return 0;
+}
+
+int st_notify_wait(int timeout_ms) {
+  StThread *thread = (StThread *)(GlobalThreadSchedule()->GetActiveThread());
+  if (thread == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+  if (thread->TakeNotified()) {
+    return 0;
+  }
+  if (timeout_ms == 0) {
+    errno = ETIME;
+    return -1;
+  }
+  if (timeout_ms < 0) {
+    timeout_ms = 0x7fffffff;
+  }
+  thread->Sleep(timeout_ms);
+  GlobalThreadSchedule()->Sleep(thread);
+  if (thread->TakeNotified()) {
+    return 0;
+  }
+  errno = ETIME;
+  return -1;
+}
+
+int st_notify(StThread *target) {
+  StThreadSchedule *sched = GlobalThreadSchedule();
+  if (target == NULL || sched == NULL || target->GetSchedule() != sched) {
+    errno = EINVAL;
+    return -1;
+  }
+  return sched->Notify(target);
+}
+
+int st_wait(int fd, int want_read, int timeout_ms) {
+  StThreadItem *thread = RequireActiveThread();
+  if (thread == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+  StEventItem *item = GlobalEventSchedule()->GetEventItem(fd);
+  if (item == NULL) {
+    errno = EINVAL;
+    return -2;
+  }
+
+  int mask = 0;
+  if (thread->TakeNotified()) {
+    mask |= ST_WAIT_NOTIFY;
+    /* 粘滞已经记下。fd 上已有的字节用一次非阻塞探测取走，不再睡。 */
+    if (FdReadyNow(fd, want_read)) {
+      mask |= ST_WAIT_FD;
+    }
+    return mask;
+  }
+
+  if (want_read) {
+    item->DisableOutput();
+    item->EnableInput();
+  } else {
+    item->DisableInput();
+    item->EnableOutput();
+  }
+  item->SetOwnerThread(thread);
+
+  if (timeout_ms < 0) {
+    timeout_ms = 0x7fffffff;
+  }
+  uint64_t wakeup = (uint64_t)timeout_ms + (uint64_t)Util::TimeMs();
+  bool ok = GlobalEventSchedule()->Schedule(thread, NULL, item, wakeup);
+  int saved = errno;
+  if (thread->TakeNotified()) {
+    mask |= ST_WAIT_NOTIFY;
+  }
+  if (ok) {
+    mask |= ST_WAIT_FD;
+    return mask;
+  }
+  if (saved == ETIME) {
+    if (mask & ST_WAIT_NOTIFY) {
+      return mask;
+    }
+    errno = ETIME;
+    return -1;
+  }
+  errno = (saved == 0) ? EIO : saved;
+  return -3;
 }
 
 void st_sleep(int ms) {

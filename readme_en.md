@@ -29,7 +29,7 @@ The final deliverable is a library: `libmthread.a` / `libmthread.so`. Consumers 
 6. Cross-platform; with enough memory and file handles, a large number of coroutines can be created (see "Performance" below)
 7. Easy to use: just link a single `libmthread.a` or `libmthread.so`
 
-Example applications: `app/st_dns`, `app/st_memcacheclient`, `app/st_wrk`, `app/st_httpserver`, `app/st_dnsserver`, `app/st_httpclient`.
+Example applications: `app/st_dns`, `app/st_memcacheclient`, `app/st_wrk`, `app/st_httpserver`, `app/st_dnsserver`, `app/st_httpclient`, `app/st_echo`, `app/st_portscan`, `app/st_httpproxy`, `app/st_redisclient`, `app/st_chat`, `app/st_hookdemo`.
 
 # Requirements
 
@@ -69,7 +69,7 @@ On every push / PR, [GitHub Actions](https://github.com/linkxzhou/sthread/action
 | Item | Status |
 | --- | --- |
 | `make lib` / `make -C tests run` / `make -C stlib/tests run` | Three-part gate |
-| `make apps` | dns / memcache / wrk / httpserver / **dnsserver** / **httpclient** |
+| `make apps` | dns / memcache / wrk / httpserver / dnsserver / httpclient / echo / portscan / hookdemo / redis / httpproxy / chat |
 | `make bench-http` | Starts `st_httpserver`, runs an `st_wrk` matrix, writes reports to `reports/http-*.md` |
 | `make bench-dns` | Starts `st_dnsserver` on `:5353`, runs an `st_dns` coroutine load test, then **exits** |
 | Frozen baselines | [`reports/baseline-http.md`](reports/baseline-http.md) / [`reports/baseline-dns.md`](reports/baseline-dns.md) (tagged with OS/arch/commit) |
@@ -90,7 +90,7 @@ From the repository root:
 
 ```bash
 make lib                 # builds libmthread.a and libmthread.so (in the repo root)
-make apps                # dns / memcache / wrk / httpserver / dnsserver
+make apps                # dns / memcache / wrk / httpserver / dnsserver / httpclient / echo / portscan / hook / redis / proxy / chat
 make tests               # builds the unittests under tests/
 make -C tests run        # runs the core unit tests (including keepalive)
 make bench-http          # closed-loop HTTP benchmark (default BENCH_PROFILE=smoke)
@@ -192,7 +192,22 @@ int main() {
 }
 ```
 
-For complete compilable examples, see `app/st_dns/main.cpp` (DNS client that exits after querying), `app/st_dnsserver/main.cpp` (UDP authoritative server example), and `tests/st_server_unittest.cpp` (Listen path).
+For complete compilable examples, see `app/st_echo/` (the next section), `app/st_dns/main.cpp` (DNS client that exits after querying), `app/st_dnsserver/main.cpp` (UDP authoritative server example), and `tests/st_server_unittest.cpp` (Listen path).
+
+## TCP echo
+
+A one-line echo. The DNS example below stays; this is just a shorter entry point.
+
+```bash
+make lib && make -C app/st_echo
+./app/st_echo/st_echoserver                 # 0.0.0.0:7707
+./app/st_echo/st_echoclient 127.0.0.1 7707
+./app/st_echo/st_echoclient -c 8 -n 40 -s ping 127.0.0.1 7707
+```
+
+`-c 1 -n 1` prints the echo line, then `SUMMARY ok=.. fail=.. qps=.. elapsed_ms=..`. Each request is one `tcp_sendrecv` on a short connection (`keeplive=false`). A receive timeout is **-3** in `app/st_c.h` (`errno=ETIME`), which is a different table from `st_recv`'s `-1`.
+
+The server uses `eTCP_KEEPLIVE_CONN` only so a split line can be reassembled. `FreePtr` still closes the fd. This is not a connection pool. Only one line per exchange is guaranteed; bytes after `\n` are dropped. See [`app/st_echo/README.md`](app/st_echo/README.md).
 
 ## Public headers (recommended)
 
@@ -204,6 +219,7 @@ After linking `libmthread.a` / `.so`, include headers according to your use case
 | TCP/UDP `StServer` service | `#include "src/st_server.h"` |
 | Client connections / connection pool | `#include "src/st_connection.h"` |
 | `st_read` / `st_write` / `st_accept` / … with timeouts | `#include "src/st_sys.h"` |
+| Same-thread coroutine notify `st_notify` / `st_wait` | `#include "src/st_sys.h"` |
 | Connection type enum, `ST_CONN_RESET_RECVBUF`, etc. | `#include "src/st_public.h"` |
 
 Note: `app/st_c.*` / `app/st_sys.*` are compiled into the library, but **the hook header `app/st_sys.h` is not a stable public API**; business code should prefer `st_c` / `st_frame` / `src/st_*.h`. Most of `stlib/` is infrastructure that is included indirectly through the headers above.
@@ -283,6 +299,32 @@ make -C app/st_wrk
 
 `st_wrk` and `st_memcacheclient` use `StExecClientConnection` (`StClientConnection` plus `st_send` / `st_recv`) directly, the same pattern as `app/st_httpclient`: a short connection, then read until the protocol message is complete.
 
+## Redis
+
+Same kind of sample as Memcache: the protocol stays in the app, not in the library. `app/st_redisclient` parses a RESP subset itself and does not link hiredis. An end-to-end run needs a local `redis-server`, or `scripts/redis_stub.py` from the smoke script.
+
+```bash
+make -C app/st_redisclient
+./app/st_redisclient -h 127.0.0.1 -p 6379 ping
+./app/st_redisclient -c 4 -n 20 ping
+```
+
+`SUMMARY` includes `p50_ms` / `p99_ms`. See [`app/st_redisclient/README.md`](app/st_redisclient/README.md).
+
+## HTTP reverse proxy
+
+`app/st_httpproxy` is an `StServer` in front and `st_http_exchange` behind it. Per-backend slots live only in this sample. They are not real reuse inside `StConnectionManager`. Headers and bodies are limited by the 8192-byte buffers, and only IPv4 literals are accepted. See [`app/st_httpproxy/README.md`](app/st_httpproxy/README.md).
+
+## Port scan / chat
+
+```bash
+./app/st_portscan/st_portscan -c 32 -t 300 -p 80,443 127.0.0.1
+./app/st_chat/st_chatserver
+./app/st_chat/st_chatclient -n ada 127.0.0.1 7700 hello
+```
+
+The scanner counts `ETIME` as timeout and `ECONNREFUSED` as refused. `st_connect` timeout is still `-1` with `errno=ETIME`. The chat room broadcasts with `st_notify` / `st_wait` from the next section. It does not `st_send` on another coroutine's socket.
+
 ## TCP / UDP client API
 
 Header: `app/st_c.h` (compiled into `libmthread`).
@@ -345,6 +387,32 @@ In `src/st_sys.cc`, the 8 `st_*` functions share the internal `WaitFdReady` (pla
 Hooked `sys_read` / `sys_recv` / `sys_send` / `sys_write` / `sys_connect` in `app/st_sys.cc` stay libc-shaped for callers: failure is always `-1` with `errno` set. A timeout is still `errno == ETIME`.
 
 `udp_sendrecv` / `tcp_sendrecv` use a separate status table (TCP receive timeout is `-3`). See `app/st_c.h`. That `-3` is not the `st_*` schedule-failure code.
+
+## Coroutine notify
+
+Wake another coroutine on the same OS thread. No fd, no pipe. Declared in `src/st_sys.h`: `st_notify`, `st_notify_wait`, `st_wait`.
+
+| Call | Return |
+| --- | --- |
+| `st_notify(target)` | `0` recorded. If `target` is waiting, it leaves the sleep heap or the IO queue and becomes runnable. If it is not waiting, the bit stays sticky and the next wait returns immediately. Repeated notifies collapse into one. `NULL` or a thread from another scheduler: `-1`, `errno=EINVAL` |
+| `st_notify_wait(ms)` | `0` woken, including a sticky bit that was already set. Timeout is `-1` with `errno=ETIME` |
+| `st_wait(fd, want_read, ms)` | `>0` is a bitmask: `ST_WAIT_FD` (0x1) and `ST_WAIT_NOTIFY` (0x2) can both be set. Timeout is `-1`/`ETIME`. No event item is `-2`/`EINVAL`. Schedule failure is `-3` |
+
+When the result includes `ST_WAIT_FD`, take the bytes with one nonblocking `recv` / `send`. Do not call `st_recv` / `st_send` next. If the sticky bit is already 1 on entry, it is cleared and `poll(timeout=0)` checks the fd. That path does not call `Schedule` with timeout 0: `StEventSchedule::Wait(0)` calls `Poll(NULL)`, which blocks forever.
+
+Chat sample: [`app/st_chat/README.md`](app/st_chat/README.md).
+
+## Syscall hook
+
+Application code can stay in blocking POSIX form (`socket` / `connect` / `read` / `write` / `close` / `setsockopt`). The coroutine build `-include`s `app/st_hookdemo/st_posix_alias.h`, which renames those calls to `sys_*`. `libmthread.so` does not define a global `read`, and there is no `LD_PRELOAD`. The same `blocking_client.c`, built without `-include` and without the library, is an ordinary blocking client.
+
+```bash
+make -C app/st_hookdemo
+./app/st_hookdemo/blocking_client 127.0.0.1 7707 hook
+./app/st_hookdemo/st_hookdemo -c 4 -n 4 127.0.0.1 7707
+```
+
+`sys_socket` sets the kernel fd nonblocking, but it no longer sets `ST_FD_FLG_UNBLOCK`. With the hook enabled, `sys_read` therefore enters `st_read` and yields. A caller's own `fcntl(O_NONBLOCK)` is still an immediate `EAGAIN`. Set timeouts with `setsockopt(SO_RCVTIMEO / SO_SNDTIMEO)`. Do not rely on the 512 ms default. See [`app/st_hookdemo/README.md`](app/st_hookdemo/README.md).
 
 # Performance
 
