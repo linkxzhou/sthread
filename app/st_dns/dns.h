@@ -2,7 +2,6 @@
 #define _DNS53_H_
 
 #include "app/st_c.h"
-#include "app/st_action.h"
 #include "stlib/st_log.h"
 #include "stlib/st_def.h"
 #include <arpa/inet.h>
@@ -89,7 +88,7 @@ public:
     }
     ~DNS()
     {
-        safe_free(m_dns_svr_);
+        st_safe_free(m_dns_svr_);
     }
     int dns_lookup(const char *node, std::vector<int32_t> &vc, 
         time_t *ttl, int timeout = DNS_TIMEOUT);
@@ -97,7 +96,7 @@ public:
     inline void set_dns_svr(const char *_ip)
     {
         if (m_dns_svr_ != NULL) {
-            safe_free(m_dns_svr_);
+            st_safe_free(m_dns_svr_);
         }
         m_dns_svr_ = (_ip != NULL) ? strdup(_ip) : NULL;
     }

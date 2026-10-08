@@ -281,7 +281,7 @@ make -C app/st_wrk
 ./app/st_wrk/wrk -n 3 -c 3 -d 2s http://127.0.0.1:8765/
 ```
 
-The example apps also use a slimmed-down `IMtAction` / `IMtActionClient` (`app/st_action.h`), whose `SendRecv` is built on top of `tcp_sendrecv` / `udp_sendrecv`.
+`st_wrk` and `st_memcacheclient` use `StExecClientConnection` (`StClientConnection` plus `st_send` / `st_recv`) directly, the same pattern as `app/st_httpclient`: a short connection, then read until the protocol message is complete.
 
 ## TCP / UDP client API
 

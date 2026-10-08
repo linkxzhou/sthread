@@ -94,5 +94,5 @@ curl -v http://127.0.0.1:8765/
 ## 与 libmthread 的关系
 
 `make lib` 把 stlib 的生产目标文件编进根目录 `libmthread.a/.so`，再加上
-`src/` 与 `app/st_c|st_sys|st_action`。使用方一般只链 `libmthread`，不必单独链
+`src/` 与 `app/st_c|st_sys`。使用方一般只链 `libmthread`，不必单独链
 `libst`。

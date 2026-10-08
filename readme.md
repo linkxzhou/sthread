@@ -281,7 +281,7 @@ make -C app/st_wrk
 ./app/st_wrk/wrk -n 3 -c 3 -d 2s http://127.0.0.1:8765/
 ```
 
-示例应用还会用到精简版 `IMtAction` / `IMtActionClient`（`app/st_action.h`），其 `SendRecv` 建立在 `tcp_sendrecv` / `udp_sendrecv` 之上。
+`st_wrk` 和 `st_memcacheclient` 直接使用 `StExecClientConnection`（`StClientConnection` + `st_send` / `st_recv`），写法和 `app/st_httpclient` 一样：短连接上发请求，读到协议报文结束。
 
 ## TCP / UDP 客户端 API
 

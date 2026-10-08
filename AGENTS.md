@@ -78,7 +78,7 @@ udp_sendrecv(...);
 tcp_sendrecv(..., CheckLengthCallback, bool keeplive = false);
 ```
 
-C++：`StClientConnection`、`StServer`。示例兼容层：`app/st_action.h`、`app/st_frame.h`。
+C++：`StClientConnection`、`StServer`。示例里的 `Frame` 在 `app/st_frame.h`；HTTP 样例见 `app/st_httpclient`。
 
 ### 6. 高性能
 
@@ -109,7 +109,7 @@ C++：`StClientConnection`、`StServer`。示例兼容层：`app/st_action.h`、
 | --- | --- |
 | `stlib/` | 基础库（多为 header-only）+ ucontext；说明见 [`stlib/README.md`](stlib/README.md) |
 | `src/` | 框架核心 → 编进 libmthread |
-| `app/st_c.*` `app/st_sys.*` `app/st_action.*` | **库代码**（物理仍在 app/） |
+| `app/st_c.*` `app/st_sys.*` | **库代码**（物理仍在 app/） |
 | `app/st_dns` 等 | 示例（含 `st_dnsserver`） |
 | `scripts/` | `bench_http.sh` / `bench_dns.sh` |
 | `reports/` | 压测报告；提交冻结 `baseline-*.md` |
@@ -128,7 +128,7 @@ C++：`StClientConnection`、`StServer`。示例兼容层：`app/st_action.h`、
 | `src/st_thread.o` `st_connection.o` `st_sys.o` | `src/*.cc` |
 | `stlib/st_log.o` `st_context.o` | stlib（**不含** `st_test.o`，D6） |
 | `stlib/ucontext/ucontext.o` + `asm.o` （含 arm64） | ucontext |
-| `app/st_c.o` `st_sys.o` `st_action.o` | app 下的库文件 |
+| `app/st_c.o` `st_sys.o` | app 下的库文件 |
 
 系统库：Linux / macOS 为 `-lpthread -ldl`；Android 只有 `-ldl`（pthread 在 bionic libc）。不得链第三方。
 
@@ -152,7 +152,7 @@ make -C stlib/tests run    # stlib 单测
 1. API 兼容：对外符号与枚举数值勿 silently 改
 2. 不提交二进制 / `.dSYM` / 本地 log（见 `.gitignore`）
 3. 注释保持**中文**（与现有代码一致）
-5. 改文档时示例必须来自真实可编译路径（`app/` / `tests/`），勿再写已删除的 `IMtActionServer` / `mt_set_timeout` 等
+5. 改文档时示例必须来自真实可编译路径（`app/` / `tests/`），勿再写已删除的接口名
 
 ---
 

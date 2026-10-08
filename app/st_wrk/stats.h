@@ -6,12 +6,12 @@
 #ifndef __STATS_H___
 #define __STATS_H___
 
+#include <math.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
 #include <string>
-#include "app/st_action.h"
 
 namespace wrk
 {
