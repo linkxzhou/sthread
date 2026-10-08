@@ -857,9 +857,25 @@ makefile                         apps / clean / help / FORMAT_SRC / smoke-*
 
 > 本文件这次只改定稿，没有功能代码。Phase 0 的实测表、每个 Phase 的提交号写在这里。样例冒烟是本地结果，不作为 CI 绿灯。
 
+### Phase 0 实测（Linux x86_64，glibc，2026-10-08，改代码前）
+
+探针只在本机跑，不进仓库。macOS 没有本机环境，open/refused 交给 CI 里的 `tests/st_connect_errno_unittest.cpp`。
+
+| 探针 | 结果 |
+| --- | --- |
+| `sys_socket` 之后的 fd 表 | `sock_flag=0x3`（`INUSE\|UNBLOCK`），内核标志仍是 `O_NONBLOCK`。G1 与源码一致，Phase 1 按此修，不是可选项 |
+| `st_connect` → 正在 `listen` 的 loopback | 返回 `0`。成功路径不清 `errno`，可能残留 `EINPROGRESS`（115）。`SO_ERROR=0`，再 `connect` 得到 `EISCONN`。成功没有被判失败 |
+| `st_connect` → 没人听的 loopback | 第一次 `connect` 直接 `ECONNREFUSED`（111），返回 `-1`。不是 `EISCONN`，也不是 `ETIME`。`SO_ERROR` 同样是 111 |
+| `Create` 连上正在 listen 的端口 | 返回值是 fd（`>=0`） |
+| `Create` 连没人听的端口 | 返回 `-2`。这次 `errno` 仍是 `ECONNREFUSED`：`close` 成功不会改 `errno` |
+| `Create` 打 `192.0.2.1:81`，超时 80ms | `Connect` 当时 `errno=ETIME`（62），返回值仍是 `-2`。`ReleaseItem` 里 `Delete` 失败把 `errno` 改成 `ENOENT`（2）。**超时分类必须先把 errno 存下来** |
+| D4 `SO_ERROR` | Linux 上拒绝没有被当成成功。本次不加。若 macOS CI 把拒绝报成成功，再补，并加 open/refused 单测 |
+
+`FORMAT_SRC` 是白名单。本篇新的 `.h` / `.cc` / `.cpp` 和 `tests/st_notify_unittest.cpp`、`tests/st_connect_errno_unittest.cpp`、`tests/st_redis_resp_unittest.cpp` 要写进去。新二进制（`st_echoserver`、`st_echoclient`、`st_portscan`、`st_httpproxy`、`st_redisclient`、`st_chatserver`、`st_chatclient`、`st_hookdemo`、`blocking_client`）写入 `.gitignore`，并由各目录 `makefile` 的 `clean` 删掉；根 `clean` 继续转调子目录。
+
 | Phase | 提交 | 结果 |
 | --- | --- | --- |
-| 0 实测 |  |  |
+| 0 实测 | （本段） | Linux：拒绝是 `ECONNREFUSED`；`Create` 超时后 errno 被清成 `ENOENT`。不加 `SO_ERROR` |
 | 1 hook 修复 |  |  |
 | 2 通知原语 |  |  |
 | 3 echo |  |  |
