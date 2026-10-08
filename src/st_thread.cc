@@ -178,6 +178,29 @@ StThreadItem *StThreadSchedule::PopRunable() {
   return thread;
 }
 
+int32_t StThreadSchedule::Notify(StThreadItem *target) {
+  if (unlikely(target == NULL)) {
+    errno = EINVAL;
+    return -1;
+  }
+  target->SetNotified(1);
+  /* 自己通知自己：只留粘滞位。此时再 InsertRunable 会把当前协程重复入队。 */
+  if (target == m_active_thread_) {
+    return 0;
+  }
+  /* RemoveIOWait / RemoveSleep 不能作用在不在对应队列上的线程，先看标志。
+   * pend 队列是父子协程的，这里不
+   * Unpend。已经在跑或已在可运行队列：只留粘滞位。 */
+  if (target->HasFlag(eIO_LIST)) {
+    RemoveIOWait(target);
+    InsertRunable(target);
+  } else if (target->HasFlag(eSLEEP_LIST)) {
+    RemoveSleep(target);
+    InsertRunable(target);
+  }
+  return 0;
+}
+
 void StThreadSchedule::WakeupParent(StThreadItem *thread) {
   StThreadItem *parent = thread->GetParent(); /* B17: 无需 dynamic_cast */
   if (parent) {

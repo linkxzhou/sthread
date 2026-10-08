@@ -77,6 +77,10 @@ public:
 
   int32_t RemoveSleep(StThreadItem *thread);
 
+  /* 给 target 记一次通知，并在它正停在睡眠堆或 IO 队列时把它放进可运行队列。
+   * 不 Unpend，不跨 OS 线程。调用方已确认 target 属于本调度器。 */
+  int32_t Notify(StThreadItem *target);
+
   // 唤醒父亲线程
   void WakeupParent(StThreadItem *thread);
 
@@ -308,6 +312,7 @@ protected:
 inline StThreadItem *StThreadSchedule::DaemonThread(void) {
   if (m_daemon_ == NULL) {
     m_daemon_ = new StThread();
+    m_daemon_->SetSchedule(this);
     m_daemon_->SetType(eDAEMON);
     m_daemon_->SetState(eRUNABLE);
     /* Callback set in StSysSchedule::Init → StSysSchedule::StartUp (C8/A3). */
@@ -319,6 +324,7 @@ inline StThreadItem *StThreadSchedule::DaemonThread(void) {
 inline StThreadItem *StThreadSchedule::PrimoThread(void) {
   if (m_primo_ == NULL) {
     m_primo_ = new StThread();
+    m_primo_->SetSchedule(this);
     m_primo_->SetType(ePRIMORDIAL);
     m_primo_->SetState(eRUNNING);
     m_primo_->SetName(THREAD_PRIMO_NAME);
@@ -330,7 +336,12 @@ inline StThreadItem *StThreadSchedule::PrimoThread(void) {
 }
 
 inline StThread *StThreadSchedule::AllocThread() {
-  return (StThread *)(Instance<UtilPtrPool<StThread> >()->AllocPtr());
+  StThread *thread =
+      (StThread *)(Instance<UtilPtrPool<StThread> >()->AllocPtr());
+  if (thread != NULL) {
+    thread->SetSchedule(this);
+  }
+  return thread;
 }
 
 } // namespace sthread

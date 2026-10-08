@@ -159,4 +159,45 @@ int st_accept(int fd, struct sockaddr *addr, socklen_t *addrlen);
 }
 #endif
 
+/* 同一 OS 线程上的协程通知。不占 fd，不进 extern "C"（参数带 StThread*）。
+ * 调用写法和 st_sleep 一样，不用加命名空间。
+ *
+ * ST_WAIT_FD     这次醒来时 fd 上有事件
+ * ST_WAIT_NOTIFY 这次醒来是因为 st_notify（含调用前已经记下的粘滞通知）
+ */
+#define ST_WAIT_FD 0x1
+#define ST_WAIT_NOTIFY 0x2
+
+/* 当前协程等到通知，或超时。
+ *  0  被 st_notify 叫醒，含调用前已经记下的粘滞通知
+ * -1  超时，errno=ETIME；当前没有协程，errno=EINVAL
+ * timeout_ms < 0：一直等（内部收成 0x7fffffff，与 NormalizeTimeoutMs 相同）
+ * timeout_ms == 0：不挂起；有粘滞则 0，否则 -1 且 errno=ETIME
+ */
+int st_notify_wait(int timeout_ms);
+
+/* 给 target 记一次通知。只限当前 OS 线程的 StThreadSchedule。
+ *  0  已记下。target 正在 st_notify_wait 或 st_wait 中，则离开睡眠堆
+ *     或 IO 队列，进入可运行队列。没在等则只留粘滞位，下次 wait 立即成功。
+ *     多次 notify 合并成一次。
+ * -1  target==NULL，或 target 不属于当前调度器，errno=EINVAL
+ * 不调用 Unpend，不跨 OS 线程。
+ */
+int st_notify(sthread::StThread *target);
+
+/* 当前协程同时等 fd 和通知。
+ * want_read 非 0 等可读，0 等可写。
+ * fd 必须已经在事件表里，否则 -2 且 errno=EINVAL（与 st_read 的 -2 相同）。
+ *  >0  位掩码：ST_WAIT_FD 与 ST_WAIT_NOTIFY 可以同时置位
+ *  -1  超时，errno=ETIME；没有协程，errno=EINVAL
+ *  -2  没有事件项，errno=EINVAL
+ *  -3  Schedule / Add 失败
+ * 返回值含 ST_WAIT_FD 时，用一次非阻塞 recv/send 把字节取走。
+ * 不要接着再调 st_recv / st_send：那会再进一次 Schedule。
+ *
+ * 进入时若粘滞位已经是 1：先清掉，再用 poll(timeout=0) 看 fd 是否已经有事件。
+ * 不走 Schedule(超时 0)：StEventSchedule::Wait(0) 会 Poll(NULL)，那是一直阻塞。
+ */
+int st_wait(int fd, int want_read, int timeout_ms);
+
 #endif
