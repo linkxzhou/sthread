@@ -157,10 +157,12 @@ TEST(StStatus, HookConnectAcceptAndTimeoutOpts) {
   ::close(lfd);
 }
 
+/* C 符号。macOS 上还要 Makefile 的
+ * -Wl,-U,_st_dlsym_null_hits，否则弱引用也链不过。 */
 #if defined(__APPLE__)
-extern int st_dlsym_null_hits __attribute__((weak_import));
+extern "C" int st_dlsym_null_hits __attribute__((weak_import));
 #else
-extern int st_dlsym_null_hits __attribute__((weak));
+extern "C" int st_dlsym_null_hits __attribute__((weak));
 #endif
 
 TEST(StStatus, HookDlsymFallbackCounter) {

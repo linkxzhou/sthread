@@ -125,12 +125,16 @@ serveredge: st_server_edge_unittest.cpp
 ifeq ($(ST_OS),android)
 HOOK_LIB =
 HOOK_PRELOAD =
+HOOK_LDFLAGS =
 else ifeq ($(ST_OS),darwin)
 HOOK_LIB = libst_dlsym_null.dylib
 HOOK_PRELOAD = DYLD_INSERT_LIBRARIES=$(CURDIR)/libst_dlsym_null.dylib
+# 计数器只在插入的 dylib 里。允许链接期未定义，运行时没有库则为空。
+HOOK_LDFLAGS = -Wl,-U,_st_dlsym_null_hits
 else
 HOOK_LIB = libst_dlsym_null.so
 HOOK_PRELOAD = LD_PRELOAD=$(CURDIR)/libst_dlsym_null.so
+HOOK_LDFLAGS =
 endif
 
 libst_dlsym_null.so: dlsym_null_preload.c
@@ -140,7 +144,7 @@ libst_dlsym_null.dylib: dlsym_null_preload.c
 	$(CC) -dynamiclib -fPIC $< -o $@
 
 hook: st_hook_unittest.cpp $(HOOK_LIB)
-	$(CC) $< $(ST_TEST_SRC) $(INCLUDE) $(FLAGS) $(LIB) -o st_hook_unittest
+	$(CC) $< $(ST_TEST_SRC) $(INCLUDE) $(FLAGS) $(HOOK_LDFLAGS) $(LIB) -o st_hook_unittest
 
 RUN_TESTS = \
 	st_singleton_unittest st_base_unittest st_thread_unittest \
