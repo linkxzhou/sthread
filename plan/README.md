@@ -2,7 +2,7 @@
 
 本目录是 sthread 的**文档化改进计划**。本目录下所有文件**只描述计划，不包含任何功能代码变更**。
 
-> 阅读顺序建议：先读本文「关键结论」与「硬约束」，再按「执行顺序」阅读；01～08 均已完成，09 正在执行，10 已落地（Windows 不在本期）。
+> 阅读顺序建议：先读本文「关键结论」与「硬约束」，再按「执行顺序」阅读；01～08 均已完成，09 正在执行，10 已落地（Windows 不在本期）。11 是六个新样例的计划，尚未开工。
 
 > **进度（2026-09-16）**：`01`～`08` 均已落地（`08` 在 PR 中，基线冻结于 Linux agent VM）。
 > - `01`：stlib 绿基线、根 makefile、D1/D2/D5/D6（COPYRIGHT）
@@ -15,6 +15,7 @@
 > - `08`：**✅ 已完成** — apps 压测闭环 + `st_dnsserver` + 结构整理——[`08`](08-apps-bench-dnsserver.md)
 > - `09`：**进行中** — 主分支缺陷修复、生命周期清理与跨平台验收——[`09`](09-main-bugfix-cleanup.md)
 > - `10`：**✅ 已完成** — 平台抽象层 + Android（NDK，arm64-v8a / x86_64，只编译）+ `st_httpclient`——[`10`](10-cross-platform-android-httpclient.md)
+> - `11`：**📋 计划** — 六个新样例（echo / 端口扫描 / HTTP 反代 / Redis / 聊天室 / POSIX hook）——[`11`](11-apps-more-scenarios.md)
 >
 > 各份 `0x-*.md` 正文含计划原文 + §9 落地记录；**当前状态以各文顶部「状态」行、根 README、AGENTS 为准**。
 
@@ -106,6 +107,7 @@
 | 08 ✅ | [`08-apps-bench-dnsserver.md`](08-apps-bench-dnsserver.md) | HTTP×wrk 报告、`st_dnsserver`、dns 压测、apps 结构 | `make bench-http`/`bench-dns` 可复现；冻结基线见 `reports/baseline-*.md` |
 | 09 ⏳ | [`09-main-bugfix-cleanup.md`](09-main-bugfix-cleanup.md) | 主分支缺陷修复、生命周期清理、跨平台验收 | macOS + Linux 三件套全绿；见 09「最终验收」 |
 | 10 ✅ | [`10-cross-platform-android-httpclient.md`](10-cross-platform-android-httpclient.md) | 平台抽象层、Android（NDK，arm64-v8a / x86_64）、`st_httpclient` | P0–P2、P4 已落地；`build-android.yml` 只编译；Windows / 模拟器 / armv7 不做。见 10 §9 |
+| 11 📋 | [`11-apps-more-scenarios.md`](11-apps-more-scenarios.md) | `st_echo`、`st_portscan`、`st_httpproxy`、`st_redisclient`、`st_chat`、`st_hookdemo` | 计划已写；实现未开工。出口见 11 §4 / §7 |
 
 ---
 
@@ -324,5 +326,6 @@ app/st_sys.h:  ssize_t __sendto(int fd, const void *message, size_t length, int 
 | `08-apps-bench-dnsserver.md` | apps 压测闭环 + `st_dnsserver`（✅ 已完成） |
 | `09-main-bugfix-cleanup.md` | 主分支缺陷修复与精简（执行中） |
 | `10-cross-platform-android-httpclient.md` | 平台抽象层 + Android + `st_httpclient`（✅ 已完成；Windows 移到后续） |
+| `11-apps-more-scenarios.md` | 六个新样例：echo / 端口扫描 / HTTP 反代 / Redis / 聊天室 / POSIX hook（📋 计划） |
 
 根目录另有 [`../AGENTS.md`](../AGENTS.md)：面向 AI 助手与新贡献者的仓库约定。
