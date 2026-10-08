@@ -14,6 +14,18 @@ int g_hook_flag = 0;
 
 using namespace sthread;
 
+/* st_* 用 -2/-3 表示内部状态。hook 出去的 read/recv/send/connect
+ * 必须像 libc：失败一律 -1，errno 已经由 st_* 设好（超时为 ETIME）。 */
+static ssize_t hook_like_libc(ssize_t rc) {
+  if (rc >= -1) {
+    return rc;
+  }
+  if (errno == 0) {
+    errno = (rc == -2) ? EINVAL : EIO;
+  }
+  return -1;
+}
+
 static sys_fd g_sys_fdlist[ST_MAX_FD];
 
 sys_fd *sys_find_fd(int fd) {
@@ -99,7 +111,8 @@ int sys_connect(int fd, const struct sockaddr *address, socklen_t address_len) {
     }
     return REAL_FUNC(connect)(fd, address, address_len);
   }
-  return st_connect(fd, address, (int)address_len, _fd->write_timeout);
+  return (int)hook_like_libc(
+      st_connect(fd, address, (int)address_len, _fd->write_timeout));
 }
 
 ssize_t sys_read(int fd, void *buffer, size_t nbyte) {
@@ -117,7 +130,7 @@ ssize_t sys_read(int fd, void *buffer, size_t nbyte) {
   if (_fd->sock_flag & ST_FD_FLG_UNBLOCK) {
     return REAL_FUNC(read)(fd, buffer, nbyte);
   } else {
-    return st_read(fd, buffer, nbyte, _fd->read_timeout);
+    return hook_like_libc(st_read(fd, buffer, nbyte, _fd->read_timeout));
   }
 }
 
@@ -134,7 +147,7 @@ ssize_t sys_write(int fd, const void *buffer, size_t nbyte) {
   if (_fd->sock_flag & ST_FD_FLG_UNBLOCK) {
     return REAL_FUNC(write)(fd, buffer, nbyte);
   } else {
-    return st_write(fd, buffer, nbyte, _fd->write_timeout);
+    return hook_like_libc(st_write(fd, buffer, nbyte, _fd->write_timeout));
   }
 }
 
@@ -152,8 +165,8 @@ ssize_t sys_sendto(int fd, const void *buffer, size_t length, int flags,
   if (_fd->sock_flag & ST_FD_FLG_UNBLOCK) {
     return REAL_FUNC(sendto)(fd, buffer, length, flags, de__addr, de__len);
   } else {
-    return st_sendto(fd, buffer, (int)length, flags, de__addr, de__len,
-                     _fd->write_timeout);
+    return hook_like_libc(st_sendto(fd, buffer, (int)length, flags, de__addr,
+                                   de__len, _fd->write_timeout));
   }
 }
 
@@ -171,8 +184,8 @@ ssize_t sys_recvfrom(int fd, void *buffer, size_t length, int flags,
   if (_fd->sock_flag & ST_FD_FLG_UNBLOCK) {
     return REAL_FUNC(recvfrom)(fd, buffer, length, flags, address, address_len);
   } else {
-    return st_recvfrom(fd, buffer, length, flags, address, address_len,
-                       _fd->read_timeout);
+    return hook_like_libc(st_recvfrom(fd, buffer, length, flags, address,
+                                     address_len, _fd->read_timeout));
   }
 }
 
@@ -189,7 +202,8 @@ ssize_t sys_recv(int fd, void *buffer, size_t length, int flags) {
   if (_fd->sock_flag & ST_FD_FLG_UNBLOCK) {
     return REAL_FUNC(recv)(fd, buffer, length, flags);
   } else {
-    return st_recv(fd, buffer, length, flags, _fd->read_timeout);
+    return hook_like_libc(
+        st_recv(fd, buffer, length, flags, _fd->read_timeout));
   }
 }
 
@@ -206,7 +220,8 @@ ssize_t sys_send(int fd, const void *buffer, size_t nbyte, int flags) {
   if (_fd->sock_flag & ST_FD_FLG_UNBLOCK) {
     return REAL_FUNC(send)(fd, buffer, nbyte, flags);
   } else {
-    return st_send(fd, buffer, nbyte, flags, _fd->write_timeout);
+    return hook_like_libc(
+        st_send(fd, buffer, nbyte, flags, _fd->write_timeout));
   }
 }
 

@@ -330,6 +330,22 @@ make -C tests server
 
 `src/st_sys.cc` 内 8 个 `st_*` 共用内部 `WaitFdReady`（plan/07 C1）。fd 事件表容量取 `min(rlim_cur, 65535)`（D4）。keepalive 连接 **当前不在 hash 中真复用**（D1，见 `FreePtr` 注释）。
 
+## `st_*` 返回值
+
+`st_read` / `st_write` / `st_recv` / `st_send` / `st_recvfrom` / `st_sendto` / `st_connect` / `st_accept`（`src/st_sys.h`）：
+
+| 返回值 | 含义 |
+| --- | --- |
+| `>0` | 成功字节数；`st_accept` 为新 connfd。`st_connect` 成功多为 `0` |
+| `0` | 对端关闭，或历史的 `n==0` |
+| `-1` | 硬错误，或超时（`errno == ETIME`）。等到唤醒但没有 IO 事件也是超时 |
+| `-2` | 该 fd 没有事件 item（`errno == EINVAL`） |
+| `-3` | `Schedule` / `Add` 失败。**不是超时** |
+
+`app/st_sys.cc` 里 hook 出去的 `sys_read` / `sys_recv` / `sys_send` / `sys_write` / `sys_connect` 对调用方保持 libc 形状：失败一律 `-1`，并且 `errno` 已设置。超时仍是 `errno == ETIME`。
+
+`udp_sendrecv` / `tcp_sendrecv` 用另一套状态码（接收超时在 TCP 上是 `-3`），见 `app/st_c.h`。不要和 `st_*` 的 `-3`（调度失败）混用。
+
 # 性能
 
 单协程栈分配（实现公式，`StThread::InitStack`）：

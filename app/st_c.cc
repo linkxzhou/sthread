@@ -66,8 +66,15 @@ static int32_t _tcp_check_recv(int32_t sock, char *recvbuf, int32_t &len,
                          (timeout - cost_time));
     LOG_TRACE("sock: %d, rc: %d, recvlen: %d", sock, rc, recvlen);
     if (rc < 0) {
+      int saved = errno;
       LOG_ERROR("tcp socket[%d] recv failed ret[%d][%s]", sock, rc,
-                strerror(errno));
+                strerror(saved));
+      errno = saved;
+      /* st_* 超时是 -1/ETIME。收成 tcp_sendrecv 自己的 -3，与上面墙钟
+       * 超时同一码；-4 只留给非超时的接收失败。 */
+      if (saved == ETIME) {
+        return -3;
+      }
       return -4;
     } else if (rc == 0) {
       LOG_ERROR("tcp socket[%d] remote close", sock);
@@ -131,6 +138,7 @@ int32_t udp_sendrecv(struct sockaddr_in *dst, void *pkg, int32_t len,
                  (int32_t)sizeof(*dst), timeout);
   if (rc < 0) {
     LOG_ERROR("udp_sendrecv send failed, rc: %d, errno: %d", rc, errno);
+    /* 发送失败（含超时，errno=ETIME）统一是 -3，不是 st_* 的 -1。 */
     ret = -3;
     goto UDP_SENDRECV_EXIT_LABEL;
   }
@@ -144,6 +152,7 @@ int32_t udp_sendrecv(struct sockaddr_in *dst, void *pkg, int32_t len,
             ntohs(from_addr.sin_port), time_left);
   if (rc < 0) {
     LOG_ERROR("udp_sendrecv recv failed, rc: %d, errno: %d", rc, errno);
+    /* 接收失败（含超时，errno=ETIME）统一是 -4。 */
     ret = -4;
     goto UDP_SENDRECV_EXIT_LABEL;
   }
@@ -151,7 +160,12 @@ int32_t udp_sendrecv(struct sockaddr_in *dst, void *pkg, int32_t len,
   bufsize = rc;
 
 UDP_SENDRECV_EXIT_LABEL:
-  _release_conn(conn, sock);
+  /* 归还连接可能改 errno。调用方靠 errno 区分超时。 */
+  {
+    int saved_errno = errno;
+    _release_conn(conn, sock);
+    errno = saved_errno;
+  }
 
   return ret;
 }
@@ -191,6 +205,7 @@ int32_t tcp_sendrecv(struct sockaddr_in *dst, void *pkg, int32_t len,
   rc = st_send(sock, pkg, len, 0, time_left);
   if (rc < 0) {
     LOG_ERROR("socket[%d] send failed, ret[%d]", sock, rc);
+    /* 发送失败（含超时，errno=ETIME）是 -2。 */
     ret = -2;
     goto TCP_SENDRECV_EXIT_LABEL;
   }
@@ -206,7 +221,11 @@ int32_t tcp_sendrecv(struct sockaddr_in *dst, void *pkg, int32_t len,
 
 TCP_SENDRECV_EXIT_LABEL:
   // 请求结束后归还连接；keepalive 当前仅保留标记，不做真连接复用。
-  _release_conn((StExecClientConnection *)conn, sock);
+  {
+    int saved_errno = errno;
+    _release_conn((StExecClientConnection *)conn, sock);
+    errno = saved_errno;
+  }
 
   return ret;
 }

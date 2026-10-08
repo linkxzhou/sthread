@@ -78,6 +78,8 @@ udp_sendrecv(...);
 tcp_sendrecv(..., CheckLengthCallback, bool keeplive = false);
 ```
 
+`st_*` I/O 包装（`src/st_sys.h`）超时一律返回 `-1` 且 `errno == ETIME`；`-3` 只表示 `Schedule` / `Add` 失败。`app/st_sys.cc` 的 hook（`sys_read` / `sys_recv` / …）对调用方是 libc 形状：失败 `-1` 且 errno 已设置。`tcp_sendrecv` / `udp_sendrecv` 的状态码是另一套（TCP 接收超时为 `-3`），见 `app/st_c.h`，不要和 `st_*` 的 `-3` 混用。
+
 C++：`StClientConnection`、`StServer`。示例里的 `Frame` 在 `app/st_frame.h`；HTTP 样例见 `app/st_httpclient`。
 
 ### 6. 高性能

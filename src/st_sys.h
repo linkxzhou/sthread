@@ -128,12 +128,12 @@ extern "C" {
 #endif
 
 /* 实现：src/st_sys.cc 内 WaitFdReady 统一挂起骨架（plan/07 C1）。
- * st_* 返回值约定（B15/C9，数值不变）：
+ * st_* 返回值约定（超时与 Schedule 失败分开，不再共用 -3）：
  *  >0 : 成功字节数或 connfd；connect 成功多为 0
  *   0 : 对端关闭或 n==0 历史语义（UDP recvfrom 见 D3）
- *  -1 : 硬错误或超时（errno=ETIME）
- *  -2 : 无事件 item
- *  -3 : Schedule 失败
+ *  -1 : 硬错误，或超时（errno=ETIME）。包括等到唤醒但没有 IO 事件
+ *  -2 : 无事件 item（errno=EINVAL）
+ *  -3 : Schedule / Add 失败（不是超时）
  */
 int st_sendto(int fd, const void *msg, int len, int flags,
               const struct sockaddr *to, int tolen, int timeout);

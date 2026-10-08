@@ -275,6 +275,8 @@
 
   公共前置：`!GetHookFlag()` → `-1`/`ENOSYS`；非法 fd → `-1`/`EINVAL`；`EINTR` 重试；`EAGAIN`/`EWOULDBLOCK`（connect 另含 `EINPROGRESS`）挂起再试。
 
+  > 2026-10 更正：等到唤醒但没有 IO 事件（`Schedule` 置 `errno=ETIME`）也返回 `-1`，不再返回 `-3`。`-2` 只表示没有事件 item（`errno=EINVAL`）；`-3` 只表示 `Schedule`/`Add` 失败。`tcp_sendrecv`/`udp_sendrecv` 仍用 `app/st_c.h` 里另一套状态码。
+
 - **偏差 / 备注**
   - Linux/Docker 验证（R7）本机未做，仍欠
   - `make -C tests run` 全程 PVERB 很吵；`TRACE=0` 未关掉 verbose（记一笔，可后续收口）

@@ -372,8 +372,8 @@ TEST(StStatus, UdpRecvfromTimeout) {
   socklen_t flen = sizeof(from);
   errno = 0;
   int n = st_recvfrom(fd, rbuf, sizeof(rbuf), 0, (struct sockaddr *)&from,
-                      &flen, 5);
-  ASSERT_TRUE(n < 0 && errno == ETIME);
+                      &flen, 40);
+  ASSERT_TRUE(n == -1 && errno == ETIME);
 
   GlobalEventSchedule()->ClearItem(item);
   UtilPtrPoolFree(item);
@@ -398,10 +398,26 @@ TEST(StStatus, ConnectBlackholeTimeout) {
   dst.sin_port = htons(81);
   dst.sin_addr.s_addr = htonl(0xC0000201); /* 192.0.2.1 TEST-NET */
   errno = 0;
-  (void)st_connect(fd, (struct sockaddr *)&dst, sizeof(dst), 5);
+  int rc = st_connect(fd, (struct sockaddr *)&dst, sizeof(dst), 40);
+  int err = errno;
+  ASSERT_TRUE(rc == -1);
+  ASSERT_TRUE(err == ETIME);
+
+  /* StConnection::Connect 把 ETIME 报成 -1，其它失败报成 -2。 */
+  StClientConnection<StEventItem> conn;
+  StNetAddr addr;
+  conn.SetOsfd(fd);
+  conn.SetTimeout(40);
+  addr.SetAddr("192.0.2.1", 81);
+  errno = 0;
+  int32_t cr = conn.Connect(addr);
+  int cerr = errno;
   GlobalEventSchedule()->ClearItem(item);
   UtilPtrPoolFree(item);
+  conn.SetOsfd(-1);
   close(fd);
+  ASSERT_TRUE(cr == -1);
+  ASSERT_TRUE(cerr == ETIME);
 }
 
 TEST(StStatus, FreeStackReleasesVaddr) {

@@ -41,8 +41,10 @@ int32_t StConnection::SendData() {
   LOG_TRACE("send: %p len_left: %d", (void *)(buf + have_send_len),
             buf_len - have_send_len);
 
-  if (ret == -1) {
-    if ((errno == EINTR) || (errno == EAGAIN) || (errno == EINPROGRESS)) {
+  /* 超时是 -1 且 errno=ETIME。-2/-3 不是字节数，不能加进已发送长度。 */
+  if (ret < 0) {
+    if (ret == -1 &&
+        ((errno == EINTR) || (errno == EAGAIN) || (errno == EINPROGRESS))) {
       return 0;
     } else {
       LOG_ERROR("send tcp socket failed, error: %d", errno);

@@ -10,7 +10,8 @@ int NormalizeTimeoutMs(int timeout) {
 }
 
 /* C1: 统一 fd 等待骨架。
- * 返回 0 就绪；-1 超时（errno=ETIME）；-2 无 item；-3 Schedule 失败。 */
+ * 返回 0 就绪；-1 超时（errno=ETIME）；-2 无 item（errno=EINVAL）；
+ * -3 仅 Schedule/Add 失败。等到唤醒但没有 IO 事件也是超时，不是 -3。 */
 int WaitFdReady(StThreadItem *thread, int fd, bool want_read, int64_t start,
                 int timeout) {
   int64_t now = Util::TimeMs();
@@ -22,6 +23,7 @@ int WaitFdReady(StThreadItem *thread, int fd, bool want_read, int64_t start,
   StEventItem *item = GlobalEventSchedule()->GetEventItem(fd);
   if (item == NULL) {
     LOG_ERROR("item is NULL, fd: %d", fd);
+    errno = EINVAL;
     return -2;
   }
 
@@ -36,8 +38,14 @@ int WaitFdReady(StThreadItem *thread, int fd, bool want_read, int64_t start,
 
   int64_t wakeup_timeout = timeout + Util::TimeMs();
   if (!(GlobalEventSchedule()->Schedule(thread, NULL, item, wakeup_timeout))) {
-    LOG_ERROR("item schedule failed, errno: %d, strerr: %s", errno,
-              strerror(errno));
+    int saved = errno;
+    if (saved == ETIME) {
+      errno = ETIME;
+      return -1;
+    }
+    LOG_ERROR("item schedule failed, errno: %d, strerr: %s", saved,
+              strerror(saved));
+    errno = (saved == 0) ? EIO : saved;
     /* Do not UtilPtrPoolFree(item): it is the live GetEventItem(fd). */
     return -3;
   }

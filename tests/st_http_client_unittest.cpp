@@ -8,6 +8,7 @@
 #include "src/st_server.h"
 #include "tests/st_test_compat.h"
 #include <arpa/inet.h>
+#include <errno.h>
 #include <netinet/in.h>
 #include <signal.h>
 #include <stdio.h>
@@ -481,6 +482,75 @@ TEST(StStatus, HttpKeepaliveReuse) {
   ASSERT_TRUE(resp.body_len == 1);
   ASSERT_TRUE(resp.body != NULL && resp.body[0] == 'A');
   ASSERT_TRUE(WIFEXITED(st) && WEXITSTATUS(st) == 0);
+  st_http_response_free(&resp);
+  st_http_conn_close(&io);
+}
+
+TEST(StStatus, HttpRecvTimeout) {
+  int sp[2];
+  int port = 0;
+  pid_t pid;
+  StHttpRequest req;
+  StHttpConn io;
+  StHttpResponse resp;
+  int rc;
+  int err;
+  ASSERT_TRUE(pipe(sp) == 0);
+  pid = fork();
+  ASSERT_TRUE(pid >= 0);
+  if (pid == 0) {
+    int lfd;
+    int yes = 1;
+    int p = 0;
+    int c;
+    char tmp[1024];
+    struct sockaddr_in addr;
+    socklen_t alen;
+    close(sp[0]);
+    alarm(3);
+    lfd = socket(AF_INET, SOCK_STREAM, 0);
+    setsockopt(lfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
+    memset(&addr, 0, sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_port = 0;
+    addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    if (bind(lfd, (struct sockaddr *)&addr, sizeof(addr)) != 0 ||
+        listen(lfd, 1) != 0) {
+      _exit(2);
+    }
+    alen = sizeof(addr);
+    if (getsockname(lfd, (struct sockaddr *)&addr, &alen) != 0) {
+      _exit(2);
+    }
+    p = ntohs(addr.sin_port);
+    write_port(sp[1], p);
+    close(sp[1]);
+    c = accept(lfd, NULL, NULL);
+    if (c >= 0) {
+      (void)read(c, tmp, sizeof(tmp));
+      sleep(2);
+      close(c);
+    }
+    close(lfd);
+    _exit(0);
+  }
+  close(sp[1]);
+  ASSERT_TRUE(read_port(sp[0], &port) == 0);
+  close(sp[0]);
+  ASSERT_TRUE(st_init_frame());
+  st_set_hook_flag();
+  fill_req(&req, port);
+  req.timeout_ms = 80;
+  st_http_conn_init(&io);
+  memset(&resp, 0, sizeof(resp));
+  errno = 0;
+  rc = st_http_exchange(&req, &io, &resp);
+  err = errno;
+  kill(pid, SIGTERM);
+  waitpid(pid, NULL, 0);
+  ASSERT_TRUE(rc < 0);
+  ASSERT_TRUE(resp.transport_error == 1);
+  ASSERT_TRUE(err == ETIME);
   st_http_response_free(&resp);
   st_http_conn_close(&io);
 }
