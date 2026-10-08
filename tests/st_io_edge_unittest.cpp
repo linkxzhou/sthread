@@ -13,6 +13,7 @@
 #include <signal.h>
 #include <stdlib.h>
 #include <sys/socket.h>
+#include <sys/time.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -785,6 +786,33 @@ TEST(StStatus, ConnectionSendTimeout) {
   ::close(sv[1]);
   ASSERT_TRUE(sn == -1);
   ASSERT_TRUE(err == ETIME);
+}
+
+/* 先挂读写再只留读：UDP 不应再因为可写而立刻从 Poll 返回。
+ * epoll 与 kqueue 都是替换语义。第二次 DelEvent 不得失败。 */
+TEST(StStatus, PollMaskReplaces) {
+  StIOState io;
+  struct timeval tv;
+  int fd;
+  int n;
+
+  ASSERT_TRUE(io.Create(1024) == ST_OK);
+  fd = socket(AF_INET, SOCK_DGRAM, 0);
+  ASSERT_TRUE(fd >= 0 && fd < 1024);
+  ASSERT_TRUE(io.AddEvent(fd, ST_READABLE | ST_WRITEABLE) == ST_OK);
+  tv.tv_sec = 0;
+  tv.tv_usec = 20000;
+  n = io.Poll(&tv);
+  ASSERT_TRUE(n > 0);
+  ASSERT_TRUE(io.AddEvent(fd, ST_READABLE) == ST_OK);
+  tv.tv_sec = 0;
+  tv.tv_usec = 30000;
+  n = io.Poll(&tv);
+  ASSERT_TRUE(n == 0);
+  ASSERT_TRUE(io.DelEvent(fd, ST_READABLE) == ST_OK);
+  ASSERT_TRUE(io.DelEvent(fd, ST_READABLE) == ST_OK);
+  close(fd);
+  io.Free();
 }
 
 int main(int argc, char *argv[]) {

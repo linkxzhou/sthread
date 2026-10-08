@@ -586,16 +586,15 @@ def write_report(path, meta, rows, embed_qps, embed_latency):
         "(keepalive pool reuse is still not implemented)."
     )
     lines.append(
-        "- The server process is restarted before every HTTP repeat. Finished coroutines are not reclaimed "
-        "(`StThread` pool TODO), so a long-lived server accumulates stacks and later points would measure that leak."
+        "- The server process is restarted before every HTTP repeat so points stay independent. "
+        "Worker coroutines reuse their stacks (plan/12); a repeat no longer maps one stack per request."
     )
     lines.append(
         "- Latency comes from `st_httpclient`'s millisecond clock (`p50_ms` / `p99_ms`). "
         "Sub-millisecond requests show up as 0."
     )
     lines.append(
-        "- Server stderr is discarded (`/dev/null`). Close still logs `del event failed` inside the process; "
-        "those lines are not kept, and they are not request failures."
+        "- Server stderr is discarded (`/dev/null`). A second delete of an already-cleared fd is not logged."
     )
     lines.append(
         "- `listen` backlog is 128. A point with `fail>0` or a dead server stops the HTTP sweep at that concurrency."

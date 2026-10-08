@@ -1,8 +1,8 @@
 # 12 · 性能优化（短连接曲线为什么在 c=10 就平了）
 
-> **状态：计划，未改库。** 基线提交 `849ebf1`。测量日 2026-10-08，原始表在 [`reports/perf-analysis-20261008.md`](../reports/perf-analysis-20261008.md)。本文只定要改什么、先改哪一步、怎样算改对了。
+> **状态：本轮三项已落地（2026-10-08）。** 基线提交 `849ebf1`。改前测量在 [`reports/perf-analysis-20261008.md`](../reports/perf-analysis-20261008.md)，落地数字在 [`reports/perf-p1-p3-20261008.md`](../reports/perf-p1-p3-20261008.md) 与 §12。
 >
-> **决策：D1–D8 待维护者拍板**（§8）。每项都给了推荐。在拍板之前不要改 `STACK`、枚举值、`st_wrk` 的 SUMMARY/JSON，也不要换调度模型。
+> **本轮只做三件事**：P1（O1 epoll 掩码替换 + O2 去掉多余 `EPOLL_CTL_DEL` / 两行 `LOG_ERROR`）、P3（O3 协程栈复用）、默认栈改为 **128KB**（`STACK = 131072`，取代 D6「保持 260096」）。**延期**：O7 / `-O2`、O5、O4 keepalive 曲线、O6、O9、O8、P8 多进程样例。拍板全文在 §11。
 >
 > 硬约束沿用总索引：C++98；`.clang-format`（LLVM 基线 + `m_x_`）+ CI 的 clang-format-18；**只用 makefile**；零第三方运行时依赖；vendored 代码保留 [`COPYRIGHT`](../COPYRIGHT)；**不发明根 `LICENSE`**；注释用中文。Windows 不支持。平台：Linux x86_64/arm64、macOS、Android arm64-v8a / x86_64。三件套闸门仍是 `make lib`、`make -C tests run`、`make -C stlib/tests run`，外加 `make apps`。`make clean` 之后 `git status --porcelain --ignored` 必须为空。
 
@@ -18,7 +18,7 @@
 
 | # | 不做 | 理由 |
 | --- | --- | --- |
-| N1 | 不把 `STACK`（260096）、`MEM_PAGE_SIZE`（2048）、`eConnType` 数值、`st_*` / `tcp_sendrecv` / `udp_sendrecv` 的签名和状态码改掉 | 公开 API 与栈占用是硬约束 |
+| N1 | 不改 `MEM_PAGE_SIZE`（2048）、`eConnType` 数值、`st_*` / `tcp_sendrecv` / `udp_sendrecv` 的签名和状态码。`ty`/`tx` 拆分、`ss_sp`/`ss_size` 余量不动 | 公开 API。`STACK` 按 §11 改为 131072，不再冻在 260096 |
 | N2 | 不做 M:N，不让协程跨 OS 线程 | `Instance<T>()` 仍是线程局部 |
 | N3 | 不改 `st_wrk` 的命令行、`SUMMARY` 行和 `JSON` 行 | 08 的解析约定 |
 | N4 | 不把 QPS 数字写进 CI | 这台 KVM 上同一点可以差 1 万以上 |
@@ -260,15 +260,15 @@ O9 小项；多进程样例最后，且可选
 
 | 阶段 | 内容 | 依赖 | 出口 |
 | --- | --- | --- | --- |
-| P0 | O7 | 无 | 三件套绿；同机曲线不低于改前中位数的 85%；coverage 仍是 `-O0` |
-| P1 | O1 + O2 | 无（可与 P0 并行，但性能数字分开记） | 空闲 DNS CPU ≈ 0；每请求失败 `epoll_ctl` 和多余 `write` ≈ 0 |
-| P2 | O5 | P1 的 epoll 行为已经稳定更好测，不是硬依赖 | accepted fd 非阻塞；慢客户端不冻住服务器 |
-| P3 | O3 | 无硬依赖。放在 P1 之后，避免日志噪声混进 perf | VmSize 增量 < 64 MB / 5 万请求；`mmap` 不随请求数涨；曲线中位数上升 |
-| P4 | O4 | P3 不是必须（keepalive 本身就少建栈），但短连接回归要先有 P3 的基线才好看 | 新曲线的 `connect`/`mmap` ≈ 并发数；默认 `make bench-curve` 仍是短连接 |
-| P5 | O6 | P1、P2 | 每请求 `epoll_ctl` 下降；空闲不空转；macOS 单测过 |
-| P6 | O9 的时钟 / `TCP_NODELAY` / `dynamic_cast` / backlog | 无 | 超时单测的误差不变；曲线不明显变差 |
-| P7 | O8 的决策 | P3 之后的新 `strace` | 要么立项并让 `rt_sigprocmask` 接近 0，要么写明「剩下不到 2 次/请求，不做」 |
-| P8 | 多进程样例 | P3–P5 之后才有意义 | 不进默认曲线，不进 CI 的性能门 |
+| P0 | O7 | 无 | **延期**。三件套绿；同机曲线不低于改前中位数的 85%；coverage 仍是 `-O0` |
+| P1 | O1 + O2 | 无 | **本轮**。空闲 DNS CPU ≈ 0；每请求失败 `epoll_ctl` 和多余 `write` ≈ 0 |
+| P2 | O5 | P1 | **延期**。accepted fd 非阻塞；慢客户端不冻住服务器 |
+| P3 | O3 | 无硬依赖 | **本轮**。VmSize 增量 < 64 MB / 5 万请求；`mmap` 不随请求数涨。默认栈同时改为 131072 |
+| P4 | O4 | 短连接基线 | **延期**。新曲线的 `connect`/`mmap` ≈ 并发数；默认 `make bench-curve` 仍是短连接 |
+| P5 | O6 | P1、P2 | **延期**。每请求 `epoll_ctl` 下降；空闲不空转；macOS 单测过 |
+| P6 | O9 | 无 | **延期** |
+| P7 | O8 | P3 之后的新 `strace` | **延期** |
+| P8 | 多进程样例 | P3–P5 | **延期**。不进默认曲线，不进 CI 的性能门 |
 
 D 项（做到哪一步算这一篇完成）不在本计划的落地范围内。本篇的完成是：计划进仓库、数字可追溯。实现时每个阶段自己的出口写在上表。
 
@@ -290,45 +290,39 @@ D 项（做到哪一步算这一篇完成）不在本计划的落地范围内。
 
 ## 8. 需要拍板的问题
 
+下列每条都已拍板。推荐项里没被本轮选中的，整项延期，见 §11。
+
 ### D1. 默认优化级别改成 `-O2` 吗？
 
-- **(a) 推荐**：改。`OPT=2`，coverage 保持 `-O0`，`DEBUG` 仍是 `-g2`。这条曲线上不指望它，但 `-O0` 的 app 不该是发布形态。
-- (b) 维持库 `-O1`、app `-O0`，只在压测文档里说明。
+- **延期（O7）**。维持库 `-O1`、app `-O0`。不在本轮改 `make.inc`。
 
 ### D2. 回归曲线用短连接还是 keepalive？
 
-- **(a) 推荐**：短连接继续当 `make bench-curve` 和 readme 主表。keepalive 另开一条。
-- (b) 把主表换成 keepalive。短连接的平台期就会从文档里消失，以后回退也不容易看见。
+- **(a) 维持**：短连接继续当 `make bench-curve` 和 readme 主表。keepalive 曲线（O4）延期。
 
 ### D3. Linux 现在就换 libtask asm 吗？
 
-- **(a) 推荐**：不换。P3 之后若 `rt_sigprocmask` 仍高于约 2 次/请求再立项。
-- (b) 和栈复用绑在同一个补丁里。两边一起错时不好分。
+- **(a) 延期（O8）**。本轮不换。栈复用落地后若 `rt_sigprocmask` 仍高于约 2 次/请求再立项。
 
 ### D4. 07-D1 的真连接池放进这一轮吗？
 
-- **(a) 推荐**：不放。P4 只用样例持有连接，和今天的 `st_httpclient -k` 一样。
-- (b) 一起做 `FreePtr` 的哈希复用。那是行为变化，应该单独看。
+- **(a) 不做**。O4 也延期，本轮不改样例持有连接。
 
 ### D5. 要不要做多 reactor？
 
-- **(a) 推荐**：不做 M:N。P8 最多是一个 `SO_REUSEPORT` 多进程样例，可选。
-- (b) 在库里做多线程 reactor。会碰到 `Instance<T>()` 的线程局部假设。
+- **(a) 不做**。P8 多进程样例延期。不做 M:N。
 
-### D6. 把 `STACK` 改小来省内存？
+### D6. 默认栈大小
 
-- **(a) 推荐**：不改。复用比改小安全。266 KB 里大部分没有驻留，贵的是每次 `mmap` 和缺页，不是 RSS 里的 266 KB。
-- (b) 改小。和「勿擅动 STACK」冲突，还要重测 arm64 的 `makecontext`。
+- **已改决定**：默认 `STACK = 131072`（128KB），取代原先「保持 260096」。`MEM_PAGE_SIZE`、`ty`/`tx`、`ss_sp + 16`、`ss_size - 64` 不动。实际 `malloc` 仍走 `InitStack` 公式（约 137216 字节）。验收：`make -C tests run`、`make apps`、`TRACE=1` 构建与一次短请求都不溢出。
 
-### D7. 用这次测量覆盖冻结基线吗？
+### D7. 用 2026-10-08 的测量覆盖冻结基线吗？
 
-- **(a) 推荐**：不覆盖。这次 c=10 / c=1000 比 `e62c158` 吵，形状相同。等某个阶段真的移动了中位数，再按第 7 节更新。
-- (b) 现在就换成 2026-10-08 的表。会把噪声写进 readme。
+- **(a) 不覆盖那次噪声曲线。** 本轮改完若默认曲线的中位数真的动了，再按第 7 节用同一次 `make bench-curve` 更新 `reports/baseline-curve.*`、`docs/perf/` 与 readme 表。
 
 ### D8. CI 里卡一个 QPS 下限吗？
 
-- **(a) 推荐**：不卡。P3 之后可以卡 VmSize。
-- (b) 卡中位数不低于冻结表的某个百分比。共享 runner 上会偶发红。
+- **(a) 不卡 QPS。** 可以卡 VmSize：5 万请求之后服务端增量 < 64MB。那是泄漏断言。
 
 ---
 
@@ -341,10 +335,45 @@ D 项（做到哪一步算这一篇完成）不在本计划的落地范围内。
 | R3 | epoll 改成替换语义后，某处仍假设「Add 只加位」 | 改之前把 `Add(` 的调用点对一遍；单测锁住「只读」结果 |
 | R4 | 兴趣保持做成忙等 | 空闲 CPU 是 P1 和 P5 的出口，不是可选项 |
 | R5 | Linux asm 与 glibc `ucontext_t` 混用 | O8 要么全换，要么不动；禁止半套 |
-| R6 | 优化补丁改到 `STACK` / 枚举 / `st_wrk` 输出 | 审查时对照第 1.2 节 |
+| R6 | 本轮把 `STACK` 改成 131072 后深层调用溢出 | 跑完全部单测、`make apps`、`TRACE=1` 构建和一次短请求；枚举和 `st_wrk` 输出仍不改 |
 
 ---
 
-## 10. 本篇没有改库
+## 10. 测量当时没有改库
 
-测量用的是现有的 `make bench-curve`、`make bench-dns`、`strace`、`perf`。没有新的库 API，没有测量用的永久开关。`-O2` 对照是临时改 makefile 后还原的，工作区里的编译标志与 `849ebf1` 相同。
+测量用的是现有的 `make bench-curve`、`make bench-dns`、`strace`、`perf`。没有新的库 API，没有测量用的永久开关。`-O2` 对照是临时改 makefile 后还原的。决策之后的代码不在记录决策的这个 PR 里。
+
+## 11. 2026-10-08 拍板
+
+维护者选定本轮只做下面三项，其余全部延期。
+
+| 项 | 决定 |
+| --- | --- |
+| P1 / O1 | **做**。`StIOState::AddEvent` 改成替换兴趣掩码，不再 `|=` 旧掩码。kqueue 本来就是替换，保持 macOS 行为正确 |
+| P1 / O2 | **做**。去掉每次请求都打到 `ENOENT` 的第二次 `EPOLL_CTL_DEL`，以及随之而来的两行 `LOG_ERROR` |
+| P3 / O3 | **做**。协程跑完回调后回到池里挂起，下一次 `CreateThread` 复用同一块栈。5 万请求后服务端 `VmSize` 增量 < 64MB |
+| 栈默认值 | **做**。`STACK` 从 260096 改为 131072（128KB）。这取代 D6「保持原值」 |
+| O7 / 默认 `-O2` | **延期** |
+| O5 accept 非阻塞、`st_recv` 先读 | **延期** |
+| O4 keepalive 曲线 | **延期**。默认曲线仍是短连接 |
+| O6 兴趣保持到连接关闭 | **延期** |
+| O9 时钟 / `TCP_NODELAY` / `dynamic_cast` / backlog | **延期** |
+| O8 Linux libtask asm | **延期** |
+| P8 `SO_REUSEPORT` 多进程样例 | **延期** |
+
+验收仍是：空闲 `st_dnsserver` CPU 从约 100% 降到接近 0；短连接 `make bench-curve` 的 QPS 同机前后对比（噪声约 ±15%，不进 CI）；5 万请求的 `VmSize` 增量 < 64MB。QPS 不作为 CI 门禁。
+
+## 12. 本轮落地（`a67127f` 一带）
+
+代码在实现 PR，不在只记录决策的那个 PR 里。数字见 [`reports/perf-p1-p3-20261008.md`](../reports/perf-p1-p3-20261008.md)。
+
+| 验收 | 结果 |
+| --- | --- |
+| 空闲 DNS CPU | 1 秒 0 tick（改前约 100%） |
+| 5 万请求 VmSize | `-c 32`：12732 → 17792 KB，**+5060 KB** |
+| `mmap` / 2000 请求 | 30（约等于并发；改前 2000） |
+| 失败的 `epoll_ctl` 和两行错误日志 | 0 |
+| 短连接 QPS | 落在改前同一条噪声带里，没有吃到计划里 +15%～+35% 的估计。客户端握手还在 |
+| `STACK=131072` | `make -C tests run`、`make -C stlib/tests run`、`make apps TRACE=1` 和一次 `curl` 都过，没有溢出 |
+
+冻结基线 `reports/baseline-curve.*` **不**用这次曲线覆盖（D7）。QPS 不进 CI。O4–O9 与 P8 仍延期。

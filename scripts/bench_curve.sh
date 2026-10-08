@@ -258,7 +258,7 @@ run_http_point() {
 
 echo "curve CSV $CSV"
 echo "HTTP concs: $CONCS  repeats=$REPEATS  min_n=$MIN_N  per_coro=$PER_CORO"
-echo "server restarted every run (coroutine stacks are not reclaimed)"
+echo "server restarted every run (points stay independent; stacks are reused)"
 
 stop=0
 for c in $CONCS; do

@@ -12,6 +12,7 @@ sthread 端到端压测报告目录（plan/08）。
 | `dns-YYYYMMDD-HHMM.md` | 否（gitignore） | `make bench-dns` 产出 |
 | `curve-*` | 否（gitignore） | `make bench-curve` 产出（csv / md / svg） |
 | `perf-analysis-20261008.md` | **是** | plan/12 的测量记录（系统调用、VmSize、perf）。不替代冻结基线 |
+| `perf-p1-p3-20261008.md` | **是** | P1 / P3 / 128KB 栈落地后的前后数字。不替代冻结基线 |
 | `*.log` | 否 | 脚本把 server stdout 落到这里 |
 
 ## 生成

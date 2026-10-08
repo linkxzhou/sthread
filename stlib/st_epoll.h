@@ -6,6 +6,7 @@
 #define _ST_EPOLL_H_
 
 #include "st_def.h"
+#include <errno.h>
 #include <fcntl.h>
 #include <string.h>
 #include <sys/epoll.h>
@@ -71,16 +72,20 @@ public:
     m_size_ = 0;
   }
 
+  /* 传入的 mask 就是最终兴趣，不再或上旧位。与 kqueue AddEvent 一致。
+   * UDP 套接字常可写，留下 EPOLLOUT 会让 epoll_wait 空转。 */
   int32_t AddEvent(int32_t fd, int32_t mask) {
     if (m_file_[fd].mask == mask) {
       return ST_OK;
+    }
+    if (mask == ST_NONE) {
+      return DelEvent(fd, m_file_[fd].mask);
     }
 
     struct epoll_event ee = {0}; /* avoid valgrind warning */
     int32_t op = (m_file_[fd].mask == ST_NONE) ? EPOLL_CTL_ADD : EPOLL_CTL_MOD;
 
     ee.events = 0;
-    mask |= m_file_[fd].mask; /* Merge old events */
     if (mask & ST_READABLE)
       ee.events |= EPOLLIN;
     if (mask & ST_WRITEABLE)
@@ -98,7 +103,18 @@ public:
 
   int32_t DelEvent(int32_t fd, int32_t delmask) {
     struct epoll_event ee = {0}; /* avoid valgrind warning */
-    int32_t mask = m_file_[fd].mask & (~delmask);
+    int32_t cur = m_file_[fd].mask;
+    int32_t mask;
+
+    /* 已经没有兴趣：不要再 EPOLL_CTL_DEL。第二次会 ENOENT，并被打成错误日志。
+     */
+    if (cur == ST_NONE) {
+      return ST_OK;
+    }
+    mask = cur & (~delmask);
+    if (mask == cur) {
+      return ST_OK;
+    }
 
     ee.events = 0;
     if (mask & ST_READABLE)
@@ -115,6 +131,11 @@ public:
       /* Note, Kernel < 2.6.9 requires a non null event pointer even for
        * EPOLL_CTL_DEL. */
       if (epoll_ctl(m_epfd_, EPOLL_CTL_DEL, fd, &ee) == -1) {
+        /* 内核里已经没有这条登记（close，或上一次已经摘掉）。 */
+        if (errno == ENOENT) {
+          m_file_[fd].mask = ST_NONE;
+          return ST_OK;
+        }
         return ST_ERROR;
       }
     }

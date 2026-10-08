@@ -94,6 +94,24 @@ public:
 
   uint32_t Size() { return m_total_; }
 
+  uint32_t IdleSize() const { return (uint32_t)m_ptr_list_.size(); }
+
+  uint32_t MaxFree() const { return m_max_free_; }
+
+  /* 调用方已经 Reset。不在这里 delete：协程还停在自己的栈上。 */
+  void PushIdle(ValueType *ptr) {
+    if (ptr != NULL) {
+      m_ptr_list_.push(ptr);
+    }
+  }
+
+  /* 对象在池外被 delete（栈复用超出空闲上限）。 */
+  void NoteDestroyed() {
+    if (m_total_ > 0) {
+      m_total_--;
+    }
+  }
+
   ValueType *AllocPtr() {
     ValueType *ptr = NULL;
     if (!m_ptr_list_.empty()) {

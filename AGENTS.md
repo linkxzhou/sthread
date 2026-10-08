@@ -28,7 +28,7 @@ sthread 是一个**基于协程的高性能网络库**，C++98，提供非阻塞
 | keepalive（L4） | **已修**：`eTCP_KEEPLIVE_CONN=0x11`，`Keeplive()`=`IS_KEEPLIVE` |
 | 本仓库 `LICENSE` | **未发布**（仅有 vendored 的 [`COPYRIGHT`](COPYRIGHT)） |
 | 六个新样例（echo / 端口扫描 / 反代 / Redis / 聊天室 / hook） | **已落地**见 [`plan/11-apps-more-scenarios.md`](plan/11-apps-more-scenarios.md)。冒烟是 `make smoke-*`，只在本地跑，不进 CI |
-| 短连接性能（`make bench-curve`） | **计划**见 [`plan/12-performance-optimization.md`](plan/12-performance-optimization.md)。测量在 [`reports/perf-analysis-20261008.md`](reports/perf-analysis-20261008.md)。未改库；QPS 不进 CI |
+| 短连接性能（`make bench-curve`） | **本轮已落地**：epoll 掩码替换、去掉多余 DEL、协程栈复用、`STACK=131072`。QPS 仍在噪声里。其余延期。见 [`plan/12`](plan/12-performance-optimization.md) §12 与 [`reports/perf-p1-p3-20261008.md`](reports/perf-p1-p3-20261008.md)。QPS 不进 CI |
 
 回归记录：[`plan/04-regression-checklist.md`](plan/04-regression-checklist.md)。
 
@@ -57,7 +57,7 @@ ucontext + `stlib/ucontext/asm.S`（386 / amd64 / mips / power；**含 arm64**�
 
 新平台接入：在 `st_platform.h` 加 `ST_OS_*`；上下文走系统 ucontext 或 `stlib/ucontext/` 的 asm（不要引入 boost.context）；事件后端只在 `src/st_poll.h` 按 `ST_POLL_*` 选择；`make.inc` 用 `$(CC) -dumpmachine` 推导 `ST_OS` / `ST_ARCH`。Android 只支持 arm64-v8a 与 x86_64（`make android ABI= API=`）。
 
-勿擅动：`InitContext` 的 `ty`/`tx` 拆分、`ss_sp`/`ss_size` 余量、`STACK`（260096）、`MEM_PAGE_SIZE`（2048）。
+勿擅动：`InitContext` 的 `ty`/`tx` 拆分、`ss_sp`/`ss_size` 余量、`MEM_PAGE_SIZE`（2048）。默认 `STACK` 为 **131072**（128KB，plan/12）。
 
 ### 3. epoll + kqueue
 
@@ -86,7 +86,7 @@ C++：`StClientConnection`、`StServer`。示例里的 `Frame` 在 `app/st_frame
 
 ### 6. 高性能
 
-单协程栈：`MEM_PAGE_SIZE * 2 + (STACK / MEM_PAGE_SIZE + 1) * MEM_PAGE_SIZE`（约 266240 B）。改动勿增大该占用。
+单协程栈：`MEM_PAGE_SIZE * 2 + (STACK / MEM_PAGE_SIZE + 1) * MEM_PAGE_SIZE`（`STACK=131072` 时约 137216 B）。改动勿增大该占用。
 
 ### 7. 只用 `libmthread.a` / `.so`
 
