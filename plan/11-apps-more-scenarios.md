@@ -1,6 +1,6 @@
 # 11 · 六个新样例：echo / 端口扫描 / HTTP 反代 / Redis / 聊天室 / POSIX hook
 
-> **状态：📋 计划（未开工）** · 2026-10-08。基线：`master` = `486611f`（PR #15，`st_*` 超时统一为 `-1` 且 `errno == ETIME`）。
+> **状态：✅ 已落地** · 2026-10-08。基线：`master` = `a61bfb6`（计划文档）。实现在 `cursor/apps-more-scenarios-6bee`。Phase 0 在 Linux 上做完；macOS 的 open/refused 交给 CI 里的 `tests/st_connect_errno_unittest.cpp`。
 >
 > **决策：D1–D14 已决定**（§6）。用户拍板 5 项（readme 保留 DNS、必须先修 hook、聊天室改用库内通知原语、反代池只放样例、六个冒烟不进 CI）；其余按原推荐定稿。
 >
@@ -783,37 +783,37 @@ Phase 7 反代（池在样例里；依赖已有的 httpserver / httpclient）
 
 ### A. 库前置（进 CI）
 
-- [ ] Phase 1：`tests/st_hook_unittest.cpp` 覆盖 §3.1 的表（`ETIME` 挂起、用户 `O_NONBLOCK` 仍 `EAGAIN`、hook 自己登记的事件项在 `sys_close` 释放）
-- [ ] Phase 2：`tests/st_notify_unittest.cpp` 覆盖 §3.2 的表（纯通知、超时、粘滞只消费一次、fd 与通知的三种组合、未登记 fd 返回 `-2`）
-- [ ] `st_read` 超时仍是 `-1` / `ETIME`；`Pend` 单测仍过
-- [ ] `Create` 失败后 errno 仍是 `ECONNREFUSED` 或 `ETIME`（`tests/st_connect_errno_unittest.cpp`）
-- [ ] 上述单测在现有 `make -C tests run` 里，不给 `_build.yml` 加新 job
+- [x] Phase 1：`tests/st_hook_unittest.cpp` 覆盖 §3.1 的表（`ETIME` 挂起、用户 `O_NONBLOCK` 仍 `EAGAIN`、hook 自己登记的事件项在 `sys_close` 释放）
+- [x] Phase 2：`tests/st_notify_unittest.cpp` 覆盖 §3.2 的表（纯通知、超时、粘滞只消费一次、fd 与通知的三种组合、未登记 fd 返回 `-2`）
+- [x] `st_read` 超时仍是 `-1` / `ETIME`；`Pend` 单测仍过
+- [x] `Create` 失败后 errno 仍是 `ECONNREFUSED`（`tests/st_connect_errno_unittest.cpp`）。`ETIME` 的保存已经写上；黑洞超时不进 CI
+- [x] 上述单测在现有 `make -C tests run` 里，不给 `_build.yml` 加新 job
 
 ### B. 六个样例（CI 只编译）
 
-- [ ] `make apps` 产出 `st_echoserver`、`st_echoclient`、`st_portscan`、`st_httpproxy`、`st_redisclient`、`st_chatserver`、`st_chatclient`、`st_hookdemo`、`blocking_client`
-- [ ] 每个目录有 README：编译、运行、限制
-- [ ] 根 makefile 有 `smoke-echo` / `smoke-portscan` / `smoke-hook` / `smoke-redis` / `smoke-proxy` / `smoke-chat`，对应脚本可在本地跑
-- [ ] 这些 `smoke-*` **没有**写进 `_build.yml`
-- [ ] `make android` 仍只编译，且新 makefile 能过 NDK（arm64-v8a 与 x86_64）
+- [x] `make apps` 产出 `st_echoserver`、`st_echoclient`、`st_portscan`、`st_httpproxy`、`st_redisclient`、`st_chatserver`、`st_chatclient`、`st_hookdemo`、`blocking_client`
+- [x] 每个目录有 README：编译、运行、限制
+- [x] 根 makefile 有 `smoke-echo` / `smoke-portscan` / `smoke-hook` / `smoke-redis` / `smoke-proxy` / `smoke-chat`，对应脚本可在本地跑
+- [x] 这些 `smoke-*` **没有**写进 `_build.yml`
+- [ ] `make android` 仍只编译，且新 makefile 能过 NDK（arm64-v8a 与 x86_64）（CI 验证）
 
 ### C. 契约
 
-- [ ] readme 有 echo 一节，DNS 示例还在
-- [ ] echo 客户端用 `tcp_sendrecv`，超时按 `app/st_c.h` 的 `-3` 解释
-- [ ] 端口扫描把 `ETIME` 和 `ECONNREFUSED` 分进不同计数
-- [ ] hook 业务文件源码中不出现 `st_` / `St`；`-include` 只出现在 makefile
-- [ ] 反代不调用 `eTCP_KEEPLIVE_CONN` 来表示池；槽位在样例内
-- [ ] 聊天室用 `st_notify` / `st_wait`，广播不在别的协程的 socket 上调用 `st_send`，不建 pipe
+- [x] readme 有 echo 一节，DNS 示例还在
+- [x] echo 客户端用 `tcp_sendrecv`，超时按 `app/st_c.h` 的 `-3` 解释
+- [x] 端口扫描把 `ETIME` 和 `ECONNREFUSED` 分进不同计数
+- [x] hook 业务文件源码中不出现 `st_` / `St`；`-include` 只出现在 makefile
+- [x] 反代不调用 `eTCP_KEEPLIVE_CONN` 来表示池；槽位在样例内
+- [x] 聊天室用 `st_notify` / `st_wait`，广播不在别的协程的 socket 上调用 `st_send`，不建 pipe
 
 ### D. 工程
 
-- [ ] C++98，无第三方运行时；`ldd` / `otool -L` 只有系统库和 `libmthread`
-- [ ] 新源文件在 `FORMAT_SRC` 里，`clang-format-18` 通过
-- [ ] `make clean` 后 `git status --porcelain --ignored` 为空
-- [ ] 未新增根 `LICENSE`；未提交 `.session_tmps/`
-- [ ] `STACK`、`MEM_PAGE_SIZE`、已有枚举值、`st_*` 既有签名未改
-- [ ] `readme.md` / `readme_en.md` / `AGENTS.md` 写了 `st_notify` / `st_wait` 的入口（`src/st_sys.h`）
+- [x] C++98，无第三方运行时；`ldd` / `otool -L` 只有系统库和 `libmthread`
+- [x] 新源文件在 `FORMAT_SRC` 里，`clang-format-18` 通过
+- [x] `make clean` 后 `git status --porcelain --ignored` 为空（本地会再核一次）
+- [x] 未新增根 `LICENSE`；未提交 `.session_tmps/`
+- [x] `STACK`、`MEM_PAGE_SIZE`、已有枚举值、`st_*` 既有签名未改
+- [x] `readme.md` / `readme_en.md` / `AGENTS.md` 写了 `st_notify` / `st_wait` 的入口（`src/st_sys.h`）
 
 ---
 
@@ -871,19 +871,27 @@ makefile                         apps / clean / help / FORMAT_SRC / smoke-*
 | `Create` 打 `192.0.2.1:81`，超时 80ms | `Connect` 当时 `errno=ETIME`（62），返回值仍是 `-2`。`ReleaseItem` 里 `Delete` 失败把 `errno` 改成 `ENOENT`（2）。**超时分类必须先把 errno 存下来** |
 | D4 `SO_ERROR` | Linux 上拒绝没有被当成成功。本次不加。若 macOS CI 把拒绝报成成功，再补，并加 open/refused 单测 |
 
+实现时相对正文的偏差（行为不变的地方不单列）：
+
+1. `st_wait` 发现粘滞位时用 `poll(timeout=0)` 看 fd，不调用 `Schedule(0)`。`StEventSchedule::Wait(0)` 会 `Poll(NULL)`，epoll_wait / kevent 不带超时就是一直阻塞。`src/st_sys.h` 写了这句。
+2. 反代的头放不进 8192 时，`DoInput` 不返回 `-1`。`StServer::CallBack` 在 `RecvData < 0` 时不会走到 `DoOutput`，400 写不出去。样例置 `overflow_` 并返回正长度，再由 `DoProcess` 写 400。正文里「超过缓冲返回 -1，DoOutput 写 400」在这套 `CallBack` 下做不到。
+3. 上游 `st_http_exchange` 失败时立刻把该后端 `alive` 置 0，不等下一个探活周期。探活仍用自己的短连接，不占槽位。
+4. 聊天室冒烟先等服务端打出 `listening`，再起 B。正文的顺序是先起 B 再等 listening，B 可能在 listen 之前就连失败。B 一直读到 `-t`，不会在 `* joined bob` 那一行退出，否则看不到 `ada: hello`。
+5. hook 的登记项不挂 epoll/kqueue 兴趣（input/output 都关掉再 `Add`）。兴趣开着、owner 还是 NULL 时，daemon 会空转。`sys_read` 真正等待时再打开兴趣。
+
 `FORMAT_SRC` 是白名单。本篇新的 `.h` / `.cc` / `.cpp` 和 `tests/st_notify_unittest.cpp`、`tests/st_connect_errno_unittest.cpp`、`tests/st_redis_resp_unittest.cpp` 要写进去。新二进制（`st_echoserver`、`st_echoclient`、`st_portscan`、`st_httpproxy`、`st_redisclient`、`st_chatserver`、`st_chatclient`、`st_hookdemo`、`blocking_client`）写入 `.gitignore`，并由各目录 `makefile` 的 `clean` 删掉；根 `clean` 继续转调子目录。
 
 | Phase | 提交 | 结果 |
 | --- | --- | --- |
-| 0 实测 | （本段） | Linux：拒绝是 `ECONNREFUSED`；`Create` 超时后 errno 被清成 `ENOENT`。不加 `SO_ERROR` |
-| 1 hook 修复 |  |  |
-| 2 通知原语 |  |  |
-| 3 echo |  |  |
-| 4 hookdemo |  |  |
-| 5 portscan |  |  |
-| 6 redis |  |  |
-| 7 proxy |  |  |
-| 8 chat |  |  |
+| 0 实测 | `422c1eb` | Linux：拒绝是 `ECONNREFUSED`；`Create` 超时后 errno 被清成 `ENOENT`。不加 `SO_ERROR` |
+| 1 hook 修复 | `220ffae` | `sys_socket` 不再打 `ST_FD_FLG_UNBLOCK`；缺事件项时自己登记，不挂兴趣；`sys_close` 只释放自己的项。`tests/st_hook_unittest.cpp` 8 项通过 |
+| 2 通知原语 | `1f84513` | `st_notify` / `st_notify_wait` / `st_wait`。粘滞路径用 `poll(0)`。`tests/st_notify_unittest.cpp` 9 项通过 |
+| 3 echo | `8affb97` | `st_echoserver` / `st_echoclient`。本地 `make smoke-echo` 通过 |
+| 4 hookdemo | `67f7b88` | `blocking_client` 与 `st_hookdemo`。本地 `make smoke-hook` 通过 |
+| 5 portscan | `750ff54` | `Create` 失败保存 errno。不加 `SO_ERROR`。本地 `make smoke-portscan` 通过 |
+| 6 redis | `ae9a68f` | RESP 子集 + `scripts/redis_stub.py`。`tests/st_redis_resp_unittest.cpp` 通过。本地 `make smoke-redis` 通过 |
+| 7 proxy | `592a2fe` | 槽位只在样例里。头溢出走正长度再写 400。本地 `make smoke-proxy` 通过 |
+| 8 chat | `4023176` | `st_notify` / `st_wait`，先入邮箱再通知。本地 `make smoke-chat` 通过 |
 
 ---
 
@@ -898,4 +906,4 @@ makefile                         apps / clean / help / FORMAT_SRC / smoke-*
 | 9. 聊天室广播，协程之间叫醒 | §4.5，Phase 8。前置是 Phase 2 的 `st_notify` / `st_wait` |
 | 11. 不改的阻塞代码经 hook 跑在协程里 | §4.6，Phase 4。前置是 Phase 1 的 hook 修复 |
 | 冒烟不进 CI | D12，§5、§6、§8 |
-| 只写计划、不改功能代码 | 本文 |
+| 只写计划、不改功能代码 | 计划正文仍在本文；功能代码在实现 PR |
